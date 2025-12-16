@@ -1,0 +1,14 @@
+# Root ignore
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Backend
+backend/target/
+backend/.idea/
+
+# OS/Editor
+.DS_Store
+Thumbs.db
+.vscode/
