@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  # --- 1. BANCO DE DADOS (MySQL) ---
+  atlas_db:
+    image: mysql:8.0
+    container_name: atlas_db
+    restart: always
+    environment:
+      MYSQL_DATABASE: atlas4me
+      MYSQL_ROOT_PASSWORD: senha_super_secreta_root 
+      MYSQL_USER: atlas_user
+      MYSQL_PASSWORD: atlas_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - atlas-network
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # --- 2. BACKEND (Spring Boot) ---
+  atlas_backend:
+    build: ./backend
+    container_name: atlas_backend
+    restart: on-failure
+    depends_on:
+      atlas_db:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://atlas_db:3306/atlas4me?allowPublicKeyRetrieval=true&useSSL=false&createDatabaseIfNotExist=true
+      SPRING_DATASOURCE_USERNAME: atlas_user
+      SPRING_DATASOURCE_PASSWORD: atlas_password
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    ports:
+      - "5202:5202"
+    networks:
+      - atlas-network
+
+  # --- 3. FRONTEND (React/Vite) - O RETORNO! ---
+  atlas_frontend:
+    build: ./frontend  # <--- CONFIRA SE O NOME DA SUA PASTA É 'frontend'
+    container_name: atlas_frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - atlas_backend
+    networks:
+      - atlas-network
+    # Comando para garantir que o Vite libere o acesso externo
+    command: npm run dev -- --host 
+
+networks:
+  atlas-network:
+    driver: bridge
+
+volumes:
+  mysql_data:

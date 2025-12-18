@@ -48,21 +48,12 @@ public class GameSession {
     private List<GameAttempt> gameAttempts = new ArrayList<>();
 
     @ManyToMany
-    @JoinTable(
-        name = "game_session_rejected",
-        joinColumns = @JoinColumn(name = "session_id"),
-        inverseJoinColumns = @JoinColumn(name = "country_id")
-    )
+    @JoinTable(name = "game_session_rejected", joinColumns = @JoinColumn(name = "session_id"), inverseJoinColumns = @JoinColumn(name = "country_id"))
     private Set<Country> rejectedCountries = new HashSet<>();
-    
-    // Helper para adicionar fácil
-    public void addRejectedCountry(Country country) {
-        this.rejectedCountries.add(country);
-    }
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private GameStatus status; 
+    private GameStatus status;
 
     @PrePersist
     protected void onCreate() {
@@ -79,17 +70,23 @@ public class GameSession {
         return this.status == GameStatus.HUMAN_WON;
     }
 
-    // Retorna true se o jogo foi finalizado (qualquer status diferente de IN_PROGRESS)
+    // Retorna true se o jogo foi finalizado (qualquer status diferente de
+    // IN_PROGRESS)
     public Boolean isFinished() {
         return this.status != GameStatus.IN_PROGRESS;
     }
 
- // Método helper para finalizar o jogo
+    // Método helper para finalizar o jogo
     public void finish(GameStatus finalStatus) {
         if (finalStatus == GameStatus.IN_PROGRESS) {
             throw new IllegalArgumentException("Cannot finish game with IN_PROGRESS status");
         }
         this.status = finalStatus;
         this.finishedAt = LocalDateTime.now();
+    }
+
+    // Helper para adicionar fácil
+    public void addRejectedCountry(Country country) {
+        this.rejectedCountries.add(country);
     }
 }

@@ -48,7 +48,7 @@ INSERT INTO questions (id, text, category, helper_image_url) VALUES
 (9, 'A bandeira deste país tem a cor Vermelha?', 'BANDEIRA', NULL),
 
 -- Q10: Geografia (Linha do Equador)
-(10, 'A Linha do Equador corta este país?', 'GEOGRAFIA', '/images/maps/equador.png');
+(10, 'A Linha do Equador corta este país?', 'GEOGRAFIA', '/images/maps/equador.png'),
 
 -- Q11: O "Sol de Maio" (Mata a charada entre Argentina/Uruguai vs o resto)
 (11, 'A bandeira deste país possui um símbolo de "Sol"?', 'BANDEIRA', '/images/maps/sol-bandeira.png'),

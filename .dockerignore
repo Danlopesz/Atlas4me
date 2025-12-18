@@ -1,0 +1,5 @@
+back/target
+back/.mvn
+front/node_modules
+front/build
+.git
