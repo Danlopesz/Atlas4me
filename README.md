@@ -11,15 +11,16 @@
 
 ## 📖 Sobre o Projeto
 
-**Atlas4Me** é uma aplicação web educativa que gamifica o aprendizado de geografia. O usuário "pensa" em um país da América do Sul e o sistema tenta descobrir qual é através de perguntas sobre características geográficas, culturais e históricas.
+**Atlas4Me** é uma aplicação web educativa que gamifica o aprendizado de geografia, inspirada no famoso Akinator. O jogador **pensa em um país** da América do Sul e o sistema tenta adivinhar através de perguntas inteligentes.
 
 ### 🎯 Como Funciona
 
-1. **Usuario escolhe** um país secreto dos 13 da América do Sul
-2. **Sistema pergunta** características (ex: "Fala Espanhol?", "Tem litoral?")
-3. **Sistema filtra** países que não correspondem às respostas
-4. **Sistema adivinha** quando restar poucos países
-5. **Sistema pontua** baseado em acertos (100 pontos - 10 por erro)
+1. **Jogador pensa** em um país secreto dos 13 da América do Sul (não revela!)
+2. **Sistema faz perguntas** com respostas SIM ou NÃO (ex: "Fala Espanhol?", "Tem litoral?")
+3. **Jogador responde** honestamente sobre o país que pensou
+4. **Sistema filtra** países candidatos baseado nas respostas
+5. **Sistema tenta adivinhar** quando restarem poucos países
+6. **Sistema pontua** baseado em quantas tentativas precisou (menos é melhor)
 
 ### ✨ Funcionalidades
 
@@ -140,26 +141,27 @@ Abra seu navegador em: **http://localhost:5173**
 
 1. **Cadastre-se** ou faça **Login**
 2. Clique em **"Jogar"**
-3. O sistema sorteia um país secreto
-4. Faça perguntas estratégicas:
-   - "O país fala Espanhol?" → SIM/NÃO
-   - "Tem saída para o mar?" → SIM/NÃO
-   - "A Cordilheira dos Andes passa por ele?" → SIM/NÃO
-5. Observe a lista de países restantes diminuir
-6. Quando tiver certeza, **tente adivinhar o país!**
-7. Ganhe pontos e suba no ranking global 🏆
+3. **PENSE em um país** da América do Sul (Brasil, Argentina, Chile, etc.) - **NÃO REVELE!**
+4. **Sistema faz perguntas** sobre o país que você pensou:
+   - "O país fala Espanhol?" → Você responde: SIM ou NÃO
+   - "Tem saída para o mar?" → Você responde: SIM ou NÃO
+   - "A Cordilheira dos Andes passa por ele?" → Você responde: SIM ou NÃO
+5. **Responda honestamente** sobre o país que você pensou
+6. Observe o sistema **eliminar países** que não correspondem às suas respostas
+7. Quando o sistema tiver certeza, ele **tentará adivinhar** o país!
+8. Se errar, ele tenta novamente até acertar ou desistir
+9. Pontuação: Quanto menos tentativas o sistema precisar, melhor para ele (e pior para você!) 🏆
 
-### Dicas de Estratégia
+### Dicas para Vencer o Sistema
 
-💡 **Comece com perguntas que dividem bem os países:**
-- "Fala Espanhol?" → Elimina 4 países de uma vez
-- "Tem litoral?" → Divide entre costeiros e interiores
+💡 **Pense em países menos óbvios:**
+- Países pequenos como Suriname ou Guiana são mais difíceis de adivinhar
 
-💡 **Use perguntas de bandeira no final:**
-- Quando restar 2-3 países, características visuais ajudam
+💡 **Responda com atenção:**
+- Um erro seu pode confundir o algoritmo e fazer você perder
 
-💡 **Evite perguntas muito específicas no início:**
-- "Usa Euro?" só identifica 1 país (Guiana Francesa)
+💡 **Conheça bem o país:**
+- Sistema pergunta sobre: geografia, cultura, bandeira, idioma, economia
 
 ---
 

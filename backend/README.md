@@ -34,24 +34,27 @@
 
 ### O que é o Atlas4Me?
 
-O **Atlas4Me** é um jogo educativo estilo **Akinator**, mas focado em geografia. O sistema "pensa" em um país da América do Sul e o jogador tenta descobrir qual é fazendo perguntas estratégicas.
+O **Atlas4Me** é um jogo educativo estilo **Akinator**, mas focado em geografia. O **jogador pensa** em um país da América do Sul e o **sistema tenta adivinhar** através de perguntas inteligentes.
 
 ### Como Funciona?
 
-1. **Sistema escolhe um país secreto** (ex: Brasil)
-2. **Jogador faz perguntas** baseadas em características:
-   - "O país fala Espanhol?" → NÃO
-   - "Tem saída para o mar?" → SIM
-   - "A Cordilheira dos Andes passa por ele?" → NÃO
+1. **Jogador pensa** em um país secreto (ex: Brasil) - NÃO revela ao sistema!
+2. **Sistema faz perguntas** baseadas em características:
+   - "O país fala Espanhol?" → Jogador responde: NÃO
+   - "Tem saída para o mar?" → Jogador responde: SIM
+   - "A Cordilheira dos Andes passa por ele?" → Jogador responde: NÃO
 3. **Sistema filtra candidatos** que não correspondem às respostas
-4. **Jogador continua** até restar poucos países e tenta adivinhar
-5. **Sistema valida** e mostra o resultado com pontuação
+4. **Sistema continua perguntando** até restar poucos países
+5. **Sistema tenta adivinhar:** "Você pensou no Brasil?" 
+6. **Sistema valida** e mostra o resultado com pontuação
 
 ### Sistema de Pontuação
 
-- **Pontuação inicial:** 100 pontos
-- **Penalidade por erro:** -10 pontos (mínimo 0)
-- **Objetivo:** Descobrir o país com o máximo de pontos possível
+- **Pontuação inicial:** 100 pontos (a favor do jogador)
+- **Penalidade por tentativa errada do SISTEMA:** -10 pontos
+- **Objetivo do jogador:** Pensar em um país difícil para fazer o sistema errar
+- **Vitória do jogador (HUMAN_WON):** Sistema desiste ou erra muitas vezes
+- **Vitória do sistema (ROBOT_WON):** Sistema adivinha o país rapidamente
 - **Ranking:** Pontuação total acumulada de todos os jogos
 
 ## 🏗️ Arquitetura do Sistema

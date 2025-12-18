@@ -27,23 +27,24 @@ Educação geográfica de forma **gamificada** e **interativa**, transformando o
 ### Funcionamento Básico
 
 ```
-1. Faz perguntas sobre um país secreto da América do Sul
-2. Jogador responde as perguntas sobre características do país
-   • "Fala Espanhol?" → User responde SIM ou NÃO
-   • "Tem litoral?" → User responde SIM ou NÃO
-3. Sistema elimina países que não correspondem às respostas
-4. Jogador continua até restar poucos países
-5. Sistema tenta adivinhar o país
-6. Sistema valida e calcula pontuação
+1. JOGADOR pensa em um país da América do Sul (sem revelar ao sistema)
+2. SISTEMA faz perguntas sobre características do país
+   • "O país fala Espanhol?" → Jogador responde SIM ou NÃO
+   • "O país tem litoral?" → Jogador responde SIM ou NÃO
+3. Sistema ELIMINA países que não correspondem às respostas
+4. Sistema continua perguntando até restar poucos países
+5. Sistema TENTA ADIVINHAR: "Você pensou no Brasil?"
+6. Jogador confirma ou nega, sistema calcula pontuação
 ```
 
 ### Diferencial
 
 - ✅ Algoritmo inteligente de eliminação progressiva
-- ✅ Sistema de pontuação com penalidades por erro
+- ✅ Sistema que "aprende" e adivinha como o Akinator
 - ✅ Base de conhecimento extensível (16 perguntas × 13 países)
-- ✅ Feedback educativo ao final (mostra onde errou)
-- ✅ Ranking global de jogadores
+- ✅ Feedback educativo ao final (mostra as características do país)
+- ✅ Ranking global de jogadores vs sistema
+- ✅ Jogador pode vencer o sistema escolhendo países difíceis
 
 ---
 
@@ -241,24 +242,28 @@ Frontend armazena token e usa em requests subsequentes
 - **Ciclo de Vida:**
   ```
   1. Criação: status = IN_PROGRESS, score = 100
-  2. Jogando: attempts aumenta, score diminui com erros
-  3. Finalização: status muda para ROBOT_WON ou HUMAN_WON, finishedAt preenchido
+     → JOGADOR pensa mentalmente em um país (não revela)
+  2. Jogando: SISTEMA faz perguntas, JOGADOR responde, attempts aumenta
+  3. SISTEMA tenta adivinhar: se errar, score diminui e tenta de novo
+  4. Finalização: 
+     → ROBOT_WON: Sistema adivinhou corretamente
+     → HUMAN_WON: Jogador venceu (sistema errou muito/desistiu)
   ```
 - **Regra de Negócio:** Um usuário só pode ter 1 sessão IN_PROGRESS por vez
 - **Relacionamentos:**
   - N:1 com User (muitas sessões por usuário)
-  - N:1 com Country (país secreto)
-  - 1:N com GameAttempt (log de respostas)
-  - N:N com Country (rejected - países já chutados)
+  - N:1 com Country (país que o JOGADOR pensou - armazenado para validação)
+  - 1:N com GameAttempt (log de perguntas do SISTEMA e respostas do JOGADOR)
+  - N:N com Country (rejected - países que o SISTEMA já tentou adivinhar e errou)
 
 #### **GameAttempt** - Log de Resposta
-- **Propósito:** Registrar CADA resposta do usuário
+- **Propósito:** Registrar CADA resposta do JOGADOR às perguntas do SISTEMA
 - **Uso:**
   1. **Algoritmo de Filtragem:** Base para calcular países restantes
-  2. **Feedback Educativo:** Mostrar onde usuário errou
+  2. **Feedback Educativo:** Mostrar características do país que o jogador pensou
   3. **Auditoria:** Histórico imutável da partida
 - **Campos Importantes:**
-  - `isCorrect`: Se a resposta correspondeu ao país real (calculado no final)
+  - `isCorrect`: Se a resposta do jogador correspondeu à característica real do país que ele pensou (calculado no final quando revelado)
 
 #### **Country** - Entidade de País
 - **Propósito:** Dados básicos do país
@@ -337,19 +342,14 @@ FRONTEND                          BACKEND                         DATABASE
    │                                 │◄───────────────────────────────┤
    │                                 │ Empty (OK para criar novo)     │
    │                                 │                                │
-   │                                 │ Sorteia país aleatório:        │
-   │                                 ├───────────────────────────────►│
-   │                                 │ SELECT * FROM countries        │
-   │                                 │ ORDER BY RAND() LIMIT 1        │
-   │                                 │◄───────────────────────────────┤
-   │                                 │ Country: Brasil (id=1)         │
-   │                                 │                                │
    │                                 │ Cria GameSession:              │
+   │                                 │ (target_country = NULL por ora)│
+   │                                 │ JOGADOR vai pensar em um país  │
    │                                 ├───────────────────────────────►│
    │                                 │ INSERT INTO game_sessions      │
    │                                 │ (user_id, target_country_id,   │
    │                                 │  status, score, attempts, ...)  │
-   │                                 │ VALUES (1, 1, 'IN_PROGRESS',   │
+   │                                 │ VALUES (1, NULL, 'IN_PROGRESS',│
    │                                 │         100, 0, NOW())         │
    │                                 │◄───────────────────────────────┤
    │                                 │ GameSession criado (id=42)     │
@@ -361,21 +361,31 @@ FRONTEND                          BACKEND                         DATABASE
    │   "score": 100,                 │                                │
    │   "attempts": 0,                │                                │
    │   "remainingCountries": [       │                                │
-   │     "Brasil", "Argentina", ...  │                                │
+   │     "Brasil", "Argentina", ...  │ 13 países da América do Sul    │
    │   ],                            │                                │
-   │   "targetCountry": null,        │ (oculto do jogador)            │
+   │   "message": "Pense em um país  │                                │
+   │               da América do Sul"│                                │
    │   "completed": false            │                                │
    │ }                               │                                │
+   │                                 │                                │
+   │ 🧠 JOGADOR PENSA: "Brasil"      │                                │
+   │    (Não revela ao sistema!)     │                                │
 ```
 
-### Fase 2: Responder Pergunta (Loop Principal)
+### Fase 2: Sistema Faz Pergunta e Jogador Responde (Loop Principal)
 
 ```
 FRONTEND                          BACKEND                         DATABASE
    │                                 │                                │
-   │ Usuário seleciona:              │                                │
-   │ • Pergunta: "Fala Espanhol?"    │                                │
-   │ • Resposta: NÃO (false)         │                                │
+   │ SISTEMA FAZ PERGUNTA:           │                                │
+   │ "O país que você pensou         │                                │
+   │  fala Espanhol?"                │                                │
+   │                                 │                                │
+   │ JOGADOR PENSA: "Pensei no       │                                │
+   │ Brasil... Brasil não fala       │                                │
+   │ Espanhol, fala Português"       │                                │
+   │                                 │                                │
+   │ JOGADOR RESPONDE: NÃO (false)   │                                │
    │                                 │                                │
    │ POST /api/game/answer           │                                │
    │ Body: {                         │                                │
@@ -391,7 +401,7 @@ FRONTEND                          BACKEND                         DATABASE
    │                                 │ SELECT * FROM game_sessions    │
    │                                 │ WHERE id = 42 AND user_id = 1  │
    │                                 │◄───────────────────────────────┤
-   │                                 │ Session found (target=Brasil)  │
+   │                                 │ Session found                  │
    │                                 │                                │
    │                                 │ 2. Busca pergunta:             │
    │                                 ├───────────────────────────────►│
@@ -400,42 +410,30 @@ FRONTEND                          BACKEND                         DATABASE
    │                                 │◄───────────────────────────────┤
    │                                 │ Question: "Fala Espanhol?"     │
    │                                 │                                │
-   │                                 │ 3. Busca resposta do Brasil:   │
-   │                                 ├───────────────────────────────►│
-   │                                 │ SELECT is_true                 │
-   │                                 │ FROM country_features          │
-   │                                 │ WHERE country_id = 1           │
-   │                                 │   AND question_id = 1          │
-   │                                 │◄───────────────────────────────┤
-   │                                 │ is_true = FALSE                │
+   │                                 │ 3. Registra resposta:          │
+   │                                 │ (isCorrect será validado só    │
+   │                                 │  no final quando jogador       │
+   │                                 │  revelar qual país pensou)     │
    │                                 │                                │
-   │                                 │ 4. Compara respostas:          │
-   │                                 │ userAnswer = FALSE             │
-   │                                 │ correctAnswer = FALSE          │
-   │                                 │ isCorrect = TRUE ✅            │
-   │                                 │ (Resposta ajudou!)             │
-   │                                 │                                │
-   │                                 │ 5. Registra tentativa:         │
+   │                                 │ 4. Registra tentativa:         │
    │                                 ├───────────────────────────────►│
    │                                 │ INSERT INTO game_attempts      │
    │                                 │ (session_id, question_id,      │
    │                                 │  user_answer, is_correct, ...) │
-   │                                 │ VALUES (42, 1, FALSE, TRUE,...)│
+   │                                 │ VALUES (42, 1, FALSE, NULL,...)│
    │                                 │◄───────────────────────────────┤
    │                                 │                                │
-   │                                 │ 6. Atualiza sessão:            │
+   │                                 │ 5. Atualiza sessão:            │
    │                                 │ attempts = 0 + 1 = 1           │
-   │                                 │ score = 100 (sem erro)         │
    │                                 ├───────────────────────────────►│
    │                                 │ UPDATE game_sessions           │
    │                                 │ SET attempts = 1               │
    │                                 │ WHERE id = 42                  │
    │                                 │◄───────────────────────────────┤
    │                                 │                                │
-   │                                 │ 7. ALGORITMO DE FILTRAGEM:     │
-   │                                 │ Busca todos países que:        │
-   │                                 │ • Para pergunta 1:             │
-   │                                 │   is_true = FALSE              │
+   │                                 │ 6. ALGORITMO DE FILTRAGEM:     │
+   │                                 │ "Quais países NÃO falam        │
+   │                                 │  Espanhol?" (resposta=FALSE)   │
    │                                 ├───────────────────────────────►│
    │                                 │ SELECT c.*                     │
    │                                 │ FROM countries c               │
@@ -446,6 +444,9 @@ FRONTEND                          BACKEND                         DATABASE
    │                                 │◄───────────────────────────────┤
    │                                 │ Result: [Brasil, Guiana,       │
    │                                 │          Suriname, G.Francesa] │
+   │                                 │                                │
+   │                                 │ ✅ Sistema eliminou 9 países!  │
+   │                                 │ Candidatos: 13 → 4             │
    │                                 │                                │
    │ ◄───────────────────────────────┤                                │
    │ Response 200 OK:                │                                │
@@ -466,48 +467,25 @@ FRONTEND                          BACKEND                         DATABASE
 ### Fase 3: Segunda Pergunta (Filtragem Progressiva)
 
 ```
-Usuário responde: "Tem saída para o mar?" → SIM (true)
+SISTEMA PERGUNTA: "O país que você pensou tem saída para o mar?"
+JOGADOR PENSA: "Brasil tem sim, litoral enorme!"
+JOGADOR RESPONDE: SIM (true)
 
-Backend aplica DOIS filtros:
+Backend aplica DOIS filtros (intersecção):
   1. question_id=1 (Espanhol) AND is_true=FALSE  → [Brasil, Guiana, Suriname, G.Francesa]
   2. question_id=3 (Litoral) AND is_true=TRUE    → [Brasil, Guiana, Suriname, G.Francesa]
 
-Intersecção: [Brasil, Guiana, Suriname, G.Francesa] (todos têm litoral)
+Intersecção: [Brasil, Guiana, Suriname, G.Francesa] (4 países)
+✅ Todos os 4 restantes têm litoral, pergunta não eliminou ninguém mas validou!
 ```
 
 ### Fase 4: Finalização do Jogo
 
-**Cenário A: Jogador Acerta**
+**Cenário A: Sistema Acerta (Sistema Vence)**
 ```
-Usuário: "É o Brasil?"
-Backend: Compara com targetCountry (id=1)
-Match! ✅
-
-UPDATE game_sessions
-SET status = 'HUMAN_WON',
-    finished_at = NOW()
-WHERE id = 42;
-
-UPDATE users
-SET total_score = total_score + 100,
-    games_played = games_played + 1
-WHERE id = 1;
-
-Response:
-{
-  "completed": true,
-  "won": true,
-  "targetCountry": { "id": 1, "name": "Brasil", "imageUrl": "..." },
-  "score": 100,
-  "feedback": "Parabéns! Você acertou em 3 tentativas!"
-}
-```
-
-**Cenário B: Robô Acerta Primeiro**
-```
-Resta apenas 1 país na lista
-Backend: "É o Brasil?"
-Usuário: "SIM!"
+Resta apenas 1 país na lista após várias perguntas
+Sistema: "Você pensou no Brasil?"
+Jogador: "SIM!" ✅
 
 UPDATE game_sessions
 SET status = 'ROBOT_WON',
@@ -515,17 +493,43 @@ SET status = 'ROBOT_WON',
 WHERE id = 42;
 
 UPDATE users
-SET total_score = total_score + 80,  -- 100 - (2 erros × 10)
+SET total_score = total_score + 70,  -- 100 - 30 (sistema errou 3 vezes antes)
     games_played = games_played + 1
 WHERE id = 1;
 
 Response:
 {
   "completed": true,
-  "won": false,
+  "won": false,  // Jogador perdeu, sistema venceu
   "targetCountry": { "id": 1, "name": "Brasil", "imageUrl": "..." },
-  "score": 80,
-  "feedback": "Eu venci! O país era Brasil. Você fez 3 tentativas com 2 erros."
+  "score": 70,
+  "feedback": "Eu venci! Você pensou no Brasil. Acertei em 4 tentativas."
+}
+```
+
+**Cenário B: Sistema Desiste (Jogador Vence)**
+```
+Sistema errou 10 vezes tentando adivinhar
+Sistema: "Desisto! Qual país você pensou?"
+Jogador revela: "Suriname"
+
+UPDATE game_sessions
+SET status = 'HUMAN_WON',
+    finished_at = NOW()
+WHERE id = 42;
+
+UPDATE users
+SET total_score = total_score + 100,  -- Jogador venceu o sistema!
+    games_played = games_played + 1
+WHERE id = 1;
+
+Response:
+{
+  "completed": true,
+  "won": true,  // Jogador venceu!
+  "targetCountry": { "id": 12, "name": "Suriname", "imageUrl": "..." },
+  "score": 100,
+  "feedback": "Você venceu! Eu não consegui adivinhar que era Suriname."
 }
 ```
 
@@ -947,6 +951,6 @@ public List<Question> findAllQuestions() { ... }
 
 ---
 
-**Desenvolvido com ❤️ para educação geográfica**
+**Desenvolvido por DanLopes.Croix para educação geográfica**
 
 *Última atualização: Dezembro 2025*
