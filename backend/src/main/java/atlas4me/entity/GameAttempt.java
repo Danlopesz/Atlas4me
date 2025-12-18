@@ -17,15 +17,16 @@ public class GameAttempt {
     @JoinColumn(name = "session_id", nullable = false)
     private GameSession gameSession;
 
-    // --- MUDANÇA AQUI: Trocamos String por Objeto Question ---
-    // Antes: private String questionText;
-    // Agora: Relacionamento real para sabermos o ID da pergunta
+    // Trocamos String por Objeto Question para saber o ID da pergunta
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "question_id", nullable = false)
     private Question question;
 
     @Column(name = "user_answer", nullable = false)
     private Boolean userAnswer;
+
+    @Column(name = "is_correct")
+    private Boolean isCorrect;
 
     @Column(name = "attempted_at", nullable = false)
     private LocalDateTime attemptedAt;

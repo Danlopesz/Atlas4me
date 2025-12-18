@@ -1,9 +1,13 @@
 -- === LIMPEZA ===
-DELETE FROM country_features;
-DELETE FROM questions;
-DELETE FROM countries; -- Cuidado com chaves estrangeiras, talvez precise deletar jogos antes
+   -- DELETE FROM country_features;
+ --   DELETE FROM questions;
+   -- DELETE FROM countries; -- Cuidado com chaves estrangeiras, talvez precise deletar jogos antes
 
--- === 1. PAÍSES (13 Guerreiros) ===
+-- =======================================================
+-- 3. CARGA DE DADOS (Seus Inserts Originais)
+-- =======================================================
+
+-- Países
 INSERT INTO countries (id, name, iso_code, image_url) VALUES 
 (1, 'Brasil', 'BR', '/images/countries/br.png'),
 (2, 'Argentina', 'AR', '/images/countries/ar.png'),
@@ -19,53 +23,23 @@ INSERT INTO countries (id, name, iso_code, image_url) VALUES
 (12, 'Suriname', 'SR', '/images/countries/sr.png'),
 (13, 'Guiana Francesa', 'GF', '/images/countries/gf.png');
 
+-- Perguntas
 INSERT INTO questions (id, text, category, helper_image_url) VALUES
--- Q1: Cultura (Divide Brasil e Guianas do resto)
 (1, 'A língua principal falada neste país é o Espanhol?', 'CULTURA', '/images/maps/idiomas.png'),
-
--- Q2: Geografia (O Grande Divisor da América do Sul)
 (2, 'A Cordilheira dos Andes passa por este país?', 'GEOGRAFIA', '/images/maps/andes.png'),
-
--- Q3: Geografia (Litoral vs Interior)
 (3, 'Este país tem saída para o mar (litoral)?', 'GEOGRAFIA', '/images/maps/litoral.png'),
-
--- Q4: Bandeira (Verde é melhor que Amarelo para distinguir)
 (4, 'A bandeira deste país possui a cor Verde?', 'BANDEIRA', NULL),
-
--- Q5: Geografia (Pacífico vs Atlântico - CRUCIAL para Peru vs Uruguai)
 (5, 'Este país é banhado pelo Oceano Pacífico?', 'GEOGRAFIA', '/images/maps/oceanos.png'),
-
--- Q6: Geografia (Fronteiras)
 (6, 'Este país faz fronteira com o Brasil?', 'GEOGRAFIA', '/images/maps/fronteiras-br.png'),
-
--- Q7: Economia (A "Bala de Prata" da Guiana Francesa)
 (7, 'A moeda oficial deste lugar é o Euro?', 'ECONOMIA', '/images/maps/moedas.png'),
-
--- Q8: População (Diferencia os gigantes)
 (8, 'Este país tem mais de 40 milhões de habitantes?', 'POPULACAO', NULL),
-
--- Q9: Bandeira (Vermelho é muito comum, bom para agrupar)
 (9, 'A bandeira deste país tem a cor Vermelha?', 'BANDEIRA', NULL),
-
--- Q10: Geografia (Linha do Equador)
 (10, 'A Linha do Equador corta este país?', 'GEOGRAFIA', '/images/maps/equador.png'),
-
--- Q11: O "Sol de Maio" (Mata a charada entre Argentina/Uruguai vs o resto)
 (11, 'A bandeira deste país possui um símbolo de "Sol"?', 'BANDEIRA', '/images/maps/sol-bandeira.png'),
-
--- Q12: Futebol (Separa os campeões tradicionais: Brasil, Argentina, Uruguai)
 (12, 'A seleção de futebol masculina deste país já venceu uma Copa do Mundo?', 'CULTURA', NULL),
-
--- Q13: Caribe (Separa Venezuela e Colômbia do resto do continente)
 (13, 'Este país é banhado pelo Mar do Caribe (parte norte)?', 'GEOGRAFIA', '/images/maps/caribe.png'),
-
--- Q14: Estrelas na Bandeira (Chile, Venezuela, Suriname, Brasil, Honduras...)
 (14, 'A bandeira tem uma ou mais estrelas?', 'BANDEIRA', NULL),
-
--- Q15: Língua Inglesa (A "Bala de Prata" da Guiana)
 (15, 'O idioma oficial é o Inglês?', 'CULTURA', '/images/maps/idiomas.png'),
-
--- Q16: Língua Holandesa (A "Bala de Prata" do Suriname)
 (16, 'O idioma oficial é o Holandês?', 'CULTURA', '/images/maps/idiomas.png');
 -- === 3. GABARITO (CARACTERÍSTICAS) ===
 
