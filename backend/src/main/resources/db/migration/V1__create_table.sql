@@ -66,9 +66,17 @@ CREATE TABLE game_sessions (
 CREATE TABLE game_attempts (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     session_id BIGINT NOT NULL,
-    question_text VARCHAR(255) NOT NULL, -- O que foi perguntado
     user_answer BOOLEAN NOT NULL,        -- O que o usuário respondeu
     is_correct BOOLEAN,                  -- Se essa resposta ajudou a filtrar
     attempted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (session_id) REFERENCES game_sessions(id)
+);
+
+-- Tabela para guardar os IDs dos países que o robô já chutou e errou numa sessão
+CREATE TABLE game_session_rejected (
+    session_id BIGINT NOT NULL,
+    country_id BIGINT NOT NULL,
+    PRIMARY KEY (session_id, country_id),
+    CONSTRAINT fk_session_rejected FOREIGN KEY (session_id) REFERENCES game_sessions(id),
+    CONSTRAINT fk_country_rejected FOREIGN KEY (country_id) REFERENCES countries(id)
 );

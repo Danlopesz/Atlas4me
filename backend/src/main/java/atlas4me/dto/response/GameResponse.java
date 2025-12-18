@@ -22,4 +22,5 @@ public class GameResponse {
     private LocalDateTime finishedAt;
     private String status; // "IN_PROGRESS", "ROBOT_WON", "HUMAN_WON"
     private QuestionResponse nextQuestion;
+    private String feedback;
 }

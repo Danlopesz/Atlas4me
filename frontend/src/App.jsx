@@ -1,22 +1,29 @@
-import { Routes, Route } from 'react-router-dom'
-import Home from './pages/Home'
-import ComoJogar from './pages/comoJogar'
-import Jogar from './pages/Jogar'
-import Login from './pages/Login'
-import Cadastro from './pages/Cadastro'
-import SobreNos from './pages/sobreNos'
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Login from "./pages/Login";
+import Cadastro from "./pages/Cadastro";
+import Home from "./pages/Home";
+import Jogar from "./pages/Jogar"; // <--- Importe o Jogar
+import ComoJogar from "./pages/ComoJogar"; // Se tiver
+import SobreNos from "./pages/SobreNos";   // Se tiver
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/como-jogar" element={<ComoJogar />} />
-      <Route path="/jogar" element={<Jogar />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/cadastro" element={<Cadastro />} />
-      <Route path="/sobre-nos" element={<SobreNos />} />
-    </Routes>
-  )
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/cadastro" element={<Cadastro />} />
+        <Route path="/como-jogar" element={<ComoJogar />} />
+        <Route path="/sobre-nos" element={<SobreNos />} />
+
+        {/* Mudei de /game para /jogar para combinar com seu menu */}
+        <Route path="/jogar" element={<Jogar />} />
+        
+        {/* Rota escondida para redirecionamento do login, se precisar */}
+        <Route path="/game" element={<Jogar />} /> 
+      </Routes>
+    </BrowserRouter>
+  );
 }
 
-export default App
+export default App;

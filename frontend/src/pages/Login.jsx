@@ -1,13 +1,14 @@
 import { Link, useNavigate } from "react-router-dom"; // Adicionei useNavigate
 import { useState } from "react"; // Adicionei useState
 import api from "../services/api"; // Importe o arquivo criado no Passo 2
+import "../assets/Auth.css";
 
 function Login() {
     // 1. Estados para guardar o que o usuário digita
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [erro, setErro] = useState("");
-    
+
     const navigate = useNavigate(); // Para redirecionar após login
 
     // 2. Função que dispara quando clica em "Entrar"
@@ -16,23 +17,22 @@ function Login() {
         setErro("");
 
         try {
-            // Chama o backend
-            const response = await api.post("api/auth/authenticate", {
+            // ... dentro do try {
+            const response = await api.post("api/auth/login", {
                 email: email,
-                password: password
+                password: password,
             });
 
-            // Se chegou aqui, deu certo!
             const token = response.data.token;
-            
-            // Salva o token no navegador
+            // O seu backend provavelmente devolve o firstName também. 
+            // Vamos supor que venha response.data.firstName
+            const userName = response.data.firstName || "Viajante";
+
             localStorage.setItem("token", token);
+            localStorage.setItem("userName", userName); // <--- SALVANDO O NOME!
 
             alert("Login realizado com sucesso!");
-            
-            // Redireciona para a página do jogo (ajuste a rota conforme seu projeto)
-            navigate("/game"); 
-
+            navigate("/jogar");
         } catch (error) {
             console.error(error);
             setErro("Email ou senha incorretos!");
@@ -58,7 +58,7 @@ function Login() {
 
             <div className="auth-container">
                 <div className="form-image">
-                      <img src="/src/assets/img/thumbnail_logooriginal.png" alt="Login Image" />
+                    <img src="/src/assets/img/thumbnail_logooriginal.png" alt="Login Image" />
                 </div>
                 <div className="form-content">
                     {/* Adicionei o onSubmit aqui */}
@@ -73,11 +73,11 @@ function Login() {
                             <div className="input-box">
                                 <label htmlFor="login">Usuário (Email)</label>
                                 {/* Liguei o input ao estado 'email' */}
-                                <input 
-                                    type="text" 
-                                    placeholder="Digite seu email" 
-                                    id="login" 
-                                    required 
+                                <input
+                                    type="text"
+                                    placeholder="Digite seu email"
+                                    id="login"
+                                    required
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                 />
@@ -85,11 +85,11 @@ function Login() {
                             <div className="input-box">
                                 <label htmlFor="senha">Senha</label>
                                 {/* Liguei o input ao estado 'password' */}
-                                <input 
-                                    type="password" 
-                                    placeholder="Digite sua senha" 
-                                    id="senha" 
-                                    required 
+                                <input
+                                    type="password"
+                                    placeholder="Digite sua senha"
+                                    id="senha"
+                                    required
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                 />

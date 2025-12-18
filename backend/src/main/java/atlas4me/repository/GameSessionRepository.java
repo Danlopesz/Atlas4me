@@ -31,4 +31,6 @@ public interface GameSessionRepository extends JpaRepository<GameSession, Long> 
     // Agora contamos vitórias olhando o Status 'HUMAN_WON'
     @Query("SELECT COUNT(gs) FROM GameSession gs WHERE gs.user = :user AND gs.status = 'HUMAN_WON'")
     long countWonGamesByUser(User user);
+
+    
 }

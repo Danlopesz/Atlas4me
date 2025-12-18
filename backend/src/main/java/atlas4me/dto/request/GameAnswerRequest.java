@@ -1,15 +1,14 @@
 package atlas4me.dto.request;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class GameAnswerRequest {
-      
-   private Long questionId; // <--- NOVO: O ID da pergunta que está sendo respondida
-    private Boolean answer;  // Sim/Não
-    // private String question; // Pode remover se quiser, vamos usar o ID
+    private Long gameId;
+    private Long questionId;
+    private Boolean answer;
 }

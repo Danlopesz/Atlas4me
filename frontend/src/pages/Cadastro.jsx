@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import api from "../services/api";
+import "../assets/Auth.css";
 
 function Cadastro() {
     const navigate = useNavigate();

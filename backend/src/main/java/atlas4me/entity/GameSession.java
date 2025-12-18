@@ -6,7 +6,11 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Table(name = "game_sessions")
@@ -21,6 +25,7 @@ public class GameSession {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
+    @JsonIgnore
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -41,6 +46,19 @@ public class GameSession {
 
     @OneToMany(mappedBy = "gameSession", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<GameAttempt> gameAttempts = new ArrayList<>();
+
+    @ManyToMany
+    @JoinTable(
+        name = "game_session_rejected",
+        joinColumns = @JoinColumn(name = "session_id"),
+        inverseJoinColumns = @JoinColumn(name = "country_id")
+    )
+    private Set<Country> rejectedCountries = new HashSet<>();
+    
+    // Helper para adicionar fácil
+    public void addRejectedCountry(Country country) {
+        this.rejectedCountries.add(country);
+    }
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

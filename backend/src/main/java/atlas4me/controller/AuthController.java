@@ -14,7 +14,6 @@ import atlas4me.service.RegisterService;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class AuthController {
     
     private final RegisterService registerService;
