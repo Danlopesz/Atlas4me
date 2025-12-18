@@ -1461,14 +1461,13 @@ const startGame = async () => {
 
 ## 🗄️ Persistência e Banco de Dados
 
-### **H2 Database (Desenvolvimento)**
+### **MySQL Database (Desenvolvimento e Produção)**
 
 ```properties
-spring.datasource.url=jdbc:h2:mem:atlas4me;DB_CLOSE_DELAY=-1
-spring.datasource.username=sa
-spring.datasource.password=
-spring.h2.console.enabled=true
-spring.h2.console.path=/h2-console
+spring.datasource.url=jdbc:mysql://localhost:3307/atlas4me?createDatabaseIfNotExist=true&serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false
+spring.datasource.username=root
+spring.datasource.password=atlas
+spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect
 ```
 
 **Características:**
@@ -1802,12 +1801,12 @@ server.port=5202
 server.servlet.context-path=/
 
 # ============================================
-# BANCO DE DADOS H2 (Desenvolvimento)
+# BANCO DE DADOS MYSQL (Principal)
 # ============================================
-spring.datasource.url=jdbc:h2:mem:atlas4me;DB_CLOSE_DELAY=-1
-spring.datasource.driver-class-name=org.h2.Driver
-spring.datasource.username=sa
-spring.datasource.password=
+spring.datasource.url=jdbc:mysql://localhost:3307/atlas4me?createDatabaseIfNotExist=true&serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.datasource.username=root
+spring.datasource.password=atlas
 
 # ============================================
 # FLYWAY (Migrations)
@@ -1819,18 +1818,20 @@ spring.flyway.baseline-on-migrate=true
 # ============================================
 # JPA/HIBERNATE
 # ============================================
-spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
+spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect
 spring.jpa.hibernate.ddl-auto=none  # Flyway gerencia o schema
 spring.jpa.show-sql=true
 spring.jpa.properties.hibernate.format_sql=true
 spring.jpa.open-in-view=false  # Evita lazy loading em views
 
 # ============================================
-# H2 CONSOLE (Somente Desenvolvimento)
+# MYSQL WORKBENCH / DBEAVER
 # ============================================
-spring.h2.console.enabled=true
-spring.h2.console.path=/h2-console
-spring.h2.console.settings.web-allow-others=false
+# Use DBeaver ou MySQL Workbench para acessar o banco:
+# Host: localhost:3307
+# Database: atlas4me
+# Username: root
+# Password: atlas
 
 # ============================================
 # SEGURANÇA JWT
@@ -1853,13 +1854,13 @@ logging.level.org.hibernate.SQL=DEBUG
 logging.level.org.hibernate.type.descriptor.sql.BasicBinder=TRACE
 
 # ============================================
-# PRODUÇÃO: MySQL (Descomentar quando for usar)
+# PRODUÇÃO: MySQL (Ajustar configurações)
 # ============================================
-# spring.datasource.url=jdbc:mysql://localhost:3306/atlas4me?useSSL=false&serverTimezone=UTC
-# spring.datasource.username=root
-# spring.datasource.password=sua-senha
-# spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect
-# spring.h2.console.enabled=false
+# Para produção, ajuste:
+# - Use variáveis de ambiente para credenciais
+# - Configure SSL: useSSL=true
+# - Use connection pool otimizado (HikariCP já configurado)
+# - Desabilite show-sql: spring.jpa.show-sql=false
 ```
 
 ---
@@ -1889,10 +1890,12 @@ mvn spring-boot:run
 ### Acessar
 
 - **API REST:** http://localhost:5202
-- **H2 Console:** http://localhost:5202/h2-console
-  - **JDBC URL:** `jdbc:h2:mem:atlas4me`
-  - **Username:** `sa`
-  - **Password:** (deixar em branco)
+- **MySQL Database:** Via DBeaver ou MySQL Workbench
+  - **Host:** `localhost`
+  - **Port:** `3307`
+  - **Database:** `atlas4me`
+  - **Username:** `root`
+  - **Password:** `atlas`
 
 ### Verificar se está rodando
 
@@ -1954,14 +1957,18 @@ ALTER TABLE users DROP COLUMN avatar_url;
 
 **Solução:**
 ```bash
-# 1. Limpar banco H2 (em memória, só reiniciar)
-# 2. Para MySQL, dropar o banco:
-mysql -u root -p
+# 1. Conectar no MySQL (porta 3307):
+mysql -h localhost -P 3307 -u root -p
+# Senha: atlas
+
+# 2. Dropar e recriar banco:
 DROP DATABASE atlas4me;
 CREATE DATABASE atlas4me;
 
 # 3. Ou limpar histórico Flyway:
 DELETE FROM flyway_schema_history;
+
+# 4. Reiniciar aplicação Spring Boot
 ```
 
 ### Erro: "JWT Secret too short"
@@ -1998,7 +2005,7 @@ configuration.setAllowedOrigins(List.of(
 
 **Solução:**
 ```sql
--- Verificar no H2 Console:
+-- Verificar no DBeaver ou MySQL Workbench:
 SELECT * FROM users WHERE email = 'seu@email.com';
 
 -- Se vazio, criar manualmente:
@@ -2118,7 +2125,7 @@ management.endpoint.health.show-details=always
 
 - [ ] Trocar JWT secret para valor aleatório de 512 bits
 - [ ] Configurar HTTPS (TLS/SSL)
-- [ ] Desabilitar H2 Console (`spring.h2.console.enabled=false`)
+- [ ] Usar variáveis de ambiente para credenciais MySQL
 - [ ] Ocultar stacktraces (`server.error.include-stacktrace=never`)
 - [ ] Configurar rate limiting (Spring Cloud Gateway)
 - [ ] Habilitar CSRF se usar cookies

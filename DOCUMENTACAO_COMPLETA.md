@@ -847,12 +847,13 @@ public List<Question> findAllQuestions() { ... }
 - ✅ Mobile-friendly (sem cookies)
 - ✅ Descentralizado (token auto-contido)
 
-### Por que H2 em desenvolvimento?
+### Por que MySQL desde o desenvolvimento?
 
-- ✅ Zero configuração
-- ✅ In-memory (rápido para testes)
-- ✅ Console web integrado
-- ✅ Compatível com MySQL (migração fácil)
+- ✅ Mesmo banco em dev e produção (paridade)
+- ✅ Flyway migrations testadas no ambiente real
+- ✅ DBeaver para visualização e queries
+- ✅ Banco persistente (dados não se perdem ao reiniciar)
+- ✅ Performance real desde o início
 
 ### Por que Flyway?
 

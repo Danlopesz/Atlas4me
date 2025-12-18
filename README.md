@@ -11,14 +11,14 @@
 
 ## 📖 Sobre o Projeto
 
-**Atlas4Me** é uma aplicação web educativa que gamifica o aprendizado de geografia. O sistema "pensa" em um país da América do Sul e o jogador tenta descobrir qual é através de perguntas sobre características geográficas, culturais e históricas.
+**Atlas4Me** é uma aplicação web educativa que gamifica o aprendizado de geografia. O usuário "pensa" em um país da América do Sul e o sistema tenta descobrir qual é através de perguntas sobre características geográficas, culturais e históricas.
 
 ### 🎯 Como Funciona
 
-1. **Sistema escolhe** um país secreto dos 13 da América do Sul
-2. **Jogador pergunta** características (ex: "Fala Espanhol?", "Tem litoral?")
+1. **Usuario escolhe** um país secreto dos 13 da América do Sul
+2. **Sistema pergunta** características (ex: "Fala Espanhol?", "Tem litoral?")
 3. **Sistema filtra** países que não correspondem às respostas
-4. **Jogador adivinha** quando restar poucos países
+4. **Sistema adivinha** quando restar poucos países
 5. **Sistema pontua** baseado em acertos (100 pontos - 10 por erro)
 
 ### ✨ Funcionalidades
@@ -43,7 +43,7 @@ Atlas4Me/
 │   ├── Spring Security + JWT
 │   ├── Spring Data JPA
 │   ├── Flyway Migrations
-│   └── H2/MySQL Database
+│   └── MySQL Database (Port 3307)
 │
 └── frontend/          # SPA React
     ├── React 19 + Vite
@@ -60,7 +60,7 @@ Atlas4Me/
 - Spring Security (JWT)
 - Spring Data JPA
 - Flyway
-- H2 Database (dev) / MySQL (prod)
+- MySQL Database (Port 3307)
 - Lombok
 - Maven
 
@@ -109,11 +109,11 @@ curl http://localhost:5202/api/countries
 # Deve retornar JSON com lista de países
 ```
 
-**Acessar H2 Console:**
-- URL: http://localhost:5202/h2-console
-- JDBC URL: `jdbc:h2:mem:atlas4me`
-- Username: `sa`
-- Password: (vazio)
+**Acessar Banco MySQL (via DBeaver ou outro cliente):**
+- Host: `localhost:3307`
+- Database: `atlas4me`
+- Username: `root`
+- Password: `atlas`
 
 ### 3️⃣ Executar Frontend
 
@@ -354,9 +354,9 @@ Contribuições são muito bem-vindas!
 ## 🐛 Problemas Conhecidos
 
 - [ ] Navegador mobile: botões pequenos (melhorar UX)
-- [ ] H2 Console: não funciona em produção (só dev)
 - [ ] Alert() nativo: substituir por toast notifications
 - [ ] Sem suporte a múltiplas sessões simultâneas
+- [ ] Validação de email duplicado: melhorar mensagem de erro
 
 **Reporte bugs em:** [GitHub Issues](https://github.com/seu-usuario/atlas4me-react/issues)
 
