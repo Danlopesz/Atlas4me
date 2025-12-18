@@ -2,9 +2,9 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
 import Cadastro from "./pages/Cadastro";
 import Home from "./pages/Home";
-import Jogar from "./pages/Jogar"; // <--- Importe o Jogar
-import ComoJogar from "./pages/ComoJogar"; // Se tiver
-import SobreNos from "./pages/SobreNos";   // Se tiver
+import Jogar from "./pages/Jogar"; 
+import ComoJogar from "./pages/ComoJogar"; 
+
 
 function App() {
   return (
@@ -14,7 +14,6 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/cadastro" element={<Cadastro />} />
         <Route path="/como-jogar" element={<ComoJogar />} />
-        <Route path="/sobre-nos" element={<SobreNos />} />
 
         {/* Mudei de /game para /jogar para combinar com seu menu */}
         <Route path="/jogar" element={<Jogar />} />

@@ -1,34 +1,30 @@
-import { Link } from "react-router-dom";
+import React from 'react';
+import Navbar from '../components/Navbar';
 
 function ComoJogar() {
     return (
         <>
-            <header>
-                <div className="inner">
-                    <div className="logo">
-                        <img src="/src/assets/img/thumbnail_logooriginal.png" alt="Logo" />
-                    </div>
-                    <nav>
-                        <Link to="/">Inicio</Link>
-                        <Link to="/como-jogar">Como Jogar</Link>
-                        <Link to="/sobre-nos">Sobre nós</Link>
-                        <Link to="/login">Login</Link>
-                        <Link to="/cadastro">Cadastro</Link>
-                    </nav>
+            <Navbar />
+            <div className="main-content">
+                <div className="glass-card" style={{textAlign: 'left'}}>
+                    <h1 style={{textAlign: 'center'}}>Como Jogar</h1>
+                    
+                    <ul style={{ listStyle: 'none', padding: 0, marginTop: '20px' }}>
+                        <li style={{marginBottom: '15px', color: '#ddd'}}>
+                            <span style={{color: '#00e5ff', fontWeight: 'bold'}}>1.</span> Pense em um País da América do Sul.
+                        </li>
+                        <li style={{marginBottom: '15px', color: '#ddd'}}>
+                            <span style={{color: '#00e5ff', fontWeight: 'bold'}}>2.</span> Clique em <strong>Iniciar Jogo</strong>.
+                        </li>
+                        <li style={{marginBottom: '15px', color: '#ddd'}}>
+                            <span style={{color: '#00e5ff', fontWeight: 'bold'}}>3.</span> Responda as perguntas com <strong>Sim</strong> ou <strong>Não</strong>.
+                        </li>
+                        <li style={{marginBottom: '15px', color: '#ddd'}}>
+                            <span style={{color: '#00e5ff', fontWeight: 'bold'}}>4.</span> O Atlas tentará adivinhar qual país você pensou!
+                        </li>
+                    </ul>
                 </div>
-            </header>
-
-            <section className="main-content">
-                <div className="hero-text">
-                    <h3>AS INSTRUÇÕES SÃO SIMPLES:</h3>
-                </div>
-                <ul className="instructions">
-                    <li>🤔 Pense em um País da América do Sul.</li>
-                    <li>🖱️ Clique em <strong>Iniciar Jogo</strong>.</li>
-                    <li>✅ Responda as perguntas com <strong>Sim</strong> ou <strong>Não</strong>.</li>
-                    <li>🌎 O Atlas tentará adivinhar qual país você pensou!</li>
-                </ul>
-            </section>
+            </div>
         </>
     );
 }
