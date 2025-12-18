@@ -51,14 +51,19 @@ public class GameController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/confirm")
+    public ResponseEntity<GameResponse> confirmGuess(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(gameService.confirmRobotGuess(user.getEmail()));
+    }
+
     @PostMapping("/reveal")
     public ResponseEntity<GameResponse> revealAnswer(
-            @RequestBody RevealRequest request, 
-            @AuthenticationPrincipal User user
-    ) {
+            @RequestBody RevealRequest request,
+            @AuthenticationPrincipal User user) {
         // AQUI usamos o countryId que vem do DTO
         GameResponse response = gameService.revealAnswer(user.getEmail(), request.getCountryId());
-        
+
         return ResponseEntity.ok(response);
     }
+
 }

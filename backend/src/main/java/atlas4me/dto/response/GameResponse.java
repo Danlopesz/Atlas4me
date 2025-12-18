@@ -23,4 +23,7 @@ public class GameResponse {
     private String status; // "IN_PROGRESS", "ROBOT_WON", "HUMAN_WON"
     private QuestionResponse nextQuestion;
     private String feedback;
+    private String questionText;
+
+    
 }

@@ -1,53 +1,482 @@
 # 🌍 Atlas4Me Backend - API REST
 
-> Backend Java Spring Boot para o jogo de adivinhação de países Atlas4Me - Um sistema completo de autenticação, gamificação e algoritmo de filtragem dinâmica de países baseado em características geográficas e culturais.
+> Backend Java Spring Boot para o jogo de adivinhação de países Atlas4Me (estilo Akinator geográfico). Sistema completo de autenticação JWT, gamificação com pontuação e algoritmo inteligente de filtragem progressiva baseado em características geográficas e culturais dos países da América do Sul.
 
-## 🚀 Tecnologias
+## 🚀 Stack Tecnológica
 
-- Java 17
-- Spring Boot 3.2.0
-- Spring Security com JWT
-- Spring Data JPA
-- H2 Database (desenvolvimento)
-- Maven
-- Lombok
+- **Java 21** - Linguagem principal
+- **Spring Boot 3.2.0** - Framework web e injeção de dependências
+- **Spring Security** - Autenticação e autorização
+- **JWT (JSON Web Token)** - Tokens stateless para autenticação
+- **Spring Data JPA** - Abstração de persistência (ORM)
+- **Hibernate** - Implementação JPA
+- **MySQL** - Banco relacional (produção)
+- **Flyway** - Versionamento de migrations
+- **Lombok** - Redução de boilerplate
+- **Maven** - Gerenciamento de dependências
 
 ## 📋 Índice
 
-- [Visão Geral Técnica](#-visão-geral-técnica)
-- [Arquitetura e Design Patterns](#-arquitetura-e-design-patterns)
+- [Conceito do Jogo](#-conceito-do-jogo)
+- [Arquitetura do Sistema](#-arquitetura-do-sistema)
+- [Modelo de Dados - Entidades Explicadas](#-modelo-de-dados---entidades-explicadas)
+- [Relacionamentos Entre Entidades](#-relacionamentos-entre-entidades)
 - [Fluxo de Funcionamento](#-fluxo-de-funcionamento)
-- [Modelo de Dados](#-modelo-de-dados)
-- [Tecnologias](#-tecnologias)
 - [API Endpoints](#-api-endpoints)
-- [Segurança](#-segurança)
+- [Segurança JWT](#-segurança-jwt)
+- [Análise de Redundâncias](#-análise-de-redundâncias)
 - [Como Executar](#-como-executar)
+- [Configurações](#-configurações)
 
 ---
 
-## 🎯 Visão Geral Técnica
+## � Conceito do Jogo
 
-### Conceito do Sistema
+### O que é o Atlas4Me?
 
-O **Atlas4Me** é uma aplicação gamificada de adivinhação de países que utiliza um algoritmo de filtragem progressiva baseado em características geográficas e culturais. O jogador faz perguntas sobre atributos do país (ex: "Tem praia?", "Fala espanhol?") e o sistema elimina países que não correspondem às respostas, similar ao jogo "Akinator", mas focado em geografia.
+O **Atlas4Me** é um jogo educativo estilo **Akinator**, mas focado em geografia. O sistema "pensa" em um país da América do Sul e o jogador tenta descobrir qual é fazendo perguntas estratégicas.
 
-### Arquitetura Geral
+### Como Funciona?
 
-O sistema foi construído seguindo os princípios de **Clean Architecture** e **Domain-Driven Design (DDD)**, com separação clara de responsabilidades em camadas:
+1. **Sistema escolhe um país secreto** (ex: Brasil)
+2. **Jogador faz perguntas** baseadas em características:
+   - "O país fala Espanhol?" → NÃO
+   - "Tem saída para o mar?" → SIM
+   - "A Cordilheira dos Andes passa por ele?" → NÃO
+3. **Sistema filtra candidatos** que não correspondem às respostas
+4. **Jogador continua** até restar poucos países e tenta adivinhar
+5. **Sistema valida** e mostra o resultado com pontuação
+
+### Sistema de Pontuação
+
+- **Pontuação inicial:** 100 pontos
+- **Penalidade por erro:** -10 pontos (mínimo 0)
+- **Objetivo:** Descobrir o país com o máximo de pontos possível
+- **Ranking:** Pontuação total acumulada de todos os jogos
+
+## 🏗️ Arquitetura do Sistema
+
+### Visão Geral
+
+O sistema segue uma arquitetura **em camadas** com separação clara de responsabilidades:
 
 ```
-Presentation Layer (Controllers)
-        ↓
-Application Layer (Services - Business Logic)
-        ↓
-Domain Layer (Entities - Business Models)
-        ↓
-Infrastructure Layer (Repositories, Security, Exception Handling)
+┌─────────────────────────────────────────────────────────────┐
+│                    FRONTEND (React)                         │
+│                   Port 5173 (Vite Dev)                      │
+└────────────────────┬────────────────────────────────────────┘
+                     │ HTTP/REST + JWT
+                     ↓
+┌─────────────────────────────────────────────────────────────┐
+│             BACKEND (Spring Boot - Port 5202)               │
+│                                                             │
+│  ┌───────────────────────────────────────────────────────┐ │
+│  │  PRESENTATION LAYER                                   │ │
+│  │  • AuthController (login, register)                   │ │
+│  │  • GameController (start, answer, history)            │ │
+│  │  • CountryController (list countries)                 │ │
+│  └──────────────────────┬────────────────────────────────┘ │
+│                         │                                   │
+│  ┌──────────────────────▼───────────────────────────────┐  │
+│  │  APPLICATION LAYER (Business Logic)                  │  │
+│  │  • LoginService                                      │  │
+│  │  • RegisterService                                   │  │
+│  │  • GameService (algoritmo de filtragem)             │  │
+│  │  • CountryService                                    │  │
+│  └──────────────────────┬────────────────────────────────┘ │
+│                         │                                   │
+│  ┌──────────────────────▼───────────────────────────────┐  │
+│  │  DOMAIN LAYER (Entities)                             │  │
+│  │  • User • Country • Question • CountryFeature        │  │
+│  │  • GameSession • GameAttempt • Enums                 │  │
+│  └──────────────────────┬────────────────────────────────┘ │
+│                         │                                   │
+│  ┌──────────────────────▼───────────────────────────────┐  │
+│  │  INFRASTRUCTURE LAYER                                │  │
+│  │  • Repositories (Spring Data JPA)                    │  │
+│  │  • Security (JWT Filter, SecurityConfig)             │  │
+│  │  • Exception Handlers                                │  │
+│  └──────────────────────┬────────────────────────────────┘ │
+└─────────────────────────┼───────────────────────────────────┘
+                          │ JDBC
+                          ↓
+            ┌─────────────────────────────┐
+            │   DATABASE (MySQL)       │
+            │   • Flyway Migrations       │
+            └─────────────────────────────┘
+```
+
+### Princípios Arquiteturais
+
+- ✅ **Separation of Concerns** - Cada camada tem responsabilidade única
+- ✅ **Dependency Inversion** - Camadas superiores não conhecem detalhes de implementação
+- ✅ **Single Responsibility** - Classes com propósito único e bem definido
+- ✅ **Open/Closed** - Extensível sem modificar código existente
+
+---
+
+## 📊 Modelo de Dados - Entidades Explicadas
+
+### Diagrama ER (Entity-Relationship)
+
+```
+                    ┌─────────────────┐
+                    │      User       │
+                    ├─────────────────┤
+                    │ id (PK)         │
+                    │ firstName       │
+                    │ lastName        │
+                    │ email (UNIQUE)  │
+                    │ password        │
+                    │ totalScore      │
+                    │ gamesPlayed     │
+                    │ role (ENUM)     │
+                    │ active          │
+                    │ createdAt       │
+                    │ updatedAt       │
+                    └────────┬────────┘
+                             │ 1
+                             │
+                             │ N
+                    ┌────────▼────────┐
+                    │  GameSession    │
+                    ├─────────────────┤
+                    │ id (PK)         │
+                    │ user_id (FK)    │────┐
+                    │ target_country ─┼────┼─────────────┐
+                    │ status (ENUM)   │    │             │
+                    │ score           │    │             │
+                    │ attempts        │    │             │
+                    │ startedAt       │    │             │
+                    │ finishedAt      │    │             │
+                    └────────┬────────┘    │             │
+                             │ 1           │             │
+                             │             │             │
+                             │ N           │             │
+                    ┌────────▼────────┐    │             │
+                    │  GameAttempt    │    │             │
+                    ├─────────────────┤    │             │
+                    │ id (PK)         │    │             │
+                    │ session_id (FK) │    │             │
+                    │ question_id (FK)├────┼──────┐      │
+                    │ userAnswer      │    │      │      │
+                    │ isCorrect       │    │      │      │
+                    │ attemptedAt     │    │      │      │
+                    └─────────────────┘    │      │      │
+                                           │      │      │
+  ┌───────────────────────────────────────┘      │      │
+  │                                               │      │
+  │  ┌────────────────────┐                      │      │
+  │  │     Country        │                      │      │
+  │  ├────────────────────┤                      │      │
+  │  │ id (PK)            │                      │      │
+  │  │ name (UNIQUE)      │                      │      │
+  │  │ isoCode            │◄─────────────────────┘      │
+  │  │ imageUrl           │                             │
+  │  └──────┬─────────────┘                             │
+  │         │ 1                                         │
+  │         │                                           │
+  │         │ N                  ┌──────────────────────┘
+  │  ┌──────▼─────────┐          │
+  │  │CountryFeature  │          │
+  │  ├────────────────┤          │
+  │  │ id (PK)        │          │
+  │  │ country_id(FK) │          │
+  │  │ question_id(FK)│◄─────────┤
+  │  │ isTrue         │          │
+  │  └────────────────┘          │
+  │                              │
+  │  ┌───────────────┐           │
+  └─►│   Question    │           │
+     ├───────────────┤           │
+     │ id (PK)       │◄──────────┘
+     │ text          │
+     │ category      │
+     │ helperImageUrl│
+     └───────────────┘
+```
+
+### 🔵 **1. User** - Entidade de Autenticação e Perfil
+
+**Função:** Representa um jogador do sistema com suas credenciais e estatísticas.
+
+**Campos:**
+- `id` - Identificador único auto-incrementado
+- `firstName` / `lastName` - Nome completo do usuário
+- `email` - Email único para login (também username)
+- `password` - Senha criptografada com BCrypt
+- `totalScore` - Pontuação acumulada de TODOS os jogos (para ranking)
+- `gamesPlayed` - Total de partidas jogadas (para estatísticas)
+- `role` - Papel do usuário no sistema (USER ou ADMIN)
+- `active` - Flag para soft delete (desativar sem apagar)
+- `createdAt` / `updatedAt` - Auditoria temporal
+
+**Necessidade:**
+- ✅ **Autenticação:** Implementa `UserDetails` do Spring Security para login JWT
+- ✅ **Gamificação:** Armazena pontuação e ranking global
+- ✅ **Auditoria:** Rastreamento de quando usuário foi criado
+- ✅ **Relacionamentos:** Agregador de todas as sessões de jogo do usuário
+
+**Implementação Especial:**
+```java
+@Override
+public String getUsername() {
+    return email; // Spring Security usa email como username
+}
+
+@Override
+public Collection<? extends GrantedAuthority> getAuthorities() {
+    return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
+}
+```
+
+**Enum Role:**
+```java
+public enum Role {
+    USER,   // Jogador comum
+    ADMIN   // Administrador (pode gerenciar perguntas/países)
+}
 ```
 
 ---
 
-## 🏗️ Arquitetura e Design Patterns
+### 🟢 **2. Country** - Entidade de País
+
+**Função:** Representa um país do jogo com suas informações básicas.
+
+**Campos:**
+- `id` - Identificador único
+- `name` - Nome do país (único, ex: "Brasil", "Argentina")
+- `isoCode` - Código ISO 3166-1 alpha-2 (ex: "BR", "AR")
+- `imageUrl` - Caminho para imagem da bandeira
+
+**Necessidade:**
+- ✅ **Banco de Países:** Entidade simples e limpa com dados básicos
+- ✅ **Internacionalização:** ISO code para futuras traduções
+- ✅ **Visual:** Imageação para exibir bandeiras no frontend
+- ✅ **Separação de Concerns:** Características ficam em `CountryFeature` (normalização)
+
+**Por que não tem campos booleanos aqui?**
+> Inicialmente o modelo tinha 20+ campos booleanos (`hasBeach`, `speaksSpanish`, etc). 
+> Foi refatorado para uma tabela separada (`CountryFeature`) seguindo o princípio **Open/Closed**:
+> - Adicionar nova característica = novo registro, não nova coluna
+> - Facilita consultas dinâmicas
+> - Melhor escalabilidade
+
+---
+
+### 🟡 **3. Question** - Entidade de Pergunta
+
+**Função:** Representa uma pergunta que pode ser feita sobre um país.
+
+**Campos:**
+- `id` - Identificador único
+- `text` - Texto da pergunta (ex: "A língua principal falada neste país é o Espanhol?")
+- `category` - Categoria da pergunta (GEOGRAFIA, CULTURA, BANDEIRA, ECONOMIA, POPULACAO)
+- `helperImageUrl` - URL de imagem auxiliar (ex: mapa mostrando Cordilheira dos Andes)
+
+**Necessidade:**
+- ✅ **Flexibilidade:** Perguntas configuráveis sem código hardcoded
+- ✅ **Categorização:** Agrupa perguntas por tipo para UI e análise
+- ✅ **Experiência do Usuário:** Imagens auxiliares ajudam jogadores
+- ✅ **Extensibilidade:** Fácil adicionar novas perguntas via SQL
+
+**Exemplo de Perguntas:**
+```sql
+INSERT INTO questions (text, category, helper_image_url) VALUES
+('A língua principal falada neste país é o Espanhol?', 'CULTURA', '/images/maps/idiomas.png'),
+('A Cordilheira dos Andes passa por este país?', 'GEOGRAFIA', '/images/maps/andes.png'),
+('A bandeira deste país possui a cor Verde?', 'BANDEIRA', NULL);
+```
+
+---
+
+### 🟣 **4. CountryFeature** - Tabela de Associação (Join Table Inteligente)
+
+**Função:** Armazena a resposta (SIM/NÃO) de cada país para cada pergunta. É o "cérebro" do sistema.
+
+**Campos:**
+- `id` - Identificador único
+- `country_id` - FK para Country
+- `question_id` - FK para Question
+- `isTrue` - Resposta booleana (true = SIM, false = NÃO)
+
+**Necessidade:**
+- ✅ **Algoritmo de Filtragem:** Base de dados para eliminar países progressivamente
+- ✅ **Normalização:** Evita campos booleanos infinitos em Country
+- ✅ **Escalabilidade:** Adicionar característica = INSERT, não ALTER TABLE
+- ✅ **Manutenibilidade:** Fácil corrigir dados sem mexer no schema
+
+**Como Funciona:**
+```sql
+-- Brasil fala Espanhol? NÃO
+INSERT INTO country_features (country_id, question_id, is_true) 
+VALUES (1, 1, false);
+
+-- Argentina fala Espanhol? SIM
+INSERT INTO country_features (country_id, question_id, is_true) 
+VALUES (2, 1, true);
+```
+
+**Algoritmo de Filtragem:**
+```java
+// Busca países onde country_features.is_true = userAnswer
+List<Country> remainingCountries = countryRepository
+    .findCountriesByFeature(questionId, userAnswer);
+```
+
+---
+
+### 🔴 **5. GameSession** - Entidade Agregadora de Partida
+
+**Função:** Representa UMA partida do jogo, do início ao fim.
+
+**Campos:**
+- `id` - Identificador único da sessão
+- `user_id` - FK para User (quem está jogando)
+- `target_country_id` - FK para Country (país secreto sorteado)
+- `status` - Estado do jogo (IN_PROGRESS, ROBOT_WON, HUMAN_WON, etc)
+- `score` - Pontuação atual da partida (inicia em 100)
+- `attempts` - Quantidade de tentativas realizadas
+- `startedAt` - Timestamp de início
+- `finishedAt` - Timestamp de conclusão (NULL se em andamento)
+- `gameAttempts` - Lista de tentativas (OneToMany)
+- `rejectedCountries` - Países que o robô chutou e errou (ManyToMany)
+
+**Necessidade:**
+- ✅ **Isolamento de Partida:** Cada jogo é independente
+- ✅ **Estado Transacional:** Controla ciclo de vida do jogo
+- ✅ **Histórico:** Permite revisitar partidas antigas
+- ✅ **Regras de Negócio:** Um usuário só pode ter 1 sessão IN_PROGRESS por vez
+
+**Enum GameStatus:**
+```java
+public enum GameStatus {
+    IN_PROGRESS,        // Jogo ativo
+    ROBOT_WON,          // Robô acertou o país
+    HUMAN_WON,          // Humano ganhou (robô desistiu/errou)
+    GAVE_UP,            // Usuário desistiu
+    WAITING_FOR_REVEAL, // Aguardando usuário revelar país
+    FINISHED_REVEALED,  // Finalizado com revelação
+    GUESSING            // Robô está tentando adivinhar
+}
+```
+
+**Métodos Importantes:**
+```java
+public Boolean getWon() {
+    return this.status == GameStatus.HUMAN_WON;
+}
+
+public void finish(GameStatus finalStatus) {
+    this.status = finalStatus;
+    this.finishedAt = LocalDateTime.now();
+}
+```
+
+---
+
+### 🟠 **6. GameAttempt** - Entidade de Tentativa/Log
+
+**Função:** Registra CADA resposta do usuário durante o jogo (log de auditoria).
+
+**Campos:**
+- `id` - Identificador único
+- `session_id` - FK para GameSession
+- `question_id` - FK para Question (qual pergunta foi respondida)
+- `userAnswer` - Resposta do usuário (true = SIM, false = NÃO)
+- `isCorrect` - Se a resposta ajudou a encontrar o país ou atrapalhou
+- `attemptedAt` - Timestamp da resposta
+
+**Necessidade:**
+- ✅ **Histórico Completo:** Permite replay da partida
+- ✅ **Algoritmo de Filtragem:** Base para calcular países restantes
+- ✅ **Feedback Educativo:** Mostra onde usuário errou ao final
+- ✅ **Análise de Estratégias:** Identifica perguntas mais eficientes
+
+**Como `isCorrect` é usado:**
+
+Cenário: Usuário pensou no **Brasil**
+- Pergunta: "Fala Espanhol?" 
+- Usuário responde: **SIM** (errado!)
+- Sistema registra: `isCorrect = FALSE`
+
+Ao final, quando robô não acerta:
+```
+Backend compara:
+  - GameAttempt.userAnswer = TRUE
+  - CountryFeature(Brasil, "Fala Espanhol") = FALSE
+  - Divergência! Mostra feedback: "❌ Você errou: disse SIM mas Brasil não fala Espanhol"
+```
+
+---
+
+## 🔗 Relacionamentos Entre Entidades
+
+### User ↔ GameSession (1:N)
+```java
+// Um usuário pode ter MUITAS sessões de jogo
+@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+private List<GameSession> gameSessions;
+```
+- **Cascade ALL:** Deletar User deleta todas suas sessões
+- **Orphan Removal:** Remover sessão da lista deleta do banco
+
+### GameSession ↔ Country (N:1)
+```java
+// Cada sessão tem UM país alvo
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "target_country_id", nullable = false)
+private Country targetCountry;
+```
+- **Lazy Load:** Não carrega Country automaticamente (performance)
+
+### GameSession ↔ GameAttempt (1:N)
+```java
+// Uma sessão tem MUITAS tentativas
+@OneToMany(mappedBy = "gameSession", cascade = CascadeType.ALL, orphanRemoval = true)
+private List<GameAttempt> gameAttempts;
+```
+- **Ordenação:** Busca sempre ordenada por `attemptedAt`
+
+### GameSession ↔ Country (N:N) - Rejeitados
+```java
+// Muitas sessões podem rejeitar muitos países
+@ManyToMany
+@JoinTable(
+    name = "game_session_rejected",
+    joinColumns = @JoinColumn(name = "session_id"),
+    inverseJoinColumns = @JoinColumn(name = "country_id")
+)
+private Set<Country> rejectedCountries;
+```
+- **Uso:** Quando robô chuta "Brasil" e erra, adiciona Brasil aqui para não chutar de novo
+
+### Country ↔ CountryFeature (1:N)
+```java
+// Um país tem MUITAS características
+@OneToMany(mappedBy = "country")
+private List<CountryFeature> features;
+```
+
+### Question ↔ CountryFeature (1:N)
+```java
+// Uma pergunta tem MUITAS respostas (uma por país)
+@OneToMany(mappedBy = "question")
+private List<CountryFeature> features;
+```
+
+### GameAttempt ↔ Question (N:1)
+```java
+// Cada tentativa é sobre UMA pergunta específica
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "question_id", nullable = false)
+private Question question;
+```
+
+---
+
+## 🏗️ Design Patterns e Boas Práticas
 
 ### 1. **Feature-Sliced Design**
 
@@ -1122,6 +1551,144 @@ public class GameSession {
 
 ---
 
+## ⚠️ Análise de Redundâncias
+
+### Redundâncias Identificadas e Justificativas
+
+#### 1. **Campo `won` em GameSession** ✅ REMOVIDO
+```java
+// ❌ ANTES (Redundante)
+private Boolean completed;
+private Boolean won;
+
+// ✅ AGORA (Otimizado com Enum)
+private GameStatus status; // IN_PROGRESS, ROBOT_WON, HUMAN_WON
+```
+
+**Por que era redundante:**
+- `won = true` e `completed = true` → Pode ser `GameStatus.HUMAN_WON`
+- `won = false` e `completed = true` → Pode ser `GameStatus.ROBOT_WON`
+- `completed = false` → Pode ser `GameStatus.IN_PROGRESS`
+
+**Solução aplicada:**
+```java
+public Boolean getWon() {
+    return this.status == GameStatus.HUMAN_WON; // Método derivado, não campo
+}
+```
+
+#### 2. **totalScore vs score** ✅ NÃO É REDUNDÂNCIA
+
+**Aparenta redundância mas são propósitos diferentes:**
+- `User.totalScore` - Pontuação ACUMULADA de TODAS as partidas (ranking global)
+- `GameSession.score` - Pontuação da partida ATUAL (100 - penalidades)
+
+**Exemplo:**
+```
+Usuário joga 3 vezes:
+  Partida 1: score final = 70 pontos
+  Partida 2: score final = 90 pontos
+  Partida 3: score final = 50 pontos
+  
+User.totalScore = 210 (soma de todas)
+GameSession[3].score = 50 (última partida)
+```
+
+#### 3. **gamesPlayed vs COUNT(game_sessions)** ⚡ REDUNDÂNCIA JUSTIFICADA
+
+**Aparenta redundância:**
+```sql
+-- Poderia calcular assim:
+SELECT COUNT(*) FROM game_sessions WHERE user_id = 1 AND status != 'IN_PROGRESS';
+```
+
+**Por que mantemos o campo:**
+- ✅ **Performance:** Evita COUNT() em queries frequentes (ranking)
+- ✅ **Desnormalização Intencional:** Trade-off de espaço por velocidade
+- ✅ **Cached Value Pattern:** Valor calculado armazenado para leitura rápida
+
+**Uso:**
+```java
+// Leaderboard rápido sem JOIN pesado
+SELECT firstName, totalScore, gamesPlayed 
+FROM users 
+ORDER BY totalScore DESC 
+LIMIT 10; // Sem COUNT(), extremamente rápido
+```
+
+#### 4. **GameAttempt.isCorrect** ✅ NÃO É REDUNDÂNCIA
+
+**Aparenta redundância:**
+> "Não posso calcular comparando `userAnswer` com `CountryFeature.isTrue`?"
+
+**Por que precisa estar armazenado:**
+- ✅ **Histórico Imutável:** Se admin corrigir CountryFeature depois, histórico não muda
+- ✅ **Performance:** Evita JOIN triplo em queries de feedback
+- ✅ **Auditoria:** Registra o que era "correto" NO MOMENTO da resposta
+
+**Exemplo de problema sem o campo:**
+```
+1. Usuário responde: "Brasil fala Espanhol? SIM" (errado)
+2. Sistema marca isCorrect = FALSE
+3. Admin descobre erro no banco: Brasil.speaksSpanish estava TRUE (bug!)
+4. Admin corrige: UPDATE country_features SET is_true = FALSE
+5. Histórico do jogo permanece correto (isCorrect = FALSE estava certo)
+```
+
+Se fosse calculado dinamicamente, o histórico mudaria retroativamente!
+
+#### 5. **finishedAt vs LocalDateTime.now()** ✅ NÃO É REDUNDÂNCIA
+
+**Por que armazenar se posso pegar o timestamp do último GameAttempt?**
+```sql
+-- Poderia fazer:
+SELECT MAX(attempted_at) FROM game_attempts WHERE session_id = 1;
+```
+
+**Justificativas:**
+- ✅ **Semântica:** Jogo pode terminar SEM tentativas (desistência imediata)
+- ✅ **Performance:** Evita MAX() e subconsulta em listagens
+- ✅ **Integridade:** Campo explícito é mais claro que derivação
+
+### Redundâncias que DEVERIAM Existir mas Faltam
+
+#### ❌ **Falta: Índice em email**
+```sql
+-- DEVERIA TER:
+CREATE INDEX idx_users_email ON users(email);
+```
+Email é usado em TODAS as autenticações mas não tem índice explícito (apenas UNIQUE constraint).
+
+#### ❌ **Falta: Índice composto em CountryFeature**
+```sql
+-- DEVERIA TER:
+CREATE INDEX idx_country_feature_lookup 
+ON country_features(country_id, question_id, is_true);
+```
+A query de filtragem usa esses 3 campos sempre juntos.
+
+#### ❌ **Falta: Cache de países ativos**
+```java
+// DEVERIA TER:
+@Cacheable("activeCountries")
+public List<Country> findAllActive() {
+    return countryRepository.findByActiveTrue();
+}
+```
+Lista de países muda raramente mas é consultada em TODA partida.
+
+### Conclusão sobre Redundâncias
+
+| Campo/Conceito | Redundante? | Justificativa |
+|---|---|---|
+| `GameStatus` enum | ✅ Otimização | Substituiu 2 campos booleanos |
+| `totalScore` | ❌ Necessário | Agregação != Score de partida |
+| `gamesPlayed` | ⚡ Cache | Performance > Espaço |
+| `isCorrect` | ❌ Necessário | Auditoria histórica imutável |
+| `finishedAt` | ❌ Necessário | Semântica + Performance |
+
+---
+
 ## 🚀 Performance e Otimizações
 
 ### **1. Queries Otimizadas**
@@ -1221,56 +1788,436 @@ public class SwaggerConfig {
 
 ---
 
+---
+
 ## ⚙️ Configuração
 
 ### application.properties
 
 ```properties
-# Servidor
-server.port=8080
+# ============================================
+# SERVIDOR
+# ============================================
+server.port=5202
+server.servlet.context-path=/
 
-# Banco de Dados H2 (Desenvolvimento)
-spring.datasource.url=jdbc:h2:mem:atlas4me
+# ============================================
+# BANCO DE DADOS H2 (Desenvolvimento)
+# ============================================
+spring.datasource.url=jdbc:h2:mem:atlas4me;DB_CLOSE_DELAY=-1
+spring.datasource.driver-class-name=org.h2.Driver
 spring.datasource.username=sa
 spring.datasource.password=
 
-# JPA/Hibernate
-spring.jpa.hibernate.ddl-auto=create-drop
-spring.jpa.show-sql=true
+# ============================================
+# FLYWAY (Migrations)
+# ============================================
+spring.flyway.enabled=true
+spring.flyway.locations=classpath:db/migration
+spring.flyway.baseline-on-migrate=true
 
-# H2 Console
+# ============================================
+# JPA/HIBERNATE
+# ============================================
+spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
+spring.jpa.hibernate.ddl-auto=none  # Flyway gerencia o schema
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.open-in-view=false  # Evita lazy loading em views
+
+# ============================================
+# H2 CONSOLE (Somente Desenvolvimento)
+# ============================================
 spring.h2.console.enabled=true
 spring.h2.console.path=/h2-console
+spring.h2.console.settings.web-allow-others=false
 
-# JWT
-jwt.secret={sua-chave-secreta-base64}
-jwt.expiration=86400000
+# ============================================
+# SEGURANÇA JWT
+# ============================================
+jwt.secret=SuaChaveSecretaSuperSeguraComMinimoTrintaEDoisCaracteres123456789
+jwt.expiration=86400000  # 24 horas em milissegundos
 
-# CORS
-cors.allowed-origins=http://localhost:5173,http://localhost:3000
+# ============================================
+# CORS (Permitir Frontend)
+# ============================================
+cors.allowed-origins=http://localhost:5173,http://localhost:3000,http://localhost:4173
+
+# ============================================
+# LOGGING
+# ============================================
+logging.level.root=INFO
+logging.level.atlas4me=DEBUG
+logging.level.org.springframework.security=DEBUG
+logging.level.org.hibernate.SQL=DEBUG
+logging.level.org.hibernate.type.descriptor.sql.BasicBinder=TRACE
+
+# ============================================
+# PRODUÇÃO: MySQL (Descomentar quando for usar)
+# ============================================
+# spring.datasource.url=jdbc:mysql://localhost:3306/atlas4me?useSSL=false&serverTimezone=UTC
+# spring.datasource.username=root
+# spring.datasource.password=sua-senha
+# spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect
+# spring.h2.console.enabled=false
 ```
+
+---
 
 ## 🚀 Como Executar
 
-1. **Clone o repositório**
-```bash
-git clone {seu-repositorio}
-cd backend
-```
+### Pré-requisitos
 
-2. **Compile o projeto**
+- **Java 21** (ou superior)
+- **Maven 3.8+**
+- **Git**
+
+### Instalação
+
 ```bash
+# 1. Clone o repositório
+git clone https://github.com/seu-usuario/atlas4me-react.git
+cd atlas4me-react/backend
+
+# 2. Compile o projeto (baixa dependências e roda testes)
 mvn clean install
-```
 
-3. **Execute a aplicação**
-```bash
+# 3. Execute a aplicação
 mvn spring-boot:run
 ```
 
-4. **Acesse**
-- API: http://localhost:8080
-- H2 Console: http://localhost:8080/h2-console
+### Acessar
+
+- **API REST:** http://localhost:5202
+- **H2 Console:** http://localhost:5202/h2-console
+  - **JDBC URL:** `jdbc:h2:mem:atlas4me`
+  - **Username:** `sa`
+  - **Password:** (deixar em branco)
+
+### Verificar se está rodando
+
+```bash
+# Teste de health check
+curl http://localhost:5202/api/countries
+
+# Deve retornar JSON com lista de países
+```
+
+---
+
+## 📝 Migrations Flyway
+
+### Como funciona?
+
+O Flyway executa scripts SQL em ordem **automática** ao iniciar a aplicação:
+
+```
+src/main/resources/db/migration/
+├── V1__create_table.sql         # Cria estrutura do banco
+├── V2__insert_initial_data.sql  # Popula países e perguntas
+└── V3__add_question_id_to_game_attempts.sql  # Adiciona FK
+```
+
+### Criar nova migration
+
+```bash
+# Formato: V{número}__{descrição}.sql
+# Exemplos:
+V4__add_user_avatar_field.sql
+V5__create_leaderboard_view.sql
+```
+
+**Regras:**
+- ✅ Numeração sequencial (V1, V2, V3...)
+- ✅ Dois underscores entre número e descrição
+- ✅ Nomes descritivos em snake_case
+- ❌ NUNCA modificar migrations já executadas
+
+### Reverter migration
+
+```bash
+# Flyway não suporta rollback automático
+# Criar nova migration para reverter:
+V6__rollback_user_avatar_field.sql
+
+# Conteúdo:
+ALTER TABLE users DROP COLUMN avatar_url;
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### Erro: "Table already exists"
+
+**Causa:** Flyway tentou recriar tabelas existentes
+
+**Solução:**
+```bash
+# 1. Limpar banco H2 (em memória, só reiniciar)
+# 2. Para MySQL, dropar o banco:
+mysql -u root -p
+DROP DATABASE atlas4me;
+CREATE DATABASE atlas4me;
+
+# 3. Ou limpar histórico Flyway:
+DELETE FROM flyway_schema_history;
+```
+
+### Erro: "JWT Secret too short"
+
+**Causa:** Chave JWT deve ter mínimo 256 bits (32 caracteres)
+
+**Solução:**
+```properties
+# Gerar chave segura:
+jwt.secret=SuaChaveSecretaSuperSeguraComMinimoTrintaEDoisCaracteres123456789
+```
+
+### Erro: CORS Policy
+
+**Causa:** Frontend em porta diferente não está autorizada
+
+**Solução:**
+```properties
+# Adicionar porta do frontend:
+cors.allowed-origins=http://localhost:5173
+```
+
+```java
+// Ou em CorsConfig.java:
+configuration.setAllowedOrigins(List.of(
+    "http://localhost:5173",
+    "http://localhost:3000"
+));
+```
+
+### Erro: "User not found" após login
+
+**Causa:** Email case-sensitive ou usuário não criado
+
+**Solução:**
+```sql
+-- Verificar no H2 Console:
+SELECT * FROM users WHERE email = 'seu@email.com';
+
+-- Se vazio, criar manualmente:
+INSERT INTO users (first_name, last_name, email, password, role, active, total_score, games_played, created_at, updated_at)
+VALUES ('Teste', 'Usuario', 'teste@email.com', '$2a$10$...hash-bcrypt...', 'USER', true, 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+```
+
+---
+
+## 📦 Build para Produção
+
+### Gerar JAR executável
+
+```bash
+# Build sem testes (mais rápido)
+mvn clean package -DskipTests
+
+# Build com testes
+mvn clean package
+
+# JAR gerado em:
+# target/atlas4me-backend-1.0.0.jar
+```
+
+### Executar JAR
+
+```bash
+# Rodar com configurações padrão
+java -jar target/atlas4me-backend-1.0.0.jar
+
+# Sobrescrever propriedades
+java -jar target/atlas4me-backend-1.0.0.jar \
+  --server.port=8080 \
+  --spring.datasource.url=jdbc:mysql://prod-db:3306/atlas4me
+
+# Usar perfil de produção
+java -jar target/atlas4me-backend-1.0.0.jar \
+  --spring.profiles.active=prod
+```
+
+### Docker (Opcional)
+
+```dockerfile
+# Dockerfile
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+COPY target/atlas4me-backend-1.0.0.jar app.jar
+EXPOSE 5202
+ENTRYPOINT ["java", "-jar", "app.jar"]
+```
+
+```bash
+# Build da imagem
+docker build -t atlas4me-backend:1.0 .
+
+# Executar container
+docker run -p 5202:5202 atlas4me-backend:1.0
+```
+
+---
+
+## 🧪 Testes
+
+### Executar testes
+
+```bash
+# Todos os testes
+mvn test
+
+# Classe específica
+mvn test -Dtest=UserServiceTest
+
+# Método específico
+mvn test -Dtest=UserServiceTest#testCreateUser
+```
+
+### Coverage Report
+
+```bash
+# Gerar relatório de cobertura
+mvn jacoco:report
+
+# Abrir em:
+# target/site/jacoco/index.html
+```
+
+---
+
+## 📊 Monitoramento e Métricas
+
+### Spring Boot Actuator (Adicionar)
+
+```xml
+<!-- pom.xml -->
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+```
+
+```properties
+# application.properties
+management.endpoints.web.exposure.include=health,info,metrics
+management.endpoint.health.show-details=always
+```
+
+**Endpoints disponíveis:**
+- `/actuator/health` - Status da aplicação
+- `/actuator/info` - Informações da build
+- `/actuator/metrics` - Métricas JVM e HTTP
+
+---
+
+## 🔒 Segurança em Produção
+
+### Checklist
+
+- [ ] Trocar JWT secret para valor aleatório de 512 bits
+- [ ] Configurar HTTPS (TLS/SSL)
+- [ ] Desabilitar H2 Console (`spring.h2.console.enabled=false`)
+- [ ] Ocultar stacktraces (`server.error.include-stacktrace=never`)
+- [ ] Configurar rate limiting (Spring Cloud Gateway)
+- [ ] Habilitar CSRF se usar cookies
+- [ ] Adicionar helmet headers (Content-Security-Policy, etc)
+- [ ] Configurar logging para monitoramento
+- [ ] Usar secrets manager (AWS Secrets Manager, Vault)
+- [ ] Configurar backup automático do banco
+
+### Configuração HTTPS
+
+```properties
+# application-prod.properties
+server.port=8443
+server.ssl.key-store=classpath:keystore.p12
+server.ssl.key-store-password=senha-forte
+server.ssl.key-store-type=PKCS12
+server.ssl.key-alias=atlas4me
+```
+
+---
+
+## 📚 Documentação Adicional
+
+### Swagger/OpenAPI
+
+Acessar: http://localhost:5202/swagger-ui.html
+
+**Funcionalidades:**
+- Testar todos os endpoints
+- Ver schemas de request/response
+- Autenticar com JWT
+- Exportar spec OpenAPI
+
+### Arquitetura de Pacotes
+
+```
+atlas4me/
+├── config/          # Configurações (Security, CORS, JWT)
+├── controller/      # REST Controllers (endpoints)
+├── dto/             # Data Transfer Objects
+│   ├── request/     # DTOs de entrada
+│   └── response/    # DTOs de saída
+├── entity/          # Entidades JPA (modelo de domínio)
+├── exception/       # Exceções customizadas + handlers
+├── repository/      # Interfaces Spring Data JPA
+└── service/         # Lógica de negócio
+```
+
+---
+
+## 🤝 Contribuindo
+
+### Workflow
+
+1. Fork o projeto
+2. Clone seu fork: `git clone https://github.com/seu-usuario/atlas4me-react.git`
+3. Crie uma branch: `git checkout -b feature/MinhaFeature`
+4. Faça suas mudanças
+5. Rode os testes: `mvn test`
+6. Commit: `git commit -m 'feat: Adiciona MinhaFeature'`
+7. Push: `git push origin feature/MinhaFeature`
+8. Abra um Pull Request
+
+### Padrões de Commit
+
+Seguimos [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+feat: Adiciona endpoint de ranking global
+fix: Corrige cálculo de pontuação
+docs: Atualiza README com instruções Docker
+refactor: Simplifica lógica de filtragem de países
+test: Adiciona testes para GameService
+chore: Atualiza dependências do Spring Boot
+```
+
+---
+
+## 📄 Licença
+
+Este projeto está sob a licença MIT.
+
+---
+
+## 👨‍💻 Autores
+
+- **Seu Nome** - Desenvolvimento Backend
+
+---
+
+## 📞 Suporte
+
+- **Issues:** https://github.com/seu-usuario/atlas4me-react/issues
+- **Email:** suporte@atlas4me.com
+- **Discussões:** https://github.com/seu-usuario/atlas4me-react/discussions
+
+---
+
+**Desenvolvido com ☕ e Java 21**
 
 ## 🗄️ Banco de Dados
 

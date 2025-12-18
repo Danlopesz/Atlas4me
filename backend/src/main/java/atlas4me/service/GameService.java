@@ -86,7 +86,7 @@ public class GameService {
             // VITÓRIA DO ROBÔ: Só sobrou um!
             Country guessedCountry = remainingCountries.get(0);
             session.setTargetCountry(guessedCountry); // Atualiza qual era o país
-            session.finish(GameStatus.ROBOT_WON);
+            session.finish(GameStatus.GUESSING);
             feedback = "Haha! Eu venci! O país é: " + guessedCountry.getName();
         } else {
             // JOGO CONTINUA: Calcula a próxima pergunta
@@ -246,21 +246,23 @@ public class GameService {
         // Enquanto estiver JOGANDO (IN_PROGRESS) ou se o HUMANO GANHAR (HUMAN_WON -
         // robô desistiu),
         // mandamos null para não mostrar o "chute" errado ou precoce.
-        if (session.getStatus() == GameStatus.ROBOT_WON) {
-            robotGuess = session.getTargetCountry().getName();
+        if (session.getStatus() == GameStatus.ROBOT_WON || session.getStatus() == GameStatus.GUESSING) {
+            if (session.getTargetCountry() != null) {
+                robotGuess = session.getTargetCountry().getName();
+            }
         }
 
         return GameResponse.builder()
-                .gameId(session.getId())
+           .gameId(session.getId())
                 .status(session.getStatus().toString())
                 .score(session.getScore())
                 .attempts(session.getAttempts())
-                .won(session.getStatus() == GameStatus.HUMAN_WON) // Campo booleano extra se seu DTO tiver
-
-                // AQUI: Se estiver jogando, vai null. Se o robô ganhou, vai o nome.
-                .targetCountry(robotGuess)
-
+                // O status HUMAN_WON avisa o front que é hora de mostrar a tela de Vitória do Humano
+                .won(session.getStatus() == GameStatus.HUMAN_WON) 
+                .targetCountry(robotGuess) 
                 .nextQuestion(nextQuestion)
+                .feedback(feedback)
+                .questionText(feedback)
                 .build();
     }
 
@@ -280,38 +282,77 @@ public class GameService {
     @Transactional
     public GameResponse denyRobotGuess(String userEmail) {
         User user = getUserOrThrow(userEmail);
-        // Busca jogo que estava "Ganho" (ROBOT_WON) ou "Chutando"
-        GameSession session = gameSessionRepository.findByUserAndStatus(user, GameStatus.ROBOT_WON)
-                .orElseThrow(() -> new BusinessException("Jogo não encontrado."));
+        
+        // --- CORREÇÃO AQUI ---
+        // Troquei GameStatus.ROBOT_WON por GameStatus.GUESSING
+        // O robô ainda não ganhou, ele está apenas "Chutando"
+        GameSession session = gameSessionRepository.findByUserAndStatus(user, GameStatus.GUESSING)
+                .orElseThrow(() -> new BusinessException("Nenhum palpite pendente para recusar."));
 
         // 1. Adiciona o país atual à lista negra dessa sessão
         Country wrongGuess = session.getTargetCountry();
-        session.addRejectedCountry(wrongGuess);
-        session.setTargetCountry(null); // Limpa o chute atual
+        
+        // CERTIFIQUE-SE que sua Entidade GameSession tem esse método auxiliar, 
+        // ou use: session.getRejectedCountries().add(wrongGuess);
+        session.addRejectedCountry(wrongGuess); 
+        
+        session.setTargetCountry(null); // Limpa o chute atual para não repetir
 
-        // 2. Penalidade
-        session.setScore(Math.max(0, session.getScore() - 15));
+        // 2. Penalidade (Opcional, mas justo)
+        session.setScore(Math.max(0, session.getScore() - 10));
 
         // 3. Verifica se ainda existem OUTROS países possíveis
-        // (O getRemainingCountries agora precisa ignorar os rejectedCountries)
         List<Country> remaining = getRemainingCountries(session);
 
         if (remaining.isEmpty()) {
-            // AGORA SIM: Se não sobrou ninguém, o Robô desiste e pede a verdade
+            // Se não sobrou ninguém, o Robô desiste e pede a verdade (Modo Detetive)
             session.setStatus(GameStatus.WAITING_FOR_REVEAL);
-            session.setFinishedAt(LocalDateTime.now()); // Tecnicamente o jogo de perguntas acabou
+            session.setFinishedAt(LocalDateTime.now()); 
             gameSessionRepository.save(session);
 
-            return buildGameResponse(session, "Ok, você venceu! Não tenho mais palpites. Qual era o país?", null);
+            // O status "HUMAN_WON" no JSON avisa o front para mostrar a tela de Vitória/Revelação
+            return GameResponse.builder()
+                    .status("HUMAN_WON") 
+                    .gameId(session.getId())
+                    .questionText("Ok, você venceu! Não tenho mais palpites. Qual era o país?")
+                    .build();
         } else {
             // AINDA TEM OPÇÃO! O jogo continua.
             session.setStatus(GameStatus.IN_PROGRESS);
             gameSessionRepository.save(session);
 
-            // Calcula próxima pergunta para diferenciar os que sobraram
+            // Calcula próxima pergunta
             QuestionResponse nextQ = getNextBestQuestion(session);
-            return buildGameResponse(session, "Entendi, não é " + wrongGuess.getName() + ". Vamos continuar!", nextQ);
+            
+            return GameResponse.builder()
+                    .status("PLAYING")
+                    .gameId(session.getId())
+                    .questionText("Entendi, não é " + wrongGuess.getName() + ". Vamos continuar!")
+                    .nextQuestion(nextQ)
+                    .build();
         }
+    }
+
+    @Transactional
+    public GameResponse confirmRobotGuess(String userEmail) {
+        User user = getUserOrThrow(userEmail);
+        
+        // 1. Busca o jogo que está na fase de chute (GUESSING)
+        GameSession session = gameSessionRepository.findByUserAndStatus(user, GameStatus.GUESSING)
+                .orElseThrow(() -> new BusinessException("Não há nenhum palpite para confirmar."));
+
+        // 2. O usuário confirmou! O Robô venceu.
+        session.setStatus(GameStatus.ROBOT_WON); 
+        session.setFinishedAt(LocalDateTime.now());
+        
+        // Aumenta a pontuação por vitória (Opcional)
+        session.setScore(session.getScore() + 20);
+
+        gameSessionRepository.save(session);
+
+        // 3. Retorna a resposta final usando o auxiliar padrão
+        // Como o status agora é ROBOT_WON, o buildGameResponse vai mostrar o nome do país.
+        return buildGameResponse(session, "Eu sabia! Sou um gênio da geografia! 🗺️", null);
     }
 
     @Transactional

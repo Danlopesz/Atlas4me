@@ -60,7 +60,7 @@ CREATE TABLE game_sessions (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,
     target_country_id BIGINT, -- CORREÇÃO: Removido NOT NULL (começa vazio)
-    status VARCHAR(20) NOT NULL, -- IN_PROGRESS, WAITING_FOR_REVEAL, FINISHED...
+    status VARCHAR(50) NOT NULL, -- IN_PROGRESS, WAITING_FOR_REVEAL, FINISHED...
     score INT DEFAULT 100 CHECK (score >= 0),
     attempts INT DEFAULT 0 CHECK (attempts >= 0),
     started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

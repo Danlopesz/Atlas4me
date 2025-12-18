@@ -16,6 +16,6 @@ public interface CountryFeatureRepository extends JpaRepository<CountryFeature, 
     Optional<CountryFeature> findByCountryAndQuestion(Country country, Question question);
 
     // Query nativa ou JPQL para buscar o valor booleano direto
-    @Query("SELECT cf.value FROM CountryFeature cf WHERE cf.country.id = :countryId AND cf.question.id = :questionId")
+    @Query("SELECT cf.isTrue FROM CountryFeature cf WHERE cf.country.id = :countryId AND cf.question.id = :questionId")
     Boolean getFeatureValue(@Param("countryId") Long countryId, @Param("questionId") Long questionId);
 }
