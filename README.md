@@ -1,4 +1,3 @@
-![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 # 🌍 Atlas4Me - Jogo Educativo de Geografia
 
 > Descubra países da América do Sul através de perguntas estratégicas! Um jogo estilo Akinator focado em geografia, construído com React e Spring Boot.
