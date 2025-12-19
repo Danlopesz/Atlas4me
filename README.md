@@ -372,7 +372,7 @@ Este projeto está sob a licença **MIT**. Veja o arquivo [LICENSE](LICENSE) par
 
 ## 👨‍💻 Autores
 
-- **Seu Nome** - Desenvolvimento Full Stack - [@seu-usuario](https://github.com/seu-usuario)
+- **Daniel Lopes** - Desenvolvimento Full Stack 
 
 ---
 
