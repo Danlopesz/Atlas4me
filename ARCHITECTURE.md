@@ -1,4 +1,4 @@
-# 📖 Documentação Completa - Atlas4Me
+# 📖 ARCHITECTURE.md - Atlas4Me
 
 > Guia detalhado de arquitetura, funcionamento e decisões técnicas do projeto Atlas4Me - Um jogo educativo de adivinhação de países estilo Akinator.
 
