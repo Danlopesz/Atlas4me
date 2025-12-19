@@ -314,6 +314,8 @@ docker run -p 5173:5173 atlas4me-frontend
 - [ ] Adicionar testes unitários
 - [ ] Implementar cache Redis
 - [ ] Dark mode
+- [ ] Implementar features de Usuario
+
 
 ### Versão 2.0 🔮 (Futuro)
 - [ ] Modo multiplayer online
@@ -324,22 +326,6 @@ docker run -p 5173:5173 atlas4me-frontend
 - [ ] Analytics e métricas
 
 ---
-
-## 🤝 Contribuindo
-
-Contribuições são muito bem-vindas! 
-
-### Como Contribuir
-
-1. **Fork** o projeto
-2. **Clone** seu fork: `git clone https://github.com/seu-usuario/atlas4me-react.git`
-3. **Crie uma branch**: `git checkout -b feature/MinhaFeature`
-4. **Faça suas alterações**
-5. **Teste** localmente
-6. **Commit**: `git commit -m 'feat: Adiciona MinhaFeature'`
-7. **Push**: `git push origin feature/MinhaFeature`
-8. **Abra um Pull Request**
-
 ### Padrões de Código
 
 - **Backend:** Seguir convenções Java/Spring Boot
