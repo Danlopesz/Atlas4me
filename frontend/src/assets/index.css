@@ -1,14 +1,13 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap');
 
 :root {
   --neon-cyan: #00e5ff;
   --neon-blue: #0075ff;
   --dark-bg: #050710;
-  /* Vidro escuro translúcido */
-  --glass-bg: rgba(15, 23, 42, 0.6); 
+  --glass-bg: rgba(15, 23, 42, 0.7); 
   --glass-border: 1px solid rgba(0, 229, 255, 0.2);
   --text-white: #ffffff;
-  --text-gray: #b0b0b0;
+  --text-gray: #ccc;
   --font-main: 'Poppins', sans-serif;
 }
 
@@ -20,57 +19,23 @@ body {
   color: var(--text-white);
   min-height: 100vh;
   overflow-x: hidden;
-
-  /* --- IMAGEM DE FUNDO GLOBAL --- */
-  background-image: url('./assets/bg-space.jpg'); /* Certifique-se que a imagem está aqui */
+  background-image: url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=3840&auto=format&fit=crop');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   background-attachment: fixed;
 }
 
-/* Overlay escuro para melhorar leitura */
 body::before {
-  content: '';
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
+  content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
   background: linear-gradient(to right, rgba(5,7,16,0.9) 0%, rgba(5,7,16,0.5) 100%);
   z-index: -1;
 }
 
-/* --- NAVBAR FIXA --- */
-.navbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem 5%;
-  position: fixed;
-  width: 100%;
-  top: 0;
-  z-index: 1000;
-  background: linear-gradient(to bottom, rgba(5, 7, 16, 0.95), transparent);
-}
+/* =========================================
+   ESTILOS GERAIS DE LAYOUT
+========================================= */
 
-.logo {
-  font-size: 1.8rem;
-  font-weight: 700;
-  letter-spacing: 2px;
-  color: var(--neon-cyan);
-  text-shadow: 0 0 15px rgba(0, 229, 255, 0.6);
-  text-decoration: none;
-}
-
-.navbar nav { display: flex; gap: 2rem; }
-.navbar a {
-  text-decoration: none;
-  color: var(--text-gray);
-  font-weight: 600;
-  transition: 0.3s;
-}
-.navbar a:hover { color: var(--neon-cyan); text-shadow: 0 0 10px var(--neon-cyan); }
-
-/* --- ESTRUTURA PRINCIPAL --- */
 .main-content {
   display: flex;
   justify-content: center;
@@ -80,66 +45,140 @@ body::before {
   padding-bottom: 20px;
 }
 
-/* --- CARD DE VIDRO (Usado em Login, Cadastro, Sobre, etc) --- */
+/* NAVBAR */
+.navbar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 1.5rem 5%; position: absolute; width: 100%; top: 0; z-index: 1000;
+}
+.logo {
+  font-size: 1.8rem; font-weight: 800; letter-spacing: 2px;
+  color: var(--neon-cyan); text-shadow: 0 0 15px rgba(0, 229, 255, 0.6);
+  text-decoration: none; text-transform: uppercase;
+}
+.navbar nav { display: flex; gap: 2rem; }
+.navbar a {
+  text-decoration: none; color: var(--text-gray); font-weight: 600;
+  transition: 0.3s; font-size: 0.9rem; text-transform: uppercase;
+}
+.navbar a:hover { color: var(--text-white); text-shadow: 0 0 10px var(--neon-cyan); }
+
+/* =========================================
+   CARTÕES E FORMULÁRIOS (LOGIN / JOGAR)
+========================================= */
+
+/* O Card de Vidro - AGORA COM TAMANHO CORRIGIDO */
 .glass-card {
   background: var(--glass-bg);
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: var(--glass-border);
   border-radius: 20px;
   padding: 40px;
-  width: 90%;
-  max-width: 500px;
+  
+  /* CORREÇÃO AQUI: Largura máxima para não esticar no Login */
+  width: 100%;
+  max-width: 480px; /* Mantém o formulário compacto e bonito */
+  
   box-shadow: 0 0 40px rgba(0, 229, 255, 0.15);
   text-align: center;
+  margin: 0 auto; /* Centraliza */
 }
 
+/* Títulos dentro do card */
 .glass-card h1, .glass-card h2 {
-  color: var(--neon-cyan);
-  margin-bottom: 1.5rem;
-  text-transform: uppercase;
-  text-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
+    color: white; margin-bottom: 1.5rem;
 }
 
-/* --- INPUTS --- */
-.input-box { margin-bottom: 15px; text-align: left; }
-.input-box label { display: block; color: var(--text-gray); margin-bottom: 5px; }
+/* Inputs (Campos de texto) */
+.input-box { margin-bottom: 20px; text-align: left; }
+.input-box label { display: block; color: var(--text-gray); margin-bottom: 8px; font-size: 0.9rem; }
 .input-box input {
-  width: 100%;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  color: white;
-  outline: none;
+    width: 100%; padding: 12px 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: white; outline: none; transition: 0.3s;
+    font-family: var(--font-main);
 }
-.input-box input:focus { border-color: var(--neon-cyan); box-shadow: 0 0 10px rgba(0, 229, 255, 0.2); }
-
-/* --- BOTÕES --- */
-button {
-  width: 100%;
-  padding: 15px;
-  background: linear-gradient(90deg, var(--neon-cyan), var(--neon-blue));
-  color: white;
-  border: none;
-  border-radius: 50px;
-  font-weight: 700;
-  font-size: 1rem;
-  cursor: pointer;
-  text-transform: uppercase;
-  transition: 0.3s;
-  margin-top: 10px;
-}
-button:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 0 25px rgba(0, 229, 255, 0.6);
+.input-box input:focus {
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
 }
 
-/* Links pequenos (Esqueci senha, etc) */
-.small-link { color: var(--text-gray); font-size: 0.8rem; margin-top: 15px; display: block; }
-.small-link:hover { color: white; }
+/* BOTÕES GERAIS (Para pegar o botão de Login/Cadastro automaticamente) */
+button, .btn-primary {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(90deg, var(--neon-cyan), var(--neon-blue));
+    color: white;
+    border: none;
+    border-radius: 50px;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: 0.3s;
+    margin-top: 15px;
+    box-shadow: 0 5px 15px rgba(0, 229, 255, 0.2);
+}
+button:hover, .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 25px rgba(0, 229, 255, 0.6);
+}
+
+/* Links pequenos (Esqueci senha / Cadastre-se) */
+.glass-card a {
+    color: var(--neon-cyan);
+    text-decoration: none;
+    font-size: 0.9rem;
+    display: inline-block;
+    margin-top: 15px;
+    transition: 0.3s;
+}
+.glass-card a:hover {
+    text-decoration: underline;
+    text-shadow: 0 0 8px rgba(0, 229, 255, 0.6);
+}
+
+/* =========================================
+   HOME (HERO) - ESPECÍFICO
+========================================= */
+.hero-container {
+  display: flex; align-items: center; justify-content: flex-start;
+  height: 100vh; padding-left: 10%; padding-right: 5%;
+}
+.hero-content { max-width: 650px; animation: slideIn 1s ease-out; }
+.hero-title {
+  font-size: 4rem; font-weight: 800; line-height: 1.1; text-transform: uppercase;
+  color: white; margin-bottom: 10px;
+}
+.hero-subtitle {
+  font-size: 2.5rem; font-weight: 800; text-transform: uppercase;
+  background: linear-gradient(90deg, var(--neon-cyan), var(--text-white));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  margin-bottom: 20px;
+}
+.hero-desc {
+  font-size: 1.1rem; color: var(--text-gray); line-height: 1.6; margin-bottom: 40px; max-width: 500px;
+}
+/* Botão da Home (sobrescreve o botão padrão) */
+.btn-play-hero {
+  width: auto; /* Não ocupa 100% */
+  display: inline-flex; align-items: center; justify-content: center; gap: 15px;
+  padding: 18px 45px; background: linear-gradient(90deg, var(--neon-cyan) 0%, var(--neon-blue) 100%);
+  color: white; font-size: 1.1rem; font-weight: 700; text-decoration: none;
+  border-radius: 50px; text-transform: uppercase; letter-spacing: 1px;
+  box-shadow: 0 10px 30px rgba(0, 229, 255, 0.3); transition: all 0.3s ease;
+  margin-top: 0;
+}
+.btn-play-hero:hover { transform: translateY(-5px); box-shadow: 0 15px 40px rgba(0, 229, 255, 0.5); }
+
+@keyframes slideIn { from { opacity: 0; transform: translateX(-50px); } to { opacity: 1; transform: translateX(0); } }
 
 /* Responsividade */
 @media (max-width: 768px) {
-  .navbar nav { display: none; } /* Menu hamburguer necessário futuramente */
-  .hero-content h1 { font-size: 2rem; }
+  .hero-container { padding-left: 5%; justify-content: center; text-align: center; }
+  .hero-title { font-size: 2.5rem; } .hero-subtitle { font-size: 1.8rem; }
+  .navbar nav { display: none; }
+  .glass-card { padding: 25px; width: 95%; }
 }
