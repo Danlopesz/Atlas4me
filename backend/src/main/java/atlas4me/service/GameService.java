@@ -312,10 +312,11 @@ public class GameService {
 
             // O status "HUMAN_WON" no JSON avisa o front para mostrar a tela de Vitória/Revelação
             return GameResponse.builder()
-                    .status("HUMAN_WON") 
-                    .gameId(session.getId())
-                    .questionText("Ok, você venceu! Não tenho mais palpites. Qual era o país?")
-                    .build();
+                .status("WAITING_FOR_REVEAL") 
+                .gameId(session.getId())
+                .questionText("Ok, você me pegou! Não sei qual é. Que país você pensou?")
+                .feedback("Desisto! Me conte a verdade para eu aprender.")
+                .build();
         } else {
             // AINDA TEM OPÇÃO! O jogo continua.
             session.setStatus(GameStatus.IN_PROGRESS);
@@ -364,7 +365,7 @@ public class GameService {
         Country realCountry = countryRepository.findById(realCountryId)
                 .orElseThrow(() -> new ResourceNotFoundException("País desconhecido."));
 
-        // --- ANÁLISE DE CONTRADIÇÕES ---
+        // --- MODO DETETIVE ONLINE---
         List<String> mistakes = new ArrayList<>();
 
         for (GameAttempt attempt : session.getGameAttempts()) {
