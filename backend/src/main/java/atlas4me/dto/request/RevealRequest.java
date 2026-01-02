@@ -8,5 +8,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class RevealRequest {
+    private Long gameId;
     private Long countryId; 
 }

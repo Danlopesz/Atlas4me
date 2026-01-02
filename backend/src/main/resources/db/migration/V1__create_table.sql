@@ -58,7 +58,7 @@ CREATE TABLE country_features (
 -- Tabela de Sessão de Jogo
 CREATE TABLE game_sessions (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id BIGINT NOT NULL,
+    user_id BIGINT NULL,
     target_country_id BIGINT, -- CORREÇÃO: Removido NOT NULL (começa vazio)
     status VARCHAR(50) NOT NULL, -- IN_PROGRESS, WAITING_FOR_REVEAL, FINISHED...
     score INT DEFAULT 100 CHECK (score >= 0),
