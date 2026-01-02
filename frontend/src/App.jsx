@@ -4,7 +4,7 @@ import Cadastro from "./pages/Cadastro";
 import Home from "./pages/Home";
 import Jogar from "./pages/Jogar"; 
 import ComoJogar from "./pages/ComoJogar"; 
-
+import Perfil from './pages/Perfil';
 
 function App() {
   return (
@@ -20,6 +20,7 @@ function App() {
         
         {/* Rota escondida para redirecionamento do login, se precisar */}
         <Route path="/game" element={<Jogar />} /> 
+        <Route path="/perfil" element={<Perfil />} />
       </Routes>
     </BrowserRouter>
   );
