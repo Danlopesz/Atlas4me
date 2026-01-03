@@ -2,10 +2,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: 'http://localhost:5202', // Porta do seu Backend Java
-    headers: {
-        'Content-Type': 'application/json',
-    },
+    baseURL: import.meta.env.VITE_API_URL  
 });
 
 // Isso aqui garante que o Token seja enviado automaticamente se existir
