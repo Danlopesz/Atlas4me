@@ -81,7 +81,8 @@ public class SecurityConfig {
             "https://atlas4me-goo8.vercel.app",  // Corrigido (sem // no final)
             "https://atlas4me.vercel.app",       
             "https://atlas4me.com",              
-            "https://www.atlas4me.com"
+            "https://www.atlas4me.com",
+            "https://atlas4me-production.up.railway.app"
         ));
         
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
