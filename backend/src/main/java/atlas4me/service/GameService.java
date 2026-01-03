@@ -31,21 +31,20 @@ public class GameService {
     private final CountryFeatureRepository countryFeatureRepository;
 
     // --- INÍCIO DO JOGO ---
-    // --- INÍCIO DO JOGO ---
     @Transactional
     public GameResponse startNewGame(String userEmail) {
-        User user = getUserOrThrow(userEmail);
+        User user = null;
 
-        // MUDANÇA AQUI:
-        // Em vez de dar erro se tiver jogo, nós ENCERRANOS o jogo velho.
-        // Assim o usuário sempre começa "do zero" como você pediu.
-        gameSessionRepository.findByUserAndStatus(user, GameStatus.IN_PROGRESS)
-                .ifPresent(oldSession -> {
-                    oldSession.setStatus(GameStatus.ROBOT_WON); // O Robô ganha por W.O. (abandono)
-                    oldSession.setFinishedAt(LocalDateTime.now());
-                    gameSessionRepository.save(oldSession);
-                });
-
+        // MUDANÇA: Só busca no banco se NÃO for convidado/nulo
+        if (userEmail != null && !userEmail.equals("guest") && !userEmail.equals("anonymousUser")) {
+            user = getUserOrThrow(userEmail);
+            gameSessionRepository.findByUserAndStatus(user, GameStatus.IN_PROGRESS)
+                    .ifPresent(oldSession -> {
+                        oldSession.setStatus(GameStatus.ROBOT_WON);
+                        oldSession.setFinishedAt(LocalDateTime.now());
+                        gameSessionRepository.save(oldSession);
+                    });
+        }
         // Agora cria a sessão nova limpinha
         GameSession session = createNewSession(user);
 
@@ -64,10 +63,21 @@ public class GameService {
     // --- PROCESSAMENTO DA RESPOSTA ---
     @Transactional
     public GameResponse submitAnswer(String userEmail, GameAnswerRequest request) {
-        User user = getUserOrThrow(userEmail);
+        GameSession session;
 
-        GameSession session = gameSessionRepository.findByUserAndStatus(user, GameStatus.IN_PROGRESS)
-                .orElseThrow(() -> new BusinessException("Nenhum jogo ativo encontrado."));
+        // MUDANÇA: Tenta achar pelo ID do jogo primeiro (Funciona para Guest e User)
+        if (request.getGameId() != null) {
+            session = gameSessionRepository.findById(request.getGameId())
+                    .orElseThrow(() -> new BusinessException("Jogo não encontrado com ID: " + request.getGameId()));
+        }
+        // Fallback: Se não tem ID, tenta pelo usuário (Só para logados)
+        else if (userEmail != null && !userEmail.equals("guest")) {
+            User user = getUserOrThrow(userEmail);
+            session = gameSessionRepository.findByUserAndStatus(user, GameStatus.IN_PROGRESS)
+                    .orElseThrow(() -> new BusinessException("Nenhum jogo ativo encontrado."));
+        } else {
+            throw new BusinessException("ID do jogo é obrigatório para visitantes.");
+        }
 
         // 1. Processa a resposta do usuário e salva no histórico
         processAttempt(session, request);
@@ -253,13 +263,14 @@ public class GameService {
         }
 
         return GameResponse.builder()
-           .gameId(session.getId())
+                .gameId(session.getId())
                 .status(session.getStatus().toString())
                 .score(session.getScore())
                 .attempts(session.getAttempts())
-                // O status HUMAN_WON avisa o front que é hora de mostrar a tela de Vitória do Humano
-                .won(session.getStatus() == GameStatus.HUMAN_WON) 
-                .targetCountry(robotGuess) 
+                // O status HUMAN_WON avisa o front que é hora de mostrar a tela de Vitória do
+                // Humano
+                .won(session.getStatus() == GameStatus.HUMAN_WON)
+                .targetCountry(robotGuess)
                 .nextQuestion(nextQuestion)
                 .feedback(feedback)
                 .questionText(feedback)
@@ -273,6 +284,11 @@ public class GameService {
     }
 
     public List<GameResponse> getUserGameHistory(String userEmail) {
+        // MUDANÇA: Guarda logo no início
+        if (userEmail == null || userEmail.equals("guest") || userEmail.equals("anonymousUser")) {
+            return new ArrayList<>(); // Retorna lista vazia sem dar erro
+        }
+
         User user = getUserOrThrow(userEmail);
         return gameSessionRepository.findByUserOrderByStartedAtDesc(user).stream()
                 .map(game -> buildGameResponse(game, "Histórico", null))
@@ -282,7 +298,7 @@ public class GameService {
     @Transactional
     public GameResponse denyRobotGuess(String userEmail) {
         User user = getUserOrThrow(userEmail);
-        
+
         // --- CORREÇÃO AQUI ---
         // Troquei GameStatus.ROBOT_WON por GameStatus.GUESSING
         // O robô ainda não ganhou, ele está apenas "Chutando"
@@ -291,11 +307,11 @@ public class GameService {
 
         // 1. Adiciona o país atual à lista negra dessa sessão
         Country wrongGuess = session.getTargetCountry();
-        
-        // CERTIFIQUE-SE que sua Entidade GameSession tem esse método auxiliar, 
+
+        // CERTIFIQUE-SE que sua Entidade GameSession tem esse método auxiliar,
         // ou use: session.getRejectedCountries().add(wrongGuess);
-        session.addRejectedCountry(wrongGuess); 
-        
+        session.addRejectedCountry(wrongGuess);
+
         session.setTargetCountry(null); // Limpa o chute atual para não repetir
 
         // 2. Penalidade (Opcional, mas justo)
@@ -307,16 +323,17 @@ public class GameService {
         if (remaining.isEmpty()) {
             // Se não sobrou ninguém, o Robô desiste e pede a verdade (Modo Detetive)
             session.setStatus(GameStatus.WAITING_FOR_REVEAL);
-            session.setFinishedAt(LocalDateTime.now()); 
+            session.setFinishedAt(LocalDateTime.now());
             gameSessionRepository.save(session);
 
-            // O status "HUMAN_WON" no JSON avisa o front para mostrar a tela de Vitória/Revelação
+            // O status "HUMAN_WON" no JSON avisa o front para mostrar a tela de
+            // Vitória/Revelação
             return GameResponse.builder()
-                .status("WAITING_FOR_REVEAL") 
-                .gameId(session.getId())
-                .questionText("Ok, você me pegou! Não sei qual é. Que país você pensou?")
-                .feedback("Desisto! Me conte a verdade para eu aprender.")
-                .build();
+                    .status("WAITING_FOR_REVEAL")
+                    .gameId(session.getId())
+                    .questionText("Ok, você me pegou! Não sei qual é. Que país você pensou?")
+                    .feedback("Desisto! Me conte a verdade para eu aprender.")
+                    .build();
         } else {
             // AINDA TEM OPÇÃO! O jogo continua.
             session.setStatus(GameStatus.IN_PROGRESS);
@@ -324,7 +341,7 @@ public class GameService {
 
             // Calcula próxima pergunta
             QuestionResponse nextQ = getNextBestQuestion(session);
-            
+
             return GameResponse.builder()
                     .status("PLAYING")
                     .gameId(session.getId())
@@ -337,22 +354,23 @@ public class GameService {
     @Transactional
     public GameResponse confirmRobotGuess(String userEmail) {
         User user = getUserOrThrow(userEmail);
-        
+
         // 1. Busca o jogo que está na fase de chute (GUESSING)
         GameSession session = gameSessionRepository.findByUserAndStatus(user, GameStatus.GUESSING)
                 .orElseThrow(() -> new BusinessException("Não há nenhum palpite para confirmar."));
 
         // 2. O usuário confirmou! O Robô venceu.
-        session.setStatus(GameStatus.ROBOT_WON); 
+        session.setStatus(GameStatus.ROBOT_WON);
         session.setFinishedAt(LocalDateTime.now());
-        
+
         // Aumenta a pontuação por vitória (Opcional)
         session.setScore(session.getScore() + 20);
 
         gameSessionRepository.save(session);
 
         // 3. Retorna a resposta final usando o auxiliar padrão
-        // Como o status agora é ROBOT_WON, o buildGameResponse vai mostrar o nome do país.
+        // Como o status agora é ROBOT_WON, o buildGameResponse vai mostrar o nome do
+        // país.
         return buildGameResponse(session, "Eu sabia! Sou um gênio da geografia! 🗺️", null);
     }
 

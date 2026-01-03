@@ -23,7 +23,9 @@ public class GameController {
 
     @PostMapping("/start")
     public ResponseEntity<GameResponse> startGame(Authentication authentication) {
-        String userEmail = authentication.getName();
+        String userEmail = (authentication != null && authentication.isAuthenticated()) 
+                           ? authentication.getName() 
+                           : "guest"; //visitante jogar sem login
         GameResponse response = gameService.startNewGame(userEmail);
         return ResponseEntity.ok(response);
     }
@@ -32,16 +34,21 @@ public class GameController {
     public ResponseEntity<GameResponse> submitAnswer(
             @Valid @RequestBody GameAnswerRequest request,
             Authentication authentication) {
-        String userEmail = authentication.getName();
+            
+        String userEmail = (authentication != null && authentication.isAuthenticated()) 
+                           ? authentication.getName() 
+                           : "guest";
+
         GameResponse response = gameService.submitAnswer(userEmail, request);
         return ResponseEntity.ok(response);
     }
-
     @GetMapping("/history")
-    public ResponseEntity<List<GameResponse>> getGameHistory(Authentication authentication) {
+  public ResponseEntity<List<GameResponse>> getGameHistory(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.ok(List.of()); // Visitante não tem histórico
+        }
         String userEmail = authentication.getName();
-        List<GameResponse> history = gameService.getUserGameHistory(userEmail);
-        return ResponseEntity.ok(history);
+        return ResponseEntity.ok(gameService.getUserGameHistory(userEmail));
     }
 
     @PostMapping("/deny")

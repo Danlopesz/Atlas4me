@@ -7,13 +7,13 @@ function Jogar() {
     const navigate = useNavigate();
 
     // Estados do Jogo
-    const [gameStatus, setGameStatus] = useState('LOBBY'); // LOBBY, PLAYING, GUESSING, WAITING_FOR_REVEAL, REPORT, ROBOT_WON
+   const [gameId, setGameId] = useState(null); 
+
+    const [gameStatus, setGameStatus] = useState('LOBBY');
     const [question, setQuestion] = useState(null);
-    const [targetCountry, setTargetCountry] = useState(null); // Palpite do Robô
+    const [targetCountry, setTargetCountry] = useState(null);
     const [message, setMessage] = useState('Clique em Iniciar para desafiar o Atlas!');
     const [userName, setUserName] = useState('');
-
-    // Estados para o "Modo Detetive" (Revelação)
     const [countries, setCountries] = useState([]);
     const [selectedCountryId, setSelectedCountryId] = useState("");
 
@@ -48,18 +48,21 @@ function Jogar() {
 
     // --- PROCESSADOR CENTRAL DE RESPOSTAS ---
     const processResponse = (data) => {
-        console.log("Status recebido:", data.status); // Para debug
+        console.log("Status recebido:", data.status);
 
-        // 1. Robô chutando um país
+        // SALVA O ID DO JOGO (Importante para Visitantes!)
+        if (data.gameId) {
+            setGameId(data.gameId);
+        }
+
         if (data.status === 'GUESSING') {
             setTargetCountry(data.targetCountry);
             setGameStatus('GUESSING');
             setMessage(`Eu acho que é: ${data.targetCountry}`);
         }
-        // 2. Jogo continua (Próxima pergunta)
         else if (data.nextQuestion) {
             setQuestion({
-                id: data.gameId,
+                id: data.gameId, 
                 questionId: data.nextQuestion.id,
                 text: data.nextQuestion.text
             });
@@ -67,23 +70,19 @@ function Jogar() {
             setGameStatus('PLAYING');
             setMessage(data.nextQuestion.text);
         }
-        // 3. Robô desistiu (Vitória Humana -> Hora de revelar)
         else if (data.status === 'WAITING_FOR_REVEAL' || data.status === 'HUMAN_WON') {
             setGameStatus('WAITING_FOR_REVEAL');
             setMessage(data.questionText || "Desisto! Não sei qual é. Me conte a verdade.");
         }
-        // 4. Robô venceu (Confirmado pelo usuário)
         else if (data.status === 'ROBOT_WON') {
             setGameStatus('FINISHED_ROBOT');
             setMessage(data.feedback || "Eu sabia! Sou um gênio!");
         }
-        // 5. Relatório do Detetive (Pós-revelação)
         else if (data.status === 'REPORT') {
             setGameStatus('REPORT');
             setMessage(data.feedback);
         }
     };
-
     // --- AÇÕES DO USUÁRIO ---
 
     const handleStartGame = async () => {
@@ -103,11 +102,10 @@ function Jogar() {
         if (!question || !question.id) return;
         try {
             const payload = {
-                gameId: question.id,
+                gameId: gameId, // Usa o estado global que criamos (mais seguro)
                 questionId: question.questionId,
                 answer: userAnswer
             };
-            // setMessage("Processando..."); // Opcional, pode tirar se piscar muito
             const response = await api.post('/api/games/answer', payload);
             processResponse(response.data);
         } catch (error) {
@@ -116,19 +114,20 @@ function Jogar() {
         }
     };
 
-    const handleConfirmWin = async () => {
+   const handleConfirmWin = async () => {
         try {
-            const response = await api.post('/api/games/confirm');
+            // Agora enviamos o gameId no corpo
+            const response = await api.post('/api/games/confirm', { gameId: gameId });
             processResponse(response.data);
         } catch (error) {
             console.error("Erro ao confirmar:", error);
         }
     };
-
     const handleDenyWin = async () => {
         try {
             setMessage("Pensando novamente...");
-            const response = await api.post('/api/games/deny');
+            // Agora enviamos o gameId no corpo
+            const response = await api.post('/api/games/deny', { gameId: gameId });
             processResponse(response.data);
         } catch (error) {
             console.error("Erro ao negar:", error);
@@ -139,7 +138,10 @@ function Jogar() {
     const handleReveal = async () => {
         if (!selectedCountryId) return alert("Selecione um país!");
         try {
-            const payload = { countryId: selectedCountryId };
+            const payload = { 
+                gameId: gameId, // Importante!
+                countryId: selectedCountryId 
+            };
             const response = await api.post('/api/games/reveal', payload);
             processResponse(response.data);
         } catch (error) {
@@ -150,12 +152,12 @@ function Jogar() {
     // Função para limpar o estado e voltar ao início
     const handlePlayAgain = () => {
         setGameStatus('LOBBY');
-        setMessage('Clique em Iniciar para desafiar o Atlas!'); // Restaura a mensagem original
+        setMessage('Clique em Iniciar para desafiar o Atlas!');
         setQuestion(null);
         setTargetCountry(null);
+        setGameId(null); // Reseta o ID
         setSelectedCountryId("");
         setTimeout(() => setMessage('Clique em Iniciar para desafiar o Atlas!'), 0);
-        // Não limpamos o userName para não deslogar o usuário
     };
 
     // --- RENDERIZAÇÃO ---
