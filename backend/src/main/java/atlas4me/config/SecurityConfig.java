@@ -16,7 +16,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -30,7 +29,7 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
-    private final CustomUserDetailsService userDetailsService; // Injetamos o Service direto
+    private final CustomUserDetailsService userDetailsService;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -38,35 +37,20 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        // SWAGGER
-                        .requestMatchers(new AntPathRequestMatcher("/v3/api-docs/**")).permitAll()
-                        .requestMatchers(new AntPathRequestMatcher("/swagger-ui/**")).permitAll()
-                        .requestMatchers(new AntPathRequestMatcher("/swagger-ui.html")).permitAll()
-                        .requestMatchers(new AntPathRequestMatcher("/api-docs/**")).permitAll()
-
-                        // H2
-                        .requestMatchers(new AntPathRequestMatcher("/h2-console/**")).permitAll()
-
-                        // AUTH (LOGIN/CADASTRO)
-                        .requestMatchers(new AntPathRequestMatcher("/auth/**")).permitAll()
-                        .requestMatchers(new AntPathRequestMatcher("/api/auth/**")).permitAll()
-
-                        // JOGO — permitir acesso anônimo (play as guest)
-                        .requestMatchers(new AntPathRequestMatcher("/api/games/**")).permitAll()
-                        .requestMatchers(new AntPathRequestMatcher("/api/jogar/**")).permitAll()
-                        .requestMatchers(new AntPathRequestMatcher("/api/countries/**")).permitAll()
-
-                        // TODO O RESTO
+                        .requestMatchers(
+                            "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", 
+                            "/auth/**", "/api/auth/**", 
+                            "/api/games/**", "/api/jogar/**", "/api/countries/**", 
+                            "/h2-console/**"
+                        ).permitAll()
                         .anyRequest().authenticated())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authenticationProvider(authenticationProvider()) // Usa o Bean criado abaixo
+                .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .headers(headers -> headers.frameOptions(frame -> frame.disable()));
 
         return http.build();
     }
-
-    // --- BEANS DE AUTENTICAÇÃO (Que faltavam!) ---
 
     @Bean
     public AuthenticationProvider authenticationProvider() {
@@ -86,15 +70,20 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    // --- CONFIGURAÇÃO DE CORS ---
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
+        
+        // --- AQUI ESTAVA O ERRO ---
+        // Removi as barras duplas "//" e adicionei os domínios corretos
         configuration.setAllowedOrigins(Arrays.asList(
-            "http://localhost:5173",
-              "http://localhost:3000",
-              "https://atlas4me-goo8.vercel.app//",
-              "https://atlas4me.com"));
+            "http://localhost:5173",             
+            "https://atlas4me-goo8.vercel.app",  // Corrigido (sem // no final)
+            "https://atlas4me.vercel.app",       
+            "https://atlas4me.com",              
+            "https://www.atlas4me.com"
+        ));
+        
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "X-Requested-With"));
         configuration.setAllowCredentials(true);
