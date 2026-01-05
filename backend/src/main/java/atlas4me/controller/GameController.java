@@ -52,25 +52,44 @@ public class GameController {
     }
 
     @PostMapping("/deny")
-    public ResponseEntity<GameResponse> denyGuess(@AuthenticationPrincipal User user) {
-        // Chama o serviço para registrar que o robô errou o chute
-        GameResponse response = gameService.denyRobotGuess(user.getEmail());
+    public ResponseEntity<GameResponse> denyGuess(
+            @RequestBody GameAnswerRequest request, // <--- Agora recebemos o JSON com o gameId
+            Authentication authentication) {
+        
+        // Verifica se é visitante ou usuário logado
+        String userEmail = (authentication != null && authentication.isAuthenticated()) 
+                           ? authentication.getName() 
+                           : "guest";
+
+        // Passa o ID do jogo para o serviço
+        GameResponse response = gameService.denyRobotGuess(userEmail, request.getGameId());
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/confirm")
-    public ResponseEntity<GameResponse> confirmGuess(@AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(gameService.confirmRobotGuess(user.getEmail()));
+   @PostMapping("/confirm")
+    public ResponseEntity<GameResponse> confirmGuess(
+            @RequestBody GameAnswerRequest request, // <--- Precisamos do gameId aqui também
+            Authentication authentication) {
+        
+        String userEmail = (authentication != null && authentication.isAuthenticated()) 
+                           ? authentication.getName() 
+                           : "guest";
+
+        return ResponseEntity.ok(gameService.confirmRobotGuess(userEmail, request.getGameId()));
     }
 
     @PostMapping("/reveal")
     public ResponseEntity<GameResponse> revealAnswer(
-            @RequestBody RevealRequest request,
-            @AuthenticationPrincipal User user) {
-        // AQUI usamos o countryId que vem do DTO
-        GameResponse response = gameService.revealAnswer(user.getEmail(), request.getCountryId());
+            @RequestBody RevealRequest request, // <--- O RevealRequest precisa ter o gameId agora
+            Authentication authentication) {
+        
+        String userEmail = (authentication != null && authentication.isAuthenticated()) 
+                           ? authentication.getName() 
+                           : "guest";
+
+        // Passamos também o ID do jogo para o serviço saber qual jogo atualizar
+        GameResponse response = gameService.revealAnswer(userEmail, request.getCountryId(), request.getGameId());
 
         return ResponseEntity.ok(response);
     }
-
 }

@@ -296,21 +296,31 @@ public class GameService {
     }
 
     @Transactional
-    public GameResponse denyRobotGuess(String userEmail) {
-        User user = getUserOrThrow(userEmail);
+    public GameResponse denyRobotGuess(String userEmail, Long gameId) {
+        GameSession session;
 
-        // --- CORREÇÃO AQUI ---
-        // Troquei GameStatus.ROBOT_WON por GameStatus.GUESSING
-        // O robô ainda não ganhou, ele está apenas "Chutando"
-        GameSession session = gameSessionRepository.findByUserAndStatus(user, GameStatus.GUESSING)
-                .orElseThrow(() -> new BusinessException("Nenhum palpite pendente para recusar."));
+        // MUDANÇA 2: Prioridade para buscar pelo ID do Jogo (Funciona para Guest e
+        // Logado)
+        if (gameId != null) {
+            session = gameSessionRepository.findById(gameId)
+                    .orElseThrow(() -> new BusinessException("Jogo não encontrado com ID: " + gameId));
+        }
+        // Fallback: Se não veio ID, tenta buscar pelo usuário (apenas se não for guest)
+        else if (userEmail != null && !userEmail.equals("guest") && !userEmail.equals("anonymousUser")) {
+            User user = getUserOrThrow(userEmail);
+            session = gameSessionRepository.findByUserAndStatus(user, GameStatus.GUESSING)
+                    .orElseThrow(() -> new BusinessException("Nenhum palpite pendente para este usuário."));
+        } else {
+            throw new BusinessException("Erro: ID do jogo é obrigatório para visitantes.");
+        }
 
         // 1. Adiciona o país atual à lista negra dessa sessão
         Country wrongGuess = session.getTargetCountry();
 
-        // CERTIFIQUE-SE que sua Entidade GameSession tem esse método auxiliar,
-        // ou use: session.getRejectedCountries().add(wrongGuess);
-        session.addRejectedCountry(wrongGuess);
+        if (wrongGuess != null) {
+            // Usa o seu método auxiliar ou o padrão do Java
+            session.addRejectedCountry(wrongGuess);
+        }
 
         session.setTargetCountry(null); // Limpa o chute atual para não repetir
 
@@ -326,8 +336,6 @@ public class GameService {
             session.setFinishedAt(LocalDateTime.now());
             gameSessionRepository.save(session);
 
-            // O status "HUMAN_WON" no JSON avisa o front para mostrar a tela de
-            // Vitória/Revelação
             return GameResponse.builder()
                     .status("WAITING_FOR_REVEAL")
                     .gameId(session.getId())
@@ -345,21 +353,33 @@ public class GameService {
             return GameResponse.builder()
                     .status("PLAYING")
                     .gameId(session.getId())
-                    .questionText("Entendi, não é " + wrongGuess.getName() + ". Vamos continuar!")
+                    .questionText("Entendi, não é " + (wrongGuess != null ? wrongGuess.getName() : "esse")
+                            + ". Vamos continuar!")
                     .nextQuestion(nextQ)
                     .build();
         }
     }
 
     @Transactional
-    public GameResponse confirmRobotGuess(String userEmail) {
-        User user = getUserOrThrow(userEmail);
+    public GameResponse confirmRobotGuess(String userEmail, Long gameId) {
 
-        // 1. Busca o jogo que está na fase de chute (GUESSING)
-        GameSession session = gameSessionRepository.findByUserAndStatus(user, GameStatus.GUESSING)
-                .orElseThrow(() -> new BusinessException("Não há nenhum palpite para confirmar."));
+        GameSession session;
 
-        // 2. O usuário confirmou! O Robô venceu.
+        // 1. Tenta achar pelo ID do jogo (Funciona para Guest e Logado)
+        if (gameId != null) {
+            session = gameSessionRepository.findById(gameId)
+                    .orElseThrow(() -> new BusinessException("Jogo não encontrado com ID: " + gameId));
+        }
+        // 2. Fallback: Se não tem ID, tenta pelo usuário (Só para logados antigos)
+        else if (userEmail != null && !userEmail.equals("guest")) {
+            User user = getUserOrThrow(userEmail);
+            session = gameSessionRepository.findByUserAndStatus(user, GameStatus.GUESSING)
+                    .orElseThrow(() -> new BusinessException("Não há nenhum palpite para confirmar."));
+        } else {
+            throw new BusinessException("ID do jogo é obrigatório para visitantes.");
+        }
+
+        // O usuário confirmou! O Robô venceu.
         session.setStatus(GameStatus.ROBOT_WON);
         session.setFinishedAt(LocalDateTime.now());
 
@@ -368,64 +388,69 @@ public class GameService {
 
         gameSessionRepository.save(session);
 
-        // 3. Retorna a resposta final usando o auxiliar padrão
-        // Como o status agora é ROBOT_WON, o buildGameResponse vai mostrar o nome do
-        // país.
         return buildGameResponse(session, "Eu sabia! Sou um gênio da geografia! 🗺️", null);
     }
 
     @Transactional
-    public GameResponse revealAnswer(String userEmail, Long realCountryId) {
-        User user = getUserOrThrow(userEmail);
-        GameSession session = gameSessionRepository.findByUserAndStatus(user, GameStatus.WAITING_FOR_REVEAL)
-                .orElseThrow(() -> new BusinessException("Nenhum jogo aguardando revelação foi encontrado."));
+    public GameResponse revealAnswer(String userEmail, Long realCountryId, Long gameId) {
+
+        GameSession session;
+
+        // 1. Busca pelo ID do jogo
+        if (gameId != null) {
+            session = gameSessionRepository.findById(gameId)
+                    .orElseThrow(() -> new BusinessException("Jogo não encontrado com ID: " + gameId));
+        }
+        // 2. Fallback para usuário logado
+        else if (userEmail != null && !userEmail.equals("guest")) {
+            User user = getUserOrThrow(userEmail);
+            session = gameSessionRepository.findByUserAndStatus(user, GameStatus.WAITING_FOR_REVEAL)
+                    .orElseThrow(() -> new BusinessException("Nenhum jogo aguardando revelação foi encontrado."));
+        } else {
+            throw new BusinessException("ID do jogo é obrigatório para visitantes.");
+        }
+
+        // --- LÓGICA ORIGINAL DE AUDITORIA ---
 
         Country realCountry = countryRepository.findById(realCountryId)
                 .orElseThrow(() -> new ResourceNotFoundException("País desconhecido."));
 
-        // --- MODO DETETIVE ONLINE---
         List<String> mistakes = new ArrayList<>();
 
         for (GameAttempt attempt : session.getGameAttempts()) {
             Question q = attempt.getQuestion();
             boolean userAnswer = attempt.getUserAnswer();
 
-            // O que o banco diz sobre o País Real vs A Pergunta Feita?
             boolean realFact = countryFeatureRepository.findByCountryAndQuestion(realCountry, q)
                     .map(CountryFeature::getIsTrue)
-                    .orElse(false); // Assumindo false se não tiver cadastro (cuidado aqui)
-            // B. Compara a resposta do usuário com a verdade
-            boolean isUserCorrect = (userAnswer == realFact);
-            // C. CRUCIAL: Salva o resultado da auditoria no objeto!
-            // Isso vai preencher a coluna 'is_correct' no banco de dados
-            attempt.setIsCorrect(isUserCorrect);
+                    .orElse(false);
 
-            if (!isUserCorrect) {
+            attempt.setIsCorrect(userAnswer == realFact);
+
+            if (userAnswer != realFact) {
                 String truth = realFact ? "SIM" : "NÃO";
                 String youSaid = userAnswer ? "SIM" : "NÃO";
                 mistakes.add("Na pergunta '" + q.getText() + "', você respondeu " + youSaid + ", mas para "
                         + realCountry.getName() + " é " + truth + ".");
             }
         }
+
         session.setTargetCountry(realCountry);
         session.setStatus(GameStatus.FINISHED_REVEALED);
-        session.setFinishedAt(LocalDateTime.now()); // Novo status final
+        session.setFinishedAt(LocalDateTime.now());
         gameSessionRepository.save(session);
 
         String finalMessage;
         if (mistakes.isEmpty()) {
             finalMessage = "Uau! Você jogou perfeitamente e eu não tinha esse país no meu radar. Vou aprender com isso!";
-            // Aqui você poderia adicionar lógica para salvar esse caso para análise futura
         } else {
             finalMessage = "Ahá! Descobri por que eu errei. Você se confundiu:\n" + String.join("\n", mistakes);
         }
 
-        // Retorna um DTO adaptado para mostrar esse relatório
         return GameResponse.builder()
-                .status("REPORT") // Um status especial pro Front mostrar o relatório
+                .status("REPORT")
                 .targetCountry(realCountry.getName())
-                .feedback(finalMessage) // Usando o campo de texto para mandar o relatório
+                .feedback(finalMessage)
                 .build();
     }
-
 }
