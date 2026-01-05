@@ -38,8 +38,8 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                            "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", 
-                            "/auth/**", "/api/auth/**", 
+                            "/v3/api-docs/**", "/swagger-ui/**",
+                            "/swagger-ui.html", "/auth/**", "/api/auth/**", 
                             "/api/games/**", "/api/jogar/**", "/api/countries/**", 
                             "/h2-console/**"
                         ).permitAll()
@@ -77,12 +77,11 @@ public class SecurityConfig {
         // --- AQUI ESTAVA O ERRO ---
         // Removi as barras duplas "//" e adicionei os domínios corretos
         configuration.setAllowedOrigins(Arrays.asList(
-            "http://localhost:5173",             
-            "https://atlas4me-goo8.vercel.app",  // Corrigido (sem // no final)
-            "https://atlas4me.vercel.app",       
-            "https://atlas4me.com",              
-            "https://www.atlas4me.com",
-            "https://atlas4me-production.up.railway.app"
+           "http://localhost:*",              // Qualquer porta local
+            "https://*.vercel.app",            // Qualquer site da Vercel (atlas4me, atlas4me-git-main, etc)
+            "https://*.railway.app",           // O próprio Railway
+            "https://atlas4me.com",            // Domínio final
+            "https://www.atlas4me.com"
         ));
         
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
