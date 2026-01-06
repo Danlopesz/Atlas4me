@@ -1,20 +1,20 @@
 -- =======================================================
 -- 1. LIMPEZA (Ordem correta para evitar erro de FK)
 -- =======================================================
---DROP TABLE IF EXISTS game_session_rejected;
---DROP TABLE IF EXISTS country_features;
---DROP TABLE IF EXISTS game_attempts;
---DROP TABLE IF EXISTS game_sessions;
---DROP TABLE IF EXISTS questions;
---DROP TABLE IF EXISTS countries;
---DROP TABLE IF EXISTS users;
+-- DROP TABLE IF EXISTS game_session_rejected;
+-- DROP TABLE IF EXISTS country_features;
+-- DROP TABLE IF EXISTS game_attempts;
+-- DROP TABLE IF EXISTS game_sessions;
+-- DROP TABLE IF EXISTS questions;
+-- DROP TABLE IF EXISTS countries;
+-- DROP TABLE IF EXISTS users;
 
 -- =======================================================
 -- 2. CRIAÇÃO DAS TABELAS
 -- =======================================================
 
 -- Tabela de Usuários
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
@@ -29,7 +29,7 @@ CREATE TABLE users (
 );
 
 -- Tabela de Países
-CREATE TABLE countries (
+CREATE TABLE IF NOT EXISTS countries (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE,
     iso_code VARCHAR(5) NOT NULL,
@@ -37,7 +37,7 @@ CREATE TABLE countries (
 );
 
 -- Tabela de Perguntas
-CREATE TABLE questions (
+CREATE TABLE IF NOT EXISTS questions (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     text VARCHAR(255) NOT NULL,
     category VARCHAR(50) NOT NULL,
@@ -45,7 +45,7 @@ CREATE TABLE questions (
 );
 
 -- Tabela de Características (O Cérebro)
-CREATE TABLE country_features (
+CREATE TABLE IF NOT EXISTS country_features (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     country_id BIGINT NOT NULL,
     question_id BIGINT NOT NULL,
@@ -56,7 +56,7 @@ CREATE TABLE country_features (
 );
 
 -- Tabela de Sessão de Jogo
-CREATE TABLE game_sessions (
+CREATE TABLE IF NOT EXISTS game_sessions (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NULL,
     target_country_id BIGINT, -- CORREÇÃO: Removido NOT NULL (começa vazio)
@@ -70,7 +70,7 @@ CREATE TABLE game_sessions (
 );
 
 -- Tabela de Histórico de Tentativas (Log)
-CREATE TABLE game_attempts (
+CREATE TABLE IF NOT EXISTS game_attempts (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     session_id BIGINT NOT NULL,
     question_id BIGINT NOT NULL,     -- CORREÇÃO: Adicionado direto na criação
@@ -82,7 +82,7 @@ CREATE TABLE game_attempts (
 );
 
 -- Tabela de Rejeitados (Akinator chutou e errou)
-CREATE TABLE game_session_rejected (
+CREATE TABLE IF NOT EXISTS game_session_rejected (
     session_id BIGINT NOT NULL,
     country_id BIGINT NOT NULL,
     PRIMARY KEY (session_id, country_id),
