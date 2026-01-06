@@ -21,7 +21,6 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
-import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -76,7 +75,7 @@ public class SecurityConfig {
         
         // --- AQUI ESTAVA O ERRO ---
         // Removi as barras duplas "//" e adicionei os domínios corretos
-        configuration.setAllowedOrigins(Arrays.asList(
+        configuration.setAllowedOriginPatterns(Arrays.asList(
            "http://localhost:*",              // Qualquer porta local
             "https://*.vercel.app",            // Qualquer site da Vercel (atlas4me, atlas4me-git-main, etc)
             "https://*.railway.app",           // O próprio Railway
@@ -84,9 +83,17 @@ public class SecurityConfig {
             "https://www.atlas4me.com"
         ));
         
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "X-Requested-With"));
+        // Libera todos os métodos (GET, POST, OPTIONS, etc)
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"));
+        
+        // Libera todos os cabeçalhos (Evita erro de preflight)
+        configuration.setAllowedHeaders(Arrays.asList("*"));
+        
+        // Permite credenciais (cookies/auth headers)
         configuration.setAllowCredentials(true);
+        
+        // Expõe headers se necessário
+        configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Type"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
