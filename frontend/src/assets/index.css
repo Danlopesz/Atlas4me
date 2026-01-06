@@ -182,3 +182,83 @@ button:hover, .btn-primary:hover {
   .navbar nav { display: none; }
   .glass-card { padding: 25px; width: 95%; }
 }
+
+/* =========================================
+   CORREÇÕES DE RESPONSIVIDADE (MOBILE)
+========================================= */
+
+@media (max-width: 768px) {
+
+  /* 1. Ajuste da Navbar (Cabeçalho) */
+  .navbar {
+    padding: 1rem; /* Reduz espaçamento lateral */
+    flex-direction: column; /* Empilha Logo e Menu se necessário */
+    background: rgba(5, 7, 16, 0.95); /* Fundo mais escuro para leitura */
+  }
+
+  .logo {
+    font-size: 1.5rem; /* Logo menor */
+    margin-bottom: 10px;
+  }
+
+  .navbar nav {
+    display: none; /* Esconde menu no celular (pode fazer um menu hambúrguer depois) */
+  }
+
+  /* 2. Ajuste da Home / Hero */
+  .hero-container, .hero-section {
+    padding: 0 20px; /* Tira o padding-left: 10% que empurra tudo pra direita */
+    justify-content: center;
+    text-align: center;
+    height: auto; /* Altura automática para não cortar conteúdo */
+    min-height: 100vh;
+    padding-top: 100px; /* Espaço para não ficar atrás da navbar */
+  }
+
+  .hero-content h1, .hero-title {
+    font-size: 2.2rem !important; /* Diminui título gigante */
+  }
+
+  .hero-subtitle {
+    font-size: 1.2rem !important;
+  }
+
+  .hero-desc {
+    font-size: 0.9rem;
+    padding: 0 10px;
+  }
+
+  /* 3. Ajuste dos Cartões de Vidro e Login */
+  .glass-card, .auth-container {
+    width: 95% !important; /* Ocupa quase toda a largura */
+    margin: 20px auto;
+    padding: 20px !important; /* Reduz de 40px para 20px */
+  }
+
+  .form-content {
+    padding: 1.5rem !important; /* Reduz de 3rem para 1.5rem */
+  }
+
+  /* 4. Ajuste da Tela de Jogo */
+  .game-container {
+    padding: 20px 15px !important; /* Reduz bordas */
+    margin-top: 80px; /* Desce para não bater na navbar */
+    width: 95%;
+  }
+
+  .question-text {
+    font-size: 1.2rem; /* Pergunta menor para caber na tela */
+  }
+
+  /* 5. Botões do Jogo (Sim/Não) */
+  .btn-group {
+    flex-direction: column; /* Um botão em cima do outro */
+    width: 100%;
+    gap: 10px;
+  }
+
+  .btn-group button {
+    width: 100%; /* Botão ocupa largura total para facilitar o clique */
+    margin: 0;
+  }
+}

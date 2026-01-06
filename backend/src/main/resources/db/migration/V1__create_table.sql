@@ -1,13 +1,13 @@
 -- =======================================================
 -- 1. LIMPEZA (Ordem correta para evitar erro de FK)
 -- =======================================================
-DROP TABLE IF EXISTS game_session_rejected;
-DROP TABLE IF EXISTS country_features;
-DROP TABLE IF EXISTS game_attempts;
-DROP TABLE IF EXISTS game_sessions;
-DROP TABLE IF EXISTS questions;
-DROP TABLE IF EXISTS countries;
-DROP TABLE IF EXISTS users;
+--DROP TABLE IF EXISTS game_session_rejected;
+--DROP TABLE IF EXISTS country_features;
+--DROP TABLE IF EXISTS game_attempts;
+--DROP TABLE IF EXISTS game_sessions;
+--DROP TABLE IF EXISTS questions;
+--DROP TABLE IF EXISTS countries;
+--DROP TABLE IF EXISTS users;
 
 -- =======================================================
 -- 2. CRIAÇÃO DAS TABELAS

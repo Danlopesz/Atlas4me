@@ -1,6 +1,6 @@
 -- === LIMPEZA ===
    -- DELETE FROM country_features;
- --   DELETE FROM questions;
+   -- DELETE FROM questions;
    -- DELETE FROM countries; -- Cuidado com chaves estrangeiras, talvez precise deletar jogos antes
 
 -- =======================================================
