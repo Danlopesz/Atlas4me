@@ -126,7 +126,7 @@ public class GameService {
                 .map(a -> a.getQuestion().getId())
                 .collect(Collectors.toList());
 
-        // 3. Pega todas as perguntas disponíveis (que não foram feitas)
+        // 3. Pega todas as perguntas disponíveis
         List<Question> availableQuestions = questionRepository.findAll().stream()
                 .filter(q -> !askedQuestionIds.contains(q.getId()))
                 .collect(Collectors.toList());
@@ -135,34 +135,47 @@ public class GameService {
             throw new BusinessException("Sem mais perguntas disponíveis.");
         }
 
-        // 4. CALCULAR O MELHOR SPLIT (50/50)
+        // --- AQUI COMEÇA A OTIMIZAÇÃO ---
+        
+        // Passo Mágico: Trazemos TODOS os dados de uma vez só (1 consulta em vez de 300)
+        List<CountryFeature> bulkFeatures = countryFeatureRepository.findByCountryInAndQuestionIn(remainingCountries, availableQuestions);
+
+        // Criamos um Mapa na memória para acesso instantâneo
+        // Mapa: CountryID -> (QuestionID -> Resposta)
+        // Isso permite perguntar: "O País X tem a Característica Y?" sem ir no banco.
+        java.util.Map<Long, java.util.Map<Long, Boolean>> memoryCache = new java.util.HashMap<>();
+
+        for (CountryFeature cf : bulkFeatures) {
+            memoryCache
+                .computeIfAbsent(cf.getCountry().getId(), k -> new java.util.HashMap<>())
+                .put(cf.getQuestion().getId(), cf.getIsTrue());
+        }
+
+        // 4. CALCULAR O MELHOR SPLIT (50/50) AGORA NA MEMÓRIA
         Question bestQuestion = null;
-        int bestBalanceScore = -1; // Quanto maior, melhor
+        int bestBalanceScore = -1;
 
         for (Question q : availableQuestions) {
             int countYes = 0;
             int countNo = 0;
 
             for (Country c : remainingCountries) {
-                // Verifica a característica no banco ("Memória do Robô")
-                boolean isTrue = countryFeatureRepository.findByCountryAndQuestion(c, q)
-                        .map(CountryFeature::getIsTrue)
-                        .orElse(false);
+                // --- LÓGICA OTIMIZADA ---
+                // Em vez de ir no banco, olhamos no nosso mapa local
+                // Se não existir no mapa, assumimos 'false' (igual ao .orElse(false) de antes)
+                boolean isTrue = false;
+                
+                if (memoryCache.containsKey(c.getId())) {
+                    isTrue = memoryCache.get(c.getId()).getOrDefault(q.getId(), false);
+                }
 
-                if (isTrue)
-                    countYes++;
-                else
-                    countNo++;
+                if (isTrue) countYes++;
+                else countNo++;
             }
 
-            // Se a pergunta não elimina ninguém (todos Sim ou todos Não), ela é inútil
-            // agora
-            if (countYes == 0 || countNo == 0)
-                continue;
+            // O resto da lógica continua idêntica
+            if (countYes == 0 || countNo == 0) continue;
 
-            // Pontuação de Balanceamento: O menor grupo define a qualidade.
-            // Ex: 10 países. 5 Sim / 5 Não -> Score 5 (Perfeito)
-            // Ex: 10 países. 1 Sim / 9 Não -> Score 1 (Ruim, arriscado)
             int currentBalance = Math.min(countYes, countNo);
 
             if (currentBalance > bestBalanceScore) {
@@ -171,8 +184,6 @@ public class GameService {
             }
         }
 
-        // Fallback: Se nenhuma pergunta for boa (todas inúteis), pega a primeira
-        // disponível
         if (bestQuestion == null) {
             bestQuestion = availableQuestions.get(0);
         }
