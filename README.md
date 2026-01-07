@@ -32,6 +32,7 @@
 - ✅ **Feedback Educativo** - Mostra onde você errou
 - ✅ **Histórico de Partidas** - Reveja seus jogos anteriores
 - ✅ **Design Responsivo** - Funciona em desktop e mobile
+- ✅ **Modo Visitante** - Jogue sem precisar criar conta
 
 ---
 
@@ -139,7 +140,7 @@ Abra seu navegador em: **http://localhost:5173**
 
 ## 📱 Como Jogar
 
-1. **Cadastre-se** ou faça **Login**
+1. **Cadastre-se**, faça **Login** ou jogue como **Visitante**
 2. Clique em **"Jogar"**
 3. **PENSE em um país** da América do Sul (Brasil, Argentina, Chile, etc.) - **NÃO REVELE!**
 4. **Sistema faz perguntas** sobre o país que você pensou:
@@ -218,6 +219,9 @@ POST /api/auth/login     - Login e geração de JWT
 POST /api/game/start     - Iniciar nova partida
 POST /api/game/answer    - Responder pergunta
 GET  /api/game/history   - Histórico de jogos
+POST /api/game/deny      - Negar palpite do robô
+POST /api/game/confirm   - Confirmar palpite do robô
+POST /api/game/reveal    - Revelar resposta correta
 ```
 
 **Países:**
@@ -308,6 +312,7 @@ docker run -p 5173:5173 atlas4me-frontend
 - [x] 16 perguntas estratégicas
 - [x] Sistema de pontuação
 - [x] Interface responsiva
+- [x] Modo Visitante
 
 ### Versão 1.1 🔄 (Em Progresso)
 - [ ] Migrar frontend para TypeScript
@@ -384,7 +389,7 @@ Este projeto está sob a licença **MIT**. Veja o arquivo [LICENSE](LICENSE) par
 - **Backend:** ~4.500 linhas de código Java
 - **Frontend:** ~2.000 linhas de código React/CSS
 - **Banco de Dados:** 6 tabelas, 16 perguntas, 13 países
-- **API Endpoints:** 6 principais
+- **API Endpoints:** 9 principais
 - **Tempo de Desenvolvimento:** ~2 meses
 
 ---

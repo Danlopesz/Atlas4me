@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Data;
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 @Entity
 @Table(name = "game_attempts")
 @Data
@@ -15,6 +17,7 @@ public class GameAttempt {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "session_id", nullable = false)
+    @JsonIgnore
     private GameSession gameSession;
 
     // Trocamos String por Objeto Question para saber o ID da pergunta

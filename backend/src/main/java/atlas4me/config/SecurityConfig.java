@@ -37,10 +37,16 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                            "/v3/api-docs/**", "/swagger-ui/**",
-                            "/swagger-ui.html", "/auth/**", "/api/auth/**", 
-                            "/api/games/**", "/api/jogar/**", "/api/countries/**", 
-                            "/h2-console/**"
+                                "/v3/api-docs/**",
+                                "/api-docs/**", // <--- ADICIONE ESTA LINHA AQUI!
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/auth/**",
+                                "/api/auth/**",
+                                "/api/games/**",
+                                "/api/jogar/**",
+                                "/api/countries/**"
+
                         ).permitAll()
                         .anyRequest().authenticated())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -72,26 +78,25 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        
+
         // --- AQUI ESTAVA O ERRO ---
         // Removi as barras duplas "//" e adicionei os domínios corretos
         configuration.setAllowedOriginPatterns(Arrays.asList(
-           "http://localhost:*",              // Qualquer porta local
-            "https://*.vercel.app",            // Qualquer site da Vercel (atlas4me, atlas4me-git-main, etc)
-            "https://*.railway.app",           // O próprio Railway
-            "https://atlas4me.com",            // Domínio final
-            "https://www.atlas4me.com"
-        ));
-        
+                "http://localhost:*", // Qualquer porta local
+                "https://*.vercel.app", // Qualquer site da Vercel (atlas4me, atlas4me-git-main, etc)
+                "https://*.railway.app", // O próprio Railway
+                "https://atlas4me.com", // Domínio final
+                "https://www.atlas4me.com"));
+
         // Libera todos os métodos (GET, POST, OPTIONS, etc)
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"));
-        
+
         // Libera todos os cabeçalhos (Evita erro de preflight)
         configuration.setAllowedHeaders(Arrays.asList("*"));
-        
+
         // Permite credenciais (cookies/auth headers)
         configuration.setAllowCredentials(true);
-        
+
         // Expõe headers se necessário
         configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Type"));
 
