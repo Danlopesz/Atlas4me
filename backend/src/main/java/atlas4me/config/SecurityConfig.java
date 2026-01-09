@@ -2,6 +2,7 @@ package atlas4me.config;
 
 import atlas4me.service.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -21,6 +22,8 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
+import java.util.List;
+
 
 @Configuration
 @EnableWebSecurity
@@ -30,6 +33,9 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final CustomUserDetailsService userDetailsService;
 
+    @Value("${cors.allowed-origins}")
+    private String allowedOrigins;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -38,7 +44,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/v3/api-docs/**",
-                                "/api-docs/**", // <--- ADICIONE ESTA LINHA AQUI!
+                                "/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/auth/**",
@@ -79,22 +85,26 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // --- AQUI ESTAVA O ERRO ---
-        // Removi as barras duplas "//" e adicionei os domínios corretos
-        configuration.setAllowedOriginPatterns(Arrays.asList(
-                "http://localhost:*", // Qualquer porta local
-                "https://*.vercel.app", // Qualquer site da Vercel (atlas4me, atlas4me-git-main, etc)
-                "https://*.railway.app", // O próprio Railway
-                "https://atlas4me.com", // Domínio final
-                "https://www.atlas4me.com"));
+        // Usa a propriedade injetada do application.properties
+        // Se a propriedade estiver vazia ou nula, usa um fallback seguro
+        if (allowedOrigins != null && !allowedOrigins.isEmpty()) {
+             configuration.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
+        } else {
+             // Fallback hardcoded caso a propriedade falhe
+             configuration.setAllowedOriginPatterns(Arrays.asList(
+                "http://localhost:*",
+                "https://*.vercel.app",
+                "https://*.railway.app",
+                "https://atlas4me.com",
+                "https://www.atlas4me.com"
+            ));
+        }
 
         // Libera todos os métodos (GET, POST, OPTIONS, etc)
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"));
 
         // Libera todos os cabeçalhos (Evita erro de preflight)
         configuration.setAllowedHeaders(Arrays.asList("*"));
-
-        // Permite credenciais (cookies/auth headers)
         configuration.setAllowCredentials(true);
 
         // Expõe headers se necessário
