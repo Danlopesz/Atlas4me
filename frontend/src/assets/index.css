@@ -14,23 +14,28 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-  font-family: var(--font-main);
-  background-color: var(--dark-bg);
-  color: var(--text-white);
-  min-height: 100vh;
-  overflow-x: hidden;
-  background-image: url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=3840&auto=format&fit=crop');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
+    font-family: var(--font-main);
+    /* Use apenas uma cor sólida de fundo para garantir que não fique branco enquanto o 3D carrega */
+    background-color: #050505;
+    color: var(--text-white);
+    min-height: 100vh;
+    overflow-x: hidden;
+
+    /* --- REMOVA ESTAS LINHAS ABAIXO --- */
+    /* background-image: url('...'); */
+    /* background-size: cover; */
+    /* background-position: center; */
+    /* background-repeat: no-repeat; */
+    /* background-attachment: fixed; */
 }
 
+/* --- REMOVA ESTE BLOCO INTEIRO TAMBÉM --- */
+/* O Planet3D já tem suas próprias estrelas e fundo, esse degradê vai atrapalhar */
+/*
 body::before {
-  content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  background: linear-gradient(to right, rgba(5,7,16,0.9) 0%, rgba(5,7,16,0.5) 100%);
-  z-index: -1;
+  content: ''; position: fixed; ...
 }
+*/
 
 /* =========================================
    ESTILOS GERAIS DE LAYOUT

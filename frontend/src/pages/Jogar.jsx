@@ -1,59 +1,52 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from "react-router-dom";
+// Removi o useNavigate que não estava sendo usado
 import api from "../services/api";
 import Navbar from "../components/Navbar";
 
 function Jogar() {
-    const navigate = useNavigate();
+    // --- ESTADOS ---
 
-    // Estados do Jogo
-   const [gameId, setGameId] = useState(null); 
+    // 1. CORREÇÃO: Removi o 'setUserName'.
+    // Como só queremos LER o nome para exibir, não precisamos da função de alterar.
+    const [userName] = useState(() => {
+        return localStorage.getItem('userName') || '';
+    });
 
+    const [gameId, setGameId] = useState(null);
     const [gameStatus, setGameStatus] = useState('LOBBY');
     const [question, setQuestion] = useState(null);
     const [targetCountry, setTargetCountry] = useState(null);
     const [message, setMessage] = useState('Clique em Iniciar para desafiar o Atlas!');
-    const [userName, setUserName] = useState('');
+
     const [countries, setCountries] = useState([]);
     const [selectedCountryId, setSelectedCountryId] = useState("");
 
-    // Carrega nome do usuário ao abrir
-    useEffect(() => {
-        const storedName = localStorage.getItem('userName');
-        if (storedName) setUserName(storedName);
-    }, []);
+    // --- EFEITOS (UseEffect) ---
 
-    // Carrega lista de países se o robô desistir
     useEffect(() => {
         if (gameStatus === 'WAITING_FOR_REVEAL') {
+
+            // Função definida aqui dentro para não gerar erro de dependência
+            const fetchCountries = async () => {
+                try {
+                    const response = await api.get('/api/countries');
+                    setCountries(response.data);
+                } catch (error) {
+                    console.error("Erro ao buscar países", error);
+                    alert("Erro ao carregar lista de países. Verifique a conexão.");
+                }
+            };
+
             fetchCountries();
         }
     }, [gameStatus]);
 
-    const fetchCountries = async () => {
-        try {
-            // Se ainda não tiver essa rota no back, o array vazio evita erro, 
-            // mas o ideal é criar o endpoint @GetMapping("/api/countries")
-            const response = await api.get('/api/countries');
-            setCountries(response.data);
-        } catch (error) {
-            console.error("Erro ao buscar países", error);
-            // Fallback temporário para teste se a API falhar
-            setCountries([
-                { id: 1, name: "Brasil" }, { id: 2, name: "Argentina" }, { id: 3, name: "Uruguai" },
-                { id: 13, name: "Guiana Francesa" } // Adicione outros se precisar testar sem backend
-            ]);
-        }
-    };
+    // --- LÓGICA DO JOGO ---
 
-    // --- PROCESSADOR CENTRAL DE RESPOSTAS ---
     const processResponse = (data) => {
         console.log("Status recebido:", data.status);
 
-        // SALVA O ID DO JOGO (Importante para Visitantes!)
-        if (data.gameId) {
-            setGameId(data.gameId);
-        }
+        if (data.gameId) setGameId(data.gameId);
 
         if (data.status === 'GUESSING') {
             setTargetCountry(data.targetCountry);
@@ -62,7 +55,7 @@ function Jogar() {
         }
         else if (data.nextQuestion) {
             setQuestion({
-                id: data.gameId, 
+                id: data.gameId,
                 questionId: data.nextQuestion.id,
                 text: data.nextQuestion.text
             });
@@ -83,7 +76,8 @@ function Jogar() {
             setMessage(data.feedback);
         }
     };
-    // --- AÇÕES DO USUÁRIO ---
+
+    // --- HANDLERS (Ações dos Botões) ---
 
     const handleStartGame = async () => {
         setGameStatus('LOADING');
@@ -102,7 +96,7 @@ function Jogar() {
         if (!question || !question.id) return;
         try {
             const payload = {
-                gameId: gameId, // Usa o estado global que criamos (mais seguro)
+                gameId: gameId,
                 questionId: question.questionId,
                 answer: userAnswer
             };
@@ -114,19 +108,18 @@ function Jogar() {
         }
     };
 
-   const handleConfirmWin = async () => {
+    const handleConfirmWin = async () => {
         try {
-            // Agora enviamos o gameId no corpo
             const response = await api.post('/api/games/confirm', { gameId: gameId });
             processResponse(response.data);
         } catch (error) {
             console.error("Erro ao confirmar:", error);
         }
     };
+
     const handleDenyWin = async () => {
         try {
             setMessage("Pensando novamente...");
-            // Agora enviamos o gameId no corpo
             const response = await api.post('/api/games/deny', { gameId: gameId });
             processResponse(response.data);
         } catch (error) {
@@ -138,9 +131,9 @@ function Jogar() {
     const handleReveal = async () => {
         if (!selectedCountryId) return alert("Selecione um país!");
         try {
-            const payload = { 
-                gameId: gameId, // Importante!
-                countryId: selectedCountryId 
+            const payload = {
+                gameId: gameId,
+                countryId: selectedCountryId
             };
             const response = await api.post('/api/games/reveal', payload);
             processResponse(response.data);
@@ -149,18 +142,16 @@ function Jogar() {
         }
     };
 
-    // Função para limpar o estado e voltar ao início
     const handlePlayAgain = () => {
         setGameStatus('LOBBY');
-        setMessage('Clique em Iniciar para desafiar o Atlas!');
         setQuestion(null);
         setTargetCountry(null);
-        setGameId(null); // Reseta o ID
+        setGameId(null);
         setSelectedCountryId("");
         setTimeout(() => setMessage('Clique em Iniciar para desafiar o Atlas!'), 0);
     };
 
-    // --- RENDERIZAÇÃO ---
+    // --- RENDERIZAÇÃO (JSX) ---
     return (
         <>
             <Navbar />
@@ -171,9 +162,7 @@ function Jogar() {
                         {userName ? `Olá, ${userName}!` : 'Desafio Atlas'}
                     </h2>
 
-                    {/* ÁREA DINÂMICA DO JOGO */}
                     <div>
-
                         {/* 1. LOBBY */}
                         {gameStatus === 'LOBBY' && (
                             <>
