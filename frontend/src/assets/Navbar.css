@@ -10,22 +10,18 @@
   background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
 }
 
-.logo {
-  font-family: 'Poppins', sans-serif;
-  font-size: 2rem;       /* Adjust size as needed */
-  font-weight: 800;      /* Extra Bold */
-  letter-spacing: 1px;
-  color: #00e5ff;        /* The specific Cyan color */
-  text-decoration: none;
-  text-transform: uppercase;
-  
-  /* The Neon Glow Effect */
-  text-shadow: 
-    0 0 5px rgba(0, 229, 255, 0.4),
-    0 0 10px rgba(0, 229, 255, 0.3),
-    0 0 20px rgba(0, 229, 255, 0.2);
-    
-  transition: text-shadow 0.3s ease;
+.navbar-logo {
+    font-family: 'Poppins', sans-serif;
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: #00e5ff;
+    text-decoration: none;
+    text-transform: uppercase;
+    text-shadow:
+            0 0 5px rgba(0, 229, 255, 0.4),
+            0 0 10px rgba(0, 229, 255, 0.3),
+            0 0 20px rgba(0, 229, 255, 0.2);
 }
 
 .navbar nav ul {
