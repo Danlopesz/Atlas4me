@@ -4,38 +4,49 @@
   --neon-cyan: #00e5ff;
   --neon-blue: #0075ff;
   --dark-bg: #050710;
-  --glass-bg: rgba(15, 23, 42, 0.7); 
+  --glass-bg: rgba(15, 23, 42, 0.7);
   --glass-border: 1px solid rgba(0, 229, 255, 0.2);
   --text-white: #ffffff;
   --text-gray: #ccc;
   --font-main: 'Poppins', sans-serif;
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 
 body {
-    font-family: var(--font-main);
-    /* Use apenas uma cor sólida de fundo para garantir que não fique branco enquanto o 3D carrega */
-    background-color: #050505;
-    color: var(--text-white);
-    min-height: 100vh;
-    overflow-x: hidden;
-
-    /* --- REMOVA ESTAS LINHAS ABAIXO --- */
-    /* background-image: url('...'); */
-    /* background-size: cover; */
-    /* background-position: center; */
-    /* background-repeat: no-repeat; */
-    /* background-attachment: fixed; */
+  font-family: var(--font-main);
+  /* Fundo espacial com imagem + overlays para profundidade */
+  background:
+    /* Overlay de brilho sutil */
+    radial-gradient(ellipse at top, rgba(0, 229, 255, 0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at bottom, rgba(138, 43, 226, 0.03) 0%, transparent 50%),
+    center center / cover no-repeat fixed;
+  color: var(--text-white);
+  background-color: #000000;
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
 }
 
-/* --- REMOVA ESTE BLOCO INTEIRO TAMBÉM --- */
-/* O Planet3D já tem suas próprias estrelas e fundo, esse degradê vai atrapalhar */
-/*
+/* Overlay animado para dar vida ao fundo */
 body::before {
-  content: ''; position: fixed; ...
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(ellipse 800px 600px at 20% 30%, rgba(0, 229, 255, 0.05) 0%, transparent 50%),
+    radial-gradient(ellipse 700px 500px at 80% 70%, rgba(138, 43, 226, 0.05) 0%, transparent 50%);
+  animation: nebulaFloat 60s ease-in-out infinite alternate;
+  pointer-events: none;
+  z-index: 0;
 }
-*/
 
 /* =========================================
    ESTILOS GERAIS DE LAYOUT
@@ -52,32 +63,51 @@ body::before {
 
 /* NAVBAR */
 .navbar {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 1.5rem 5%; position: absolute; width: 100%; top: 0; z-index: 1000;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 5%;
+  position: absolute;
+  width: 100%;
+  top: 0;
+  z-index: 1000;
 }
+
 .logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    text-decoration: none;
-    color: var(--neon-cyan);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--neon-cyan);
 }
 
 /* CONTÊINER DA IMAGEM */
 .logo img {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    object-fit: cover;
-    display: block;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
 }
 
-.navbar nav { display: flex; gap: 2rem; }
-.navbar a {
-  text-decoration: none; color: var(--text-gray); font-weight: 600;
-  transition: 0.3s; font-size: 0.9rem; text-transform: uppercase;
+.navbar nav {
+  display: flex;
+  gap: 2rem;
 }
-.navbar a:hover { color: var(--text-white); text-shadow: 0 0 10px var(--neon-cyan); }
+
+.navbar a {
+  text-decoration: none;
+  color: var(--text-gray);
+  font-weight: 600;
+  transition: 0.3s;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+}
+
+.navbar a:hover {
+  color: var(--text-white);
+  text-shadow: 0 0 10px var(--neon-cyan);
+}
 
 /* =========================================
    CARTÕES E FORMULÁRIOS (LOGIN / JOGAR)
@@ -91,113 +121,215 @@ body::before {
   border: var(--glass-border);
   border-radius: 20px;
   padding: 40px;
-  
+
   /* CORREÇÃO AQUI: Largura máxima para não esticar no Login */
   width: 100%;
-  max-width: 480px; /* Mantém o formulário compacto e bonito */
-  
+  max-width: 480px;
+  /* Mantém o formulário compacto e bonito */
+
   box-shadow: 0 0 40px rgba(0, 229, 255, 0.15);
   text-align: center;
-  margin: 0 auto; /* Centraliza */
+  margin: 0 auto;
+  /* Centraliza */
 }
 
 /* Títulos dentro do card */
-.glass-card h1, .glass-card h2 {
-    color: white; margin-bottom: 1.5rem;
+.glass-card h1,
+.glass-card h2 {
+  color: white;
+  margin-bottom: 1.5rem;
 }
 
 /* Inputs (Campos de texto) */
-.input-box { margin-bottom: 20px; text-align: left; }
-.input-box label { display: block; color: var(--text-gray); margin-bottom: 8px; font-size: 0.9rem; }
-.input-box input {
-    width: 100%; padding: 12px 15px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    color: white; outline: none; transition: 0.3s;
-    font-family: var(--font-main);
+.input-box {
+  margin-bottom: 20px;
+  text-align: left;
 }
+
+.input-box label {
+  display: block;
+  color: var(--text-gray);
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+
+.input-box input {
+  width: 100%;
+  padding: 12px 15px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: white;
+  outline: none;
+  transition: 0.3s;
+  font-family: var(--font-main);
+}
+
 .input-box input:focus {
-    border-color: var(--neon-cyan);
-    box-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
 }
 
 /* BOTÕES GERAIS (Para pegar o botão de Login/Cadastro automaticamente) */
-button, .btn-primary {
-    width: 100%;
-    padding: 14px;
-    background: linear-gradient(90deg, var(--neon-cyan), var(--neon-blue));
-    color: white;
-    border: none;
-    border-radius: 50px;
-    font-weight: 700;
-    font-size: 1rem;
-    cursor: pointer;
-    text-transform: uppercase;
-    transition: 0.3s;
-    margin-top: 15px;
-    box-shadow: 0 5px 15px rgba(0, 229, 255, 0.2);
+button,
+.btn-primary {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(90deg, var(--neon-cyan), var(--neon-blue));
+  color: white;
+  border: none;
+  border-radius: 50px;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: 0.3s;
+  margin-top: 15px;
+  box-shadow: 0 5px 15px rgba(0, 229, 255, 0.2);
 }
-button:hover, .btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 0 25px rgba(0, 229, 255, 0.6);
+
+button:hover,
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 25px rgba(0, 229, 255, 0.6);
 }
 
 /* Links pequenos (Esqueci senha / Cadastre-se) */
 .glass-card a {
-    color: var(--neon-cyan);
-    text-decoration: none;
-    font-size: 0.9rem;
-    display: inline-block;
-    margin-top: 15px;
-    transition: 0.3s;
+  color: var(--neon-cyan);
+  text-decoration: none;
+  font-size: 0.9rem;
+  display: inline-block;
+  margin-top: 15px;
+  transition: 0.3s;
 }
+
 .glass-card a:hover {
-    text-decoration: underline;
-    text-shadow: 0 0 8px rgba(0, 229, 255, 0.6);
+  text-decoration: underline;
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.6);
 }
 
 /* =========================================
    HOME (HERO) - ESPECÍFICO
 ========================================= */
 .hero-container {
-  display: flex; align-items: center; justify-content: flex-start;
-  height: 100vh; padding-left: 10%; padding-right: 5%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  height: 100vh;
+  padding-left: 10%;
+  padding-right: 5%;
+  position: relative;
+  z-index: 10;
 }
-.hero-content { max-width: 650px; animation: slideIn 1s ease-out; }
+
+.hero-content {
+  max-width: 650px;
+  animation: slideIn 1s ease-out;
+}
+
 .hero-title {
-  font-size: 4rem; font-weight: 800; line-height: 1.1; text-transform: uppercase;
-  color: white; margin-bottom: 10px;
+  font-size: 3.5rem;
+  font-weight: 800;
+  line-height: 1.2;
+  text-transform: uppercase;
+  color: white;
+  margin-bottom: 15px;
+  letter-spacing: -1px;
 }
+
 .hero-subtitle {
-  font-size: 2.5rem; font-weight: 800; text-transform: uppercase;
+  font-size: 2.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
   background: linear-gradient(90deg, var(--neon-cyan), var(--text-white));
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  margin-bottom: 20px;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 40px;
+  line-height: 1.2;
 }
+
 .hero-desc {
-  font-size: 1.1rem; color: var(--text-gray); line-height: 1.6; margin-bottom: 40px; max-width: 500px;
+  font-size: 1.1rem;
+  color: var(--text-gray);
+  line-height: 1.6;
+  margin-bottom: 40px;
+  max-width: 500px;
 }
+
 /* Botão da Home (sobrescreve o botão padrão) */
 .btn-play-hero {
-  width: auto; /* Não ocupa 100% */
-  display: inline-flex; align-items: center; justify-content: center; gap: 15px;
-  padding: 18px 45px; background: linear-gradient(90deg, var(--neon-cyan) 0%, var(--neon-blue) 100%);
-  color: white; font-size: 1.1rem; font-weight: 700; text-decoration: none;
-  border-radius: 50px; text-transform: uppercase; letter-spacing: 1px;
-  box-shadow: 0 10px 30px rgba(0, 229, 255, 0.3); transition: all 0.3s ease;
+  width: auto;
+  /* Não ocupa 100% */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 35px;
+  background: linear-gradient(90deg, #00d9ff 0%, #0088ff 100%);
+  color: #000000;
+  font-size: 1rem;
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: 50px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 0 30px rgba(0, 217, 255, 0.5);
+  transition: all 0.3s ease;
   margin-top: 0;
 }
-.btn-play-hero:hover { transform: translateY(-5px); box-shadow: 0 15px 40px rgba(0, 229, 255, 0.5); }
 
-@keyframes slideIn { from { opacity: 0; transform: translateX(-50px); } to { opacity: 1; transform: translateX(0); } }
+.btn-play-hero:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 0 40px rgba(0, 217, 255, 0.8);
+  color: #ffffff;
+}
+
+.btn-play-hero span {
+  font-size: 1.3rem;
+  transition: transform 0.3s ease;
+}
+
+.btn-play-hero:hover span {
+  transform: translateX(3px);
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
 
 /* Responsividade */
 @media (max-width: 768px) {
-  .hero-container { padding-left: 5%; justify-content: center; text-align: center; }
-  .hero-title { font-size: 2.5rem; } .hero-subtitle { font-size: 1.8rem; }
-  .navbar nav { display: none; }
-  .glass-card { padding: 25px; width: 95%; }
+  .hero-container {
+    padding-left: 5%;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .hero-title {
+    font-size: 2.5rem;
+  }
+
+  .hero-subtitle {
+    font-size: 1.8rem;
+  }
+
+  .navbar nav {
+    display: none;
+  }
+
+  .glass-card {
+    padding: 25px;
+    width: 95%;
+  }
 }
 
 /* =========================================
@@ -208,32 +340,43 @@ button:hover, .btn-primary:hover {
 
   /* 1. Ajuste da Navbar (Cabeçalho) */
   .navbar {
-    padding: 1rem; /* Reduz espaçamento lateral */
-    flex-direction: column; /* Empilha Logo e Menu se necessário */
-    background: rgba(5, 7, 16, 0.95); /* Fundo mais escuro para leitura */
+    padding: 1rem;
+    /* Reduz espaçamento lateral */
+    flex-direction: column;
+    /* Empilha Logo e Menu se necessário */
+    background: rgba(5, 7, 16, 0.95);
+    /* Fundo mais escuro para leitura */
   }
 
   .logo {
-    font-size: 1.5rem; /* Logo menor */
+    font-size: 1.5rem;
+    /* Logo menor */
     margin-bottom: 10px;
   }
 
   .navbar nav {
-    display: none; /* Esconde menu no celular (pode fazer um menu hambúrguer depois) */
+    display: none;
+    /* Esconde menu no celular (pode fazer um menu hambúrguer depois) */
   }
 
   /* 2. Ajuste da Home / Hero */
-  .hero-container, .hero-section {
-    padding: 0 20px; /* Tira o padding-left: 10% que empurra tudo pra direita */
+  .hero-container,
+  .hero-section {
+    padding: 0 20px;
+    /* Tira o padding-left: 10% que empurra tudo pra direita */
     justify-content: center;
     text-align: center;
-    height: auto; /* Altura automática para não cortar conteúdo */
+    height: auto;
+    /* Altura automática para não cortar conteúdo */
     min-height: 100vh;
-    padding-top: 100px; /* Espaço para não ficar atrás da navbar */
+    padding-top: 100px;
+    /* Espaço para não ficar atrás da navbar */
   }
 
-  .hero-content h1, .hero-title {
-    font-size: 2.2rem !important; /* Diminui título gigante */
+  .hero-content h1,
+  .hero-title {
+    font-size: 2.2rem !important;
+    /* Diminui título gigante */
   }
 
   .hero-subtitle {
@@ -246,36 +389,45 @@ button:hover, .btn-primary:hover {
   }
 
   /* 3. Ajuste dos Cartões de Vidro e Login */
-  .glass-card, .auth-container {
-    width: 95% !important; /* Ocupa quase toda a largura */
+  .glass-card,
+  .auth-container {
+    width: 95% !important;
+    /* Ocupa quase toda a largura */
     margin: 20px auto;
-    padding: 20px !important; /* Reduz de 40px para 20px */
+    padding: 20px !important;
+    /* Reduz de 40px para 20px */
   }
 
   .form-content {
-    padding: 1.5rem !important; /* Reduz de 3rem para 1.5rem */
+    padding: 1.5rem !important;
+    /* Reduz de 3rem para 1.5rem */
   }
 
   /* 4. Ajuste da Tela de Jogo */
   .game-container {
-    padding: 20px 15px !important; /* Reduz bordas */
-    margin-top: 80px; /* Desce para não bater na navbar */
+    padding: 20px 15px !important;
+    /* Reduz bordas */
+    margin-top: 80px;
+    /* Desce para não bater na navbar */
     width: 95%;
   }
 
   .question-text {
-    font-size: 1.2rem; /* Pergunta menor para caber na tela */
+    font-size: 1.2rem;
+    /* Pergunta menor para caber na tela */
   }
 
   /* 5. Botões do Jogo (Sim/Não) */
   .btn-group {
-    flex-direction: column; /* Um botão em cima do outro */
+    flex-direction: column;
+    /* Um botão em cima do outro */
     width: 100%;
     gap: 10px;
   }
 
   .btn-group button {
-    width: 100%; /* Botão ocupa largura total para facilitar o clique */
+    width: 100%;
+    /* Botão ocupa largura total para facilitar o clique */
     margin: 0;
   }
 }

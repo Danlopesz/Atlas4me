@@ -2,43 +2,121 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem 5%;
-  position: absolute; /* Importante para ficar sobre a imagem */
+  padding: 1.2rem 6%;
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(0, 229, 255, 0.3);
+  box-shadow: 0 3px 10px rgba(0, 229, 255, 1.0);
+  position: fixed;
   width: 100%;
   top: 0;
-  z-index: 10;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+  left: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.85);
+  box-sizing: border-box;
 }
 
 .navbar-logo {
-    font-family: 'Poppins', sans-serif;
-    font-size: 2rem;
-    font-weight: 800;
-    letter-spacing: 1px;
-    color: #00e5ff;
-    text-decoration: none;
-    text-transform: uppercase;
-    text-shadow:
-            0 0 5px rgba(0, 229, 255, 0.4),
-            0 0 10px rgba(0, 229, 255, 0.3),
-            0 0 20px rgba(0, 229, 255, 0.2);
-}
-
-.navbar nav ul {
-  display: flex;
-  list-style: none;
-  gap: 2rem;
-  align-items: center;
-}
-
-.navbar a {
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.8rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #00d9ff;
   text-decoration: none;
-  color: #b0b0b0;
-  font-weight: 600;
-  transition: 0.3s;
+  text-transform: uppercase;
+  transition: all 0.3s ease;
 }
 
-.navbar a:hover {
-  color: var(--neon-cyan);
-  text-shadow: 0 0 8px rgba(0, 229, 255, 0.6);
+.navbar-logo:hover {
+  color: #00e5ff;
+  text-shadow: 0 0 15px rgba(0, 229, 255, 0.5);
+}
+
+.navbar-logo-img {
+  height: 50px;
+  width: auto;
+  transition: all 0.3s ease;
+  filter: drop-shadow(0 0 5px rgba(92, 225, 230, 0.3));
+}
+
+.navbar-logo:hover .navbar-logo-img {
+  filter: drop-shadow(0 0 15px rgba(92, 225, 230, 0.6));
+  transform: scale(1.05);
+}
+
+
+.navbar nav {
+  display: flex;
+  align-items: center;
+  gap: 2.5rem;
+}
+
+.navbar nav a {
+  text-decoration: none;
+  color: #ffffff;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  position: relative;
+  padding: 0.3rem 0;
+}
+
+.navbar nav a:hover {
+  color: #00d9ff;
+}
+
+.navbar nav a::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: #00d9ff;
+  transition: width 0.3s ease;
+}
+
+.navbar nav a:hover::after {
+  width: 100%;
+}
+
+.navbar button {
+  background: transparent;
+  border: 1px solid #e74c3c;
+  color: #e74c3c;
+  padding: 0.4rem 1.2rem;
+  font-size: 0.9rem;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 500;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.navbar button:hover {
+  background: #e74c3c;
+  color: #ffffff;
+}
+
+.btn-highlight {
+  background: transparent !important;
+  border: 1px solid #00d9ff !important;
+  color: #00d9ff !important;
+  padding: 0.4rem 1.2rem !important;
+  border-radius: 4px !important;
+  transition: all 0.3s ease !important;
+}
+
+.btn-highlight:hover {
+  background: #00d9ff !important;
+  color: #000000 !important;
+}
+
+.btn-highlight::after {
+  display: none !important;
+}
+
+.user-profile {
+  color: #00d9ff !important;
+  font-weight: 600 !important;
 }

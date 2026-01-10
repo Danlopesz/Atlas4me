@@ -1,0 +1,136 @@
+/* ===== CAMPO DE ESTRELAS ESPACIAL ===== */
+
+/* Estrelas pequenas - Camada 1 */
+.stars {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+}
+
+.stars::before {
+    content: '';
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    background: white;
+    border-radius: 50%;
+    box-shadow:
+        /* Distribuição aleatória de estrelas pequenas */
+        100px 100px 0 0px #FFF, 200px 200px 0 0px #FFF, 300px 50px 0 0px #FFF,
+        400px 300px 0 0px #FFF, 500px 150px 0 0px #FFF, 600px 250px 0 0px #FFF,
+        700px 100px 0 0px #FFF, 800px 350px 0 0px #FFF, 900px 200px 0 0px #FFF,
+        1000px 100px 0 0px #FFF, 1100px 300px 0 0px #FFF, 1200px 150px 0 0px #FFF,
+        1300px 250px 0 0px #FFF, 1400px 50px 0 0px #FFF, 1500px 350px 0 0px #FFF,
+        1600px 200px 0 0px #FFF, 1700px 100px 0 0px #FFF, 1800px 300px 0 0px #FFF,
+        150px 400px 0 0px #FFF, 250px 500px 0 0px #FFF, 350px 450px 0 0px #FFF,
+        450px 550px 0 0px #FFF, 550px 400px 0 0px #FFF, 650px 500px 0 0px #FFF,
+        750px 450px 0 0px #FFF, 850px 550px 0 0px #FFF, 950px 400px 0 0px #FFF,
+        1050px 500px 0 0px #FFF, 1150px 450px 0 0px #FFF, 1250px 550px 0 0px #FFF,
+        1350px 400px 0 0px #FFF, 1450px 500px 0 0px #FFF, 1550px 450px 0 0px #FFF,
+        1650px 550px 0 0px #FFF, 1750px 400px 0 0px #FFF, 1850px 500px 0 0px #FFF,
+        80px 650px 0 0px #FFF, 180px 700px 0 0px #FFF, 280px 750px 0 0px #FFF,
+        380px 650px 0 0px #FFF, 480px 700px 0 0px #FFF, 580px 750px 0 0px #FFF,
+        680px 650px 0 0px #FFF, 780px 700px 0 0px #FFF, 880px 750px 0 0px #FFF,
+        980px 650px 0 0px #FFF, 1080px 700px 0 0px #FFF, 1180px 750px 0 0px #FFF,
+        1280px 650px 0 0px #FFF, 1380px 700px 0 0px #FFF, 1480px 750px 0 0px #FFF,
+        1580px 650px 0 0px #FFF, 1680px 700px 0 0px #FFF, 1780px 750px 0 0px #FFF;
+    animation: twinkle 4s ease-in-out infinite;
+}
+
+/* Estrelas médias - Camada 2 */
+.stars2 {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+}
+
+.stars2::before {
+    content: '';
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    background: white;
+    border-radius: 50%;
+    box-shadow:
+        120px 120px 0 0px rgba(255, 255, 255, 0.9),
+        320px 220px 0 0px rgba(255, 255, 255, 0.9),
+        520px 120px 0 0px rgba(255, 255, 255, 0.9),
+        720px 320px 0 0px rgba(255, 255, 255, 0.9),
+        920px 220px 0 0px rgba(255, 255, 255, 0.9),
+        1120px 120px 0 0px rgba(255, 255, 255, 0.9),
+        1320px 320px 0 0px rgba(255, 255, 255, 0.9),
+        1520px 220px 0 0px rgba(255, 255, 255, 0.9),
+        1720px 120px 0 0px rgba(255, 255, 255, 0.9),
+        220px 420px 0 0px rgba(255, 255, 255, 0.9),
+        420px 520px 0 0px rgba(255, 255, 255, 0.9),
+        620px 420px 0 0px rgba(255, 255, 255, 0.9),
+        820px 520px 0 0px rgba(255, 255, 255, 0.9),
+        1020px 420px 0 0px rgba(255, 255, 255, 0.9),
+        1220px 520px 0 0px rgba(255, 255, 255, 0.9),
+        1420px 420px 0 0px rgba(255, 255, 255, 0.9),
+        1620px 520px 0 0px rgba(255, 255, 255, 0.9),
+        1820px 420px 0 0px rgba(255, 255, 255, 0.9),
+        180px 680px 0 0px rgba(255, 255, 255, 0.9),
+        380px 720px 0 0px rgba(255, 255, 255, 0.9),
+        580px 680px 0 0px rgba(255, 255, 255, 0.9),
+        780px 720px 0 0px rgba(255, 255, 255, 0.9),
+        980px 680px 0 0px rgba(255, 255, 255, 0.9),
+        1180px 720px 0 0px rgba(255, 255, 255, 0.9),
+        1380px 680px 0 0px rgba(255, 255, 255, 0.9),
+        1580px 720px 0 0px rgba(255, 255, 255, 0.9),
+        1780px 680px 0 0px rgba(255, 255, 255, 0.9);
+    animation: twinkle 5s ease-in-out infinite 1s;
+}
+
+/* Estrelas grandes com brilho ciano - Camada 3 */
+.stars3 {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+}
+
+.stars3::before {
+    content: '';
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    background: #00e5ff;
+    border-radius: 50%;
+    box-shadow:
+        200px 200px 0 1px #00e5ff,
+        500px 300px 0 1px #00d4ff,
+        800px 150px 0 1px #00e5ff,
+        1100px 350px 0 1px #00d4ff,
+        1400px 200px 0 1px #00e5ff,
+        1700px 300px 0 1px #00d4ff,
+        300px 500px 0 1px #00e5ff,
+        600px 450px 0 1px #00d4ff,
+        900px 550px 0 1px #00e5ff,
+        1200px 500px 0 1px #00d4ff,
+        1500px 450px 0 1px #00e5ff,
+        1800px 550px 0 1px #00d4ff,
+        250px 700px 0 1px #00e5ff,
+        550px 650px 0 1px #00d4ff,
+        850px 750px 0 1px #00e5ff,
+        1150px 700px 0 1px #00d4ff,
+        1450px 650px 0 1px #00e5ff,
+        1750px 750px 0 1px #00d4ff;
+    filter: drop-shadow(0 0 4px #00e5ff);
+    animation: twinkle 3s ease-in-out infinite 0.5s;
+}
+
+/* Animação de piscar */
+@keyframes twinkle {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.3;
+    }
+}

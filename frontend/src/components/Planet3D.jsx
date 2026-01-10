@@ -10,7 +10,7 @@ const Planet3D = () => {
 
         // 1. CENA
         const scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2(0x000000, 0.03);
+        // Fog removido para permitir que o fundo espacial apareça
 
         const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
         camera.position.z = 16;
@@ -21,7 +21,7 @@ const Planet3D = () => {
 
         if (mountRef.current) {
             // Garante que o container esteja limpo antes de adicionar
-            while(mountRef.current.firstChild){
+            while (mountRef.current.firstChild) {
                 mountRef.current.removeChild(mountRef.current.firstChild);
             }
             mountRef.current.appendChild(renderer.domElement);
@@ -91,17 +91,24 @@ const Planet3D = () => {
         const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
         earthGroup.add(atmosphere);
 
-        // 7. ESTRELAS
+        // 7. ESTRELAS (Aumentando quantidade e variação)
         const starsGeo = new THREE.BufferGeometry();
-        const starsCnt = 1500;
+        const starsCnt = 30000; // Mais estrelas para fundo mais rico
         const starsPos = new Float32Array(starsCnt * 3);
-        for(let i=0; i<starsCnt*3; i++) starsPos[i] = (Math.random() - 0.5) * 300;
+        for (let i = 0; i < starsCnt * 3; i++) starsPos[i] = (Math.random() - 0.5) * 400;
         starsGeo.setAttribute('position', new THREE.BufferAttribute(starsPos, 3));
-        const starsMat = new THREE.PointsMaterial({size: 0.1, color: 0xffffff, transparent: true, opacity: 0.8});
+        const starsMat = new THREE.PointsMaterial({
+            size: 0.15,
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.9,
+            sizeAttenuation: true
+        });
         const starMesh = new THREE.Points(starsGeo, starsMat);
         scene.add(starMesh);
 
-        // 8. ANIMAÇÃO
+
+        // 9. ANIMAÇÃO
         let frameId;
         const animate = () => {
             frameId = requestAnimationFrame(animate);
@@ -144,8 +151,8 @@ const Planet3D = () => {
                 left: 0,
                 width: '100%',
                 height: '100%',
-                zIndex: -1,
-                background: '#050505', // Fundo quase preto
+                zIndex: 1,
+                pointerEvents: 'none',
             }}
         />
     );

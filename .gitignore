@@ -1,4 +1,6 @@
 # Root ignore
+node_modules/
+
 # Frontend
 frontend/node_modules/
 frontend/dist/
@@ -7,6 +9,10 @@ frontend/.vite/
 # Backend
 backend/target/
 backend/.idea/
+
+# IDE
+.idea/
+*.iml
 
 # OS/Editor
 .DS_Store

@@ -1,7 +1,8 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Planet3D from '../components/Planet3D';
+import '../assets/Home.css';
+import '../assets/Stars.css';
 
 const Home = () => {
     return (
@@ -20,7 +21,7 @@ const Home = () => {
                     </h1>
 
                     <h2 className="hero-subtitle">
-                        NÓS VAMOS ADIVINHÁ-LO.
+                        E NÓS IREMOS ADIVINHÁ-LO
                     </h2>
 
                     <p className="hero-desc">
