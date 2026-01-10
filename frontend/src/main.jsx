@@ -2,7 +2,8 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 
 // CORREÇÃO 1: O nome do arquivo é index.css, não style.css
-import './assets/index.css' 
+import './assets/index.css'
+import './assets/Stars.css' // Estrelas animadas globais
 
 import App from './App.jsx'
 

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import api from "../services/api";
 import Navbar from "../components/Navbar";
 
+
 function Jogar() {
     // --- ESTADOS ---
 

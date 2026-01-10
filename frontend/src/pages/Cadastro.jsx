@@ -3,6 +3,7 @@ import { useState } from "react";
 import api from "../services/api";
 import Navbar from "../components/Navbar";
 
+
 function Cadastro() {
     const navigate = useNavigate();
     const [formData, setFormData] = useState({

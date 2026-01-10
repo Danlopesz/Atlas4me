@@ -16,10 +16,10 @@ function Login() {
             const response = await api.post("api/auth/login", { email, password });
             const token = response.data.token;
             const userName = response.data.firstName || "Viajante";
-            
+
             localStorage.setItem("token", token);
             localStorage.setItem("userName", userName);
-            
+
             alert("Login realizado com sucesso!");
             navigate("/jogar");
         } catch (error) {
@@ -61,8 +61,8 @@ function Login() {
                         {erro && <p style={{ color: '#ff4757', margin: '10px 0' }}>{erro}</p>}
 
                         <button type="submit">Entrar</button>
-                        
-                        <div style={{marginTop: '20px'}}>
+
+                        <div style={{ marginTop: '20px' }}>
                             <Link to="/cadastro" className="small-link">Não tem conta? Cadastre-se</Link>
                         </div>
                     </form>

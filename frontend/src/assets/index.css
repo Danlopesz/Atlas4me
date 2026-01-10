@@ -19,14 +19,10 @@
 
 body {
   font-family: var(--font-main);
-  /* Fundo espacial com imagem + overlays para profundidade */
-  background:
-    /* Overlay de brilho sutil */
-    radial-gradient(ellipse at top, rgba(0, 229, 255, 0.03) 0%, transparent 50%),
-    radial-gradient(ellipse at bottom, rgba(138, 43, 226, 0.03) 0%, transparent 50%),
-    center center / cover no-repeat fixed;
+  /* Fundo espacial escuro limpo (as estrelas virão do Stars.css) */
+  background: linear-gradient(to bottom, #050505 0%, #0a0a0f 50%, #050505 100%);
+  background-attachment: fixed;
   color: var(--text-white);
-  background-color: #000000;
   min-height: 100vh;
   overflow-x: hidden;
   position: relative;
