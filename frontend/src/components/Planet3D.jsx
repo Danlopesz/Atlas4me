@@ -27,9 +27,27 @@ const Planet3D = () => {
             mountRef.current.appendChild(renderer.domElement);
         }
 
-        // Grupo da Terra
+        // Grupo da Terra com posição responsiva
         const earthGroup = new THREE.Group();
-        earthGroup.position.x = 6; // Posição à direita
+
+        // Ajusta posição baseado no tamanho da tela
+        if (width <= 480) {
+            // Mobile pequeno - planeta menor e centralizado
+            earthGroup.position.set(0, 2, 0);
+            earthGroup.scale.set(0.7, 0.7, 0.7);
+        } else if (width <= 768) {
+            // Mobile - planeta centralizado acima
+            earthGroup.position.set(0, 3, 0);
+            earthGroup.scale.set(0.8, 0.8, 0.8);
+        } else if (width <= 1024) {
+            // Tablet - planeta à direita mas menor
+            earthGroup.position.set(4, 0, 0);
+            earthGroup.scale.set(0.9, 0.9, 0.9);
+        } else {
+            // Desktop - posição original
+            earthGroup.position.x = 6;
+        }
+
         scene.add(earthGroup);
 
         // 2. ILUMINAÇÃO (Essencial para não ficar preto!)
@@ -112,20 +130,35 @@ const Planet3D = () => {
         let frameId;
         const animate = () => {
             frameId = requestAnimationFrame(animate);
-            earth.rotation.y += 0.001;
-            clouds.rotation.y += 0.0014; // Nuvens um pouco mais rápido
+            earth.rotation.y += 0.0003; // Rotação mais lenta e suave
+            clouds.rotation.y += 0.0005; // Nuvens um pouco mais rápido
             starMesh.rotation.y -= 0.0001;
             renderer.render(scene, camera);
         };
         animate();
 
-        // 9. RESIZE
+        // 9. RESIZE com reposicionamento do planeta
         const handleResize = () => {
             const w = window.innerWidth;
             const h = window.innerHeight;
             renderer.setSize(w, h);
             camera.aspect = w / h;
             camera.updateProjectionMatrix();
+
+            // Reposiciona o planeta baseado no novo tamanho
+            if (w <= 480) {
+                earthGroup.position.set(0, 2, 0);
+                earthGroup.scale.set(0.7, 0.7, 0.7);
+            } else if (w <= 768) {
+                earthGroup.position.set(0, 3, 0);
+                earthGroup.scale.set(0.8, 0.8, 0.8);
+            } else if (w <= 1024) {
+                earthGroup.position.set(4, 0, 0);
+                earthGroup.scale.set(0.9, 0.9, 0.9);
+            } else {
+                earthGroup.position.set(6, 0, 0);
+                earthGroup.scale.set(1, 1, 1);
+            }
         };
         window.addEventListener('resize', handleResize);
 
