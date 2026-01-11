@@ -25,4 +25,11 @@ public class Country {
 
     @Column(name = "image_url")
     private String imageUrl; // A URL da bandeira/imagem do país
+
+    // ... outros campos
+    @Column(name = "latitude")
+    private Double latitude;
+
+    @Column(name = "longitude")
+    private Double longitude;
 }

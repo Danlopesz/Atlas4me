@@ -19,4 +19,6 @@ public interface CountryFeatureRepository extends JpaRepository<CountryFeature, 
     // --- NOVO MÉTODO OTIMIZADO ---
     // Busca todas as features de uma LISTA de países e uma LISTA de perguntas
     List<CountryFeature> findByCountryInAndQuestionIn(Collection<Country> countries, Collection<Question> questions);
+
+    List<CountryFeature> findByQuestion(Question question);
 }

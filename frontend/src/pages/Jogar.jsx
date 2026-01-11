@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 // Removi o useNavigate que não estava sendo usado
 import api from "../services/api";
 import Navbar from "../components/Navbar";
-
+import SouthAmericaHologram from '../components/SouthAmericaHologram';
 
 function Jogar() {
     // --- ESTADOS ---
@@ -18,8 +18,7 @@ function Jogar() {
     const [question, setQuestion] = useState(null);
     const [targetCountry, setTargetCountry] = useState(null);
     const [message, setMessage] = useState('Clique em Iniciar para desafiar o Atlas!');
-
-    const [countries, setCountries] = useState([]);
+    const [mapLocations, setMapLocations] = useState([]); const [countries, setCountries] = useState([]);
     const [selectedCountryId, setSelectedCountryId] = useState("");
 
     // --- EFEITOS (UseEffect) ---
@@ -63,6 +62,10 @@ function Jogar() {
             setTargetCountry(null);
             setGameStatus('PLAYING');
             setMessage(data.nextQuestion.text);
+
+            // O Java agora manda uma lista de objetos: [{isoCode: 'br', lat: -14, lon: -51}, ...]
+            const locations = data.nextQuestion.mapLocations || [];
+            setMapLocations(locations);
         }
         else if (data.status === 'WAITING_FOR_REVEAL' || data.status === 'HUMAN_WON') {
             setGameStatus('WAITING_FOR_REVEAL');
@@ -175,16 +178,31 @@ function Jogar() {
 
                         {/* 2. JOGANDO (Perguntas) */}
                         {gameStatus === 'PLAYING' && (
-                            <>
-                                <h2 style={{ color: '#00e5ff' }}>PERGUNTA:</h2>
-                                <p style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'white', margin: '30px 0' }}>
-                                    {message}
-                                </p>
-                                <div style={{ display: 'flex', gap: '20px', justifyContent: 'center' }}>
-                                    <button style={{ background: '#2ecc71', width: '120px' }} onClick={() => handleAnswer(true)}>Sim 👍</button>
-                                    <button style={{ background: '#e74c3c', width: '120px' }} onClick={() => handleAnswer(false)}>Não 👎</button>
+                            <div style={{ display: 'flex', gap: '40px', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+
+                                {/* --- COLUNA DA ESQUERDA: PERGUNTA (Isso estava faltando!) --- */}
+                                <div style={{ flex: 1, minWidth: '300px' }}>
+                                    <h2 style={{ color: '#00e5ff' }}>PERGUNTA:</h2>
+                                    <p style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'white', margin: '30px 0' }}>
+                                        {message}
+                                    </p>
+                                    <div style={{ display: 'flex', gap: '20px', justifyContent: 'center' }}>
+                                        <button className="btn-primary" style={{ background: '#2ecc71', width: '120px' }} onClick={() => handleAnswer(true)}>Sim 👍</button>
+                                        <button className="btn-primary" style={{ background: '#e74c3c', width: '120px' }} onClick={() => handleAnswer(false)}>Não 👎</button>
+                                    </div>
                                 </div>
-                            </>
+
+                                {/* COLUNA DA DIREITA: MAPA TÁTICO */}
+                                <div style={{ width: '350px', height: '500px', position: 'relative' }}>
+                                    <p style={{ textAlign: 'center', color: '#00e5ff', fontSize: '0.8rem', marginBottom: '10px', letterSpacing: '2px' }}>
+                                        ANÁLISE REGIONAL
+                                    </p>
+
+                                    {/* O Novo Mapa Holográfico 2D */}
+                                    <SouthAmericaHologram activeLocations={mapLocations} />
+                                </div>
+
+                            </div>
                         )}
 
                         {/* 3. ROBÔ CHUTANDO */}
@@ -293,5 +311,17 @@ function Jogar() {
         </>
     );
 }
+
+// Mapeamento MANUAL temporário (só para testar a feature visual)
+// A chave é o texto da pergunta (ou parte dele) e o valor são os IDs do mapa
+const QUESTION_MAP_DATA = {
+    "Andes": ['cl', 'pe', 'ec', 'co', 'bo', 'ar', 've'], // Países andinos
+    "litoral": ['br', 'uy', 'ar', 'cl', 'pe', 'ec', 'co', 've', 'gy', 'sr', 'gf'], // Tem mar
+    "Brasil": ['br'], // Faz fronteira com Brasil? (teria que ser lógica inversa, mas ok pro teste)
+    "Amazônia": ['br', 'pe', 'co', 've', 'ec', 'bo', 'gy', 'sr', 'gf'],
+    "equador": ['ec', 'br', 'co'], // Passa a linha do equador
+    "pequeno": ['sr', 'gy', 'gf', 'uy', 'ec'],
+    "grande": ['br', 'ar'],
+};
 
 export default Jogar;

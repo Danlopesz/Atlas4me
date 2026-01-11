@@ -3,7 +3,7 @@ package atlas4me.service;
 import atlas4me.dto.request.GameAnswerRequest;
 import atlas4me.dto.response.GameResponse;
 import atlas4me.dto.response.QuestionResponse;
-// Certifique-se de importar o Enum correto
+import atlas4me.dto.response.LocationResponse;
 import atlas4me.entity.*;
 import atlas4me.exception.BusinessException;
 import atlas4me.exception.ResourceNotFoundException;
@@ -187,12 +187,24 @@ public class GameService {
         if (bestQuestion == null) {
             bestQuestion = availableQuestions.get(0);
         }
+        // Buscamos TODOS os países (mesmo os eliminados) que têm essa característica como TRUE
+        // para acender no mapa educativo.
+        List<LocationResponse> mapLocations = countryFeatureRepository.findByQuestion(bestQuestion).stream()
+                .filter(CountryFeature::getIsTrue)
+                .map(cf -> new LocationResponse( // Usando LocationResponse
+                        cf.getCountry().getIsoCode().toLowerCase(),
+                        cf.getCountry().getLatitude(),
+                        cf.getCountry().getLongitude()
+                ))
+                .collect(Collectors.toList());
 
         return new QuestionResponse(
                 bestQuestion.getId(),
                 bestQuestion.getText(),
                 bestQuestion.getCategory(),
-                bestQuestion.getHelperImageUrl());
+                bestQuestion.getHelperImageUrl(),
+                mapLocations // Passa a lista de LocationResponse
+        );
     }
 
     // Filtra os países baseados no histórico de respostas

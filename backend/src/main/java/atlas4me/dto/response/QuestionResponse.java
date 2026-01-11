@@ -4,15 +4,18 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.List;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class QuestionResponse{
+public class QuestionResponse {
     
     private Long id;
-    private String text;           // O texto da pergunta ("Fica na Europa?")
-    private String category;       // "GEOGRAFIA", "CULTURA"
-    private String helperImageUrl; // A URL do mapa visual (Crucial para sua UX!)
+    private String text;
+    private String category;
+    private String helperImageUrl;
+    private List<LocationResponse> mapLocations;
+   
 }
