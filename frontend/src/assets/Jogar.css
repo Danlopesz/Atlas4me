@@ -1,54 +1,112 @@
-/* --- ESTILOS DO JOGO --- */
+/* --- LAYOUT GLOBAL DO JOGO (TELA DIVIDIDA) --- */
 .game-container {
-    background-color: var(--card-bg);
-    color: var(--card-text);
-    width: 100%;
-    max-width: 700px;
-    padding: 40px;
-    border-radius: 15px;
-    box-shadow: 0 10px 25px rgba(128, 63, 63, 0.5);
-    text-align: center;
     display: flex;
-    flex-direction: column;
+    gap: 10px;
+    /* Espaçamento reduzido entre os cards */
+    /* Ativa o modo lado-a-lado */
+    width: 100%;
+    height: 100vh;
+    /* Ocupa a altura total da tela */
+    padding-top: 70px;
+    /* Espaço para a Navbar não cobrir o topo */
+    overflow: hidden;
+    /* Evita barras de rolagem na tela inteira */
+    position: relative;
+    background-color: #050505;
+    /* Fundo escuro de segurança */
+}
+
+/* --- ZONA DA ESQUERDA: PERGUNTA --- */
+.question-zone {
+    flex: 0 0 40%;
+    /* Ocupa fixo 40% da largura da tela */
+    display: flex;
     align-items: center;
-    margin-top: 20px;
+    /* Centraliza verticalmente */
+    justify-content: center;
+    /* Centraliza horizontalmente */
+    padding: 20px;
+    /* Reduzido de 40px para aproximar os cards */
+    z-index: 10;
+    /* Garante que fique acima de elementos de fundo */
+    position: relative;
 }
 
-.game-title {
-    color: #220e91;
-    margin-bottom: 20px;
-    font-size: 2rem;
+/* Ajuste do Card de Vidro dentro da zona da pergunta */
+.question-card {
+    width: 100%;
+    max-width: 500px;
+    /* Não deixa o card ficar muito largo */
+    /* O estilo .glass-card vem do seu CSS global ou index.css */
 }
 
-.question {
-background-color: white;
-    border-radius: 15px;
-    padding: 30px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    margin: 20px auto;
-    max-width: 600px; /* Limita a largura para não ficar esticado */
+/* --- ZONA DA DIREITA: MAPA TÁTICO --- */
+.map-zone {
+    flex: 1;
+    /* Ocupa o restante do espaço (60%) */
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    /* Um brilho radial sutil no fundo para destacar o mapa */
+    background: radial-gradient(circle at center, rgba(0, 229, 255, 0.05) 0%, transparent 70%);
 }
-.question-box h2 {
-    color: #00d4ff; /* Mantém o azul ciano do seu tema */
-    font-weight: 800;
-    text-transform: uppercase;
-    margin-bottom: 15px;
+
+/* Título tático flutuante no mapa */
+.tactical-title {
+    position: absolute;
+    top: 30px;
+    right: 40px;
+    text-align: right;
+    pointer-events: none;
+}
+
+/* --- BOTÕES DO JOGO (Estilo Neon) --- */
+.btn-game {
+    padding: 15px 30px;
     font-size: 1.2rem;
+    font-weight: bold;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    color: white;
+    transition: transform 0.2s, filter 0.2s;
+    text-transform: uppercase;
     letter-spacing: 1px;
 }
-/* O texto da pergunta em si */
-.question-text {
-    color: #2c3e50; /* Um azul bem escuro, quase preto */
-    font-size: 1.8rem;
-    font-weight: 700; /* Negrito para destacar */
-    line-height: 1.4;
-    text-transform: none; /* Garante que não force tudo maiúsculo se não quiser */
+
+.btn-game:hover {
+    transform: scale(1.05);
+    filter: brightness(1.2);
 }
 
-.btn-group {
-    display: flex;
-    gap: 20px;
-    justify-content: center;
-    margin-top: 20px;
-    flex-wrap: wrap;
+/* --- RESPONSIVIDADE (CELULAR E TABLET) --- */
+@media (max-width: 900px) {
+    .game-container {
+        flex-direction: column;
+        /* Muda para um em cima do outro */
+        height: auto;
+        /* Altura automática para caber o scroll */
+        min-height: 100vh;
+        overflow-y: auto;
+        /* Permite rolar a tela no celular */
+    }
+
+    .map-zone {
+        height: 400px;
+        /* Altura fixa pro mapa no celular */
+        width: 100%;
+        order: 1;
+        /* 1º: Mostra o Mapa em cima */
+    }
+
+    .question-zone {
+        width: 100%;
+        padding: 20px;
+        order: 2;
+        /* 2º: Mostra a Pergunta embaixo */
+        flex: none;
+        /* Remove a trava de 40% */
+    }
 }

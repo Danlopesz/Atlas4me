@@ -1,48 +1,42 @@
 import React, { useState, useEffect } from 'react';
-// Removi o useNavigate que não estava sendo usado
 import api from "../services/api";
 import Navbar from "../components/Navbar";
 import SouthAmericaHologram from '../components/SouthAmericaHologram';
+import '../assets/Jogar.css'; // Importando o CSS novo
 
 function Jogar() {
     // --- ESTADOS ---
-
-    // 1. CORREÇÃO: Removi o 'setUserName'.
-    // Como só queremos LER o nome para exibir, não precisamos da função de alterar.
-    const [userName] = useState(() => {
-        return localStorage.getItem('userName') || '';
-    });
+    const [userName] = useState(() => localStorage.getItem('userName') || '');
 
     const [gameId, setGameId] = useState(null);
-    const [gameStatus, setGameStatus] = useState('LOBBY');
+    const [gameStatus, setGameStatus] = useState('LOBBY'); // LOBBY, LOADING, PLAYING, GUESSING, FINISHED_ROBOT, REPORT, WAITING_FOR_REVEAL
     const [question, setQuestion] = useState(null);
     const [targetCountry, setTargetCountry] = useState(null);
     const [message, setMessage] = useState('Clique em Iniciar para desafiar o Atlas!');
-    const [mapLocations, setMapLocations] = useState([]); const [countries, setCountries] = useState([]);
+
+    // Estado para o mapa (recebe do backend)
+    const [mapLocations, setMapLocations] = useState([]);
+
+    // Estados para o fluxo de revelação
+    const [countries, setCountries] = useState([]);
     const [selectedCountryId, setSelectedCountryId] = useState("");
 
-    // --- EFEITOS (UseEffect) ---
-
+    // --- EFEITOS ---
     useEffect(() => {
         if (gameStatus === 'WAITING_FOR_REVEAL') {
-
-            // Função definida aqui dentro para não gerar erro de dependência
             const fetchCountries = async () => {
                 try {
                     const response = await api.get('/api/countries');
                     setCountries(response.data);
                 } catch (error) {
                     console.error("Erro ao buscar países", error);
-                    alert("Erro ao carregar lista de países. Verifique a conexão.");
                 }
             };
-
             fetchCountries();
         }
     }, [gameStatus]);
 
     // --- LÓGICA DO JOGO ---
-
     const processResponse = (data) => {
         console.log("Status recebido:", data.status);
 
@@ -73,7 +67,7 @@ function Jogar() {
         }
         else if (data.status === 'ROBOT_WON') {
             setGameStatus('FINISHED_ROBOT');
-            setMessage(data.feedback || "Eu sabia! Sou um gênio!");
+            setMessage(data.feedback || "Zero surpresas! Atlas was born to win");
         }
         else if (data.status === 'REPORT') {
             setGameStatus('REPORT');
@@ -81,11 +75,10 @@ function Jogar() {
         }
     };
 
-    // --- HANDLERS (Ações dos Botões) ---
-
+    // --- HANDLERS ---
     const handleStartGame = async () => {
         setGameStatus('LOADING');
-        setMessage('Carregando...');
+        setMessage('Estabelecendo conexão via satélite...');
         try {
             const response = await api.post('/api/games/start');
             processResponse(response.data);
@@ -123,7 +116,7 @@ function Jogar() {
 
     const handleDenyWin = async () => {
         try {
-            setMessage("Pensando novamente...");
+            setMessage("Recalculando probabilidades...");
             const response = await api.post('/api/games/deny', { gameId: gameId });
             processResponse(response.data);
         } catch (error) {
@@ -151,177 +144,134 @@ function Jogar() {
         setQuestion(null);
         setTargetCountry(null);
         setGameId(null);
+        setMapLocations([]);
         setSelectedCountryId("");
         setTimeout(() => setMessage('Clique em Iniciar para desafiar o Atlas!'), 0);
     };
 
-    // --- RENDERIZAÇÃO (JSX) ---
+    // --- RENDERIZAÇÃO (LAYOUT DIVIDIDO) ---
     return (
         <>
             <Navbar />
-            <div className="main-content">
-                <div className="glass-card" style={{ maxWidth: '800px' }}>
 
-                    <h2 style={{ fontSize: '1.5rem', color: '#b0b0b0', marginBottom: '20px' }}>
-                        {userName ? `Olá, ${userName}!` : 'Desafio Atlas'}
-                    </h2>
+            {/* CONTAINER PRINCIPAL */}
+            <div className="game-container">
 
-                    <div>
+                {/* --- LADO ESQUERDO: CONTROLE E PERGUNTAS --- */}
+                <div className="question-zone">
+
+                    <div className="glass-card question-card">
+
                         {/* 1. LOBBY */}
                         {gameStatus === 'LOBBY' && (
-                            <>
-                                <h1>BEM-VINDO</h1>
-                                <p style={{ fontSize: '1.2rem', color: 'white' }}>{message}</p>
-                                <button className="btn-primary" onClick={handleStartGame}>Iniciar Jogo</button>
-                            </>
-                        )}
-
-                        {/* 2. JOGANDO (Perguntas) */}
-                        {gameStatus === 'PLAYING' && (
-                            <div style={{ display: 'flex', gap: '40px', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
-
-                                {/* --- COLUNA DA ESQUERDA: PERGUNTA (Isso estava faltando!) --- */}
-                                <div style={{ flex: 1, minWidth: '300px' }}>
-                                    <h2 style={{ color: '#00e5ff' }}>PERGUNTA:</h2>
-                                    <p style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'white', margin: '30px 0' }}>
-                                        {message}
-                                    </p>
-                                    <div style={{ display: 'flex', gap: '20px', justifyContent: 'center' }}>
-                                        <button className="btn-primary" style={{ background: '#2ecc71', width: '120px' }} onClick={() => handleAnswer(true)}>Sim 👍</button>
-                                        <button className="btn-primary" style={{ background: '#e74c3c', width: '120px' }} onClick={() => handleAnswer(false)}>Não 👎</button>
-                                    </div>
-                                </div>
-
-                                {/* COLUNA DA DIREITA: MAPA TÁTICO */}
-                                <div style={{ width: '350px', height: '500px', position: 'relative' }}>
-                                    <p style={{ textAlign: 'center', color: '#00e5ff', fontSize: '0.8rem', marginBottom: '10px', letterSpacing: '2px' }}>
-                                        ANÁLISE REGIONAL
-                                    </p>
-
-                                    {/* O Novo Mapa Holográfico 2D */}
-                                    <SouthAmericaHologram activeLocations={mapLocations} />
-                                </div>
-
+                            <div style={{ textAlign: 'center' }}>
+                                <h1 style={{ fontSize: '2rem', color: 'white', marginBottom: '10px' }}>JÁ PENSOU NO PAÍS?</h1>
+                                <p style={{ margin: '20px 0', color: '#ccc' }}>{message}</p>
+                                <button className="btn-primary" onClick={handleStartGame}>INICIAR</button>
                             </div>
                         )}
 
-                        {/* 3. ROBÔ CHUTANDO */}
-                        {gameStatus === 'GUESSING' && (
-                            <>
-                                <h2 style={{ color: '#ff9f43' }}>O ROBÔ ACHA QUE É:</h2>
-                                <h1 style={{ fontSize: '3.5rem', color: 'white', margin: '20px 0', textTransform: 'uppercase' }}>
-                                    {targetCountry}
-                                </h1>
-                                <p>Ele acertou?</p>
+                        {/* 2. LOADING */}
+                        {gameStatus === 'LOADING' && (
+                            <div style={{ textAlign: 'center', padding: '20px' }}>
+                                <div className="spinner" style={{
+                                    width: '40px', height: '40px', border: '4px solid rgba(255,255,255,0.1)',
+                                    borderTop: '4px solid #00e5ff', borderRadius: '50%', margin: '0 auto 20px',
+                                    animation: 'spin 1s linear infinite'
+                                }}></div>
+                                <p style={{ color: '#00e5ff' }}>{message}</p>
+                                <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+                            </div>
+                        )}
+
+                        {/* 3. JOGANDO (A Pergunta) */}
+                        {gameStatus === 'PLAYING' && (
+                            <div>
+                                <h2 style={{ color: '#00e5ff', fontSize: '1rem', letterSpacing: '2px', textTransform: 'uppercase' }}>
+                                    PERGUNTA:
+                                </h2>
+                                <p style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'white', margin: '30px 0', lineHeight: '1.4' }}>
+                                    {message}
+                                </p>
                                 <div style={{ display: 'flex', gap: '20px', justifyContent: 'center' }}>
-                                    <button style={{ background: '#2ecc71' }} onClick={handleConfirmWin}>Sim! 😱</button>
-                                    <button style={{ background: '#e74c3c' }} onClick={handleDenyWin}>Não! 🤣</button>
+                                    <button className="btn-game" style={{ background: '#2ecc71', flex: 1 }} onClick={() => handleAnswer(true)}>
+                                        SIM
+                                    </button>
+                                    <button className="btn-game" style={{ background: '#e74c3c', flex: 1 }} onClick={() => handleAnswer(false)}>
+                                        NÃO
+                                    </button>
                                 </div>
-                            </>
+                            </div>
                         )}
 
-                        {/* 4. ROBÔ DESISTIU (REVELAÇÃO) */}
+                        {/* 4. ROBÔ CHUTANDO */}
+                        {gameStatus === 'GUESSING' && (
+                            <div style={{ textAlign: 'center' }}>
+                                <h2 style={{ color: '#ff9f43', letterSpacing: '2px' }}>ATLAS INFORMA! O PAÍS É:</h2>
+                                <h1 style={{ fontSize: '3rem', margin: '20px 0', color: 'white', textTransform: 'uppercase' }}>{targetCountry}</h1>
+                                <p style={{ marginBottom: '20px' }}>ATLAS ACERTOU?</p>
+                                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                                    <button className="btn-game" style={{ background: '#2ecc71' }} onClick={handleConfirmWin}>OBVIO!</button>
+                                    <button className="btn-game" style={{ background: '#e74c3c' }} onClick={handleDenyWin}>PREPOTENTE, ATLAS ERROU</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 5. WAITING FOR REVEAL (Robô perdeu) */}
                         {gameStatus === 'WAITING_FOR_REVEAL' && (
-                            <>
-                                <h1 style={{ color: '#2ecc71' }}>VOCÊ VENCEU! 🏆</h1>
-                                <p style={{ fontSize: '1.2rem' }}>{message}</p>
-
-                                <div style={{ margin: '30px 0' }}>
-                                    <label style={{ display: 'block', marginBottom: '10px', color: '#b0b0b0' }}>
-                                        Qual era o país que você pensou?
-                                    </label>
-                                    <select
-                                        value={selectedCountryId}
-                                        onChange={(e) => setSelectedCountryId(e.target.value)}
-                                        style={{
-                                            padding: '15px',
-                                            borderRadius: '10px',
-                                            width: '100%',
-                                            maxWidth: '400px',
-                                            color: '#333',
-                                            fontSize: '1rem'
-                                        }}
-                                    >
-                                        <option value="">Selecione na lista...</option>
-                                        {countries.map(c => (
-                                            <option key={c.id} value={c.id}>{c.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <button className="btn-primary" onClick={handleReveal}>
-                                    Verificar e ver Relatório 🕵️‍♂️
-                                </button>
-                            </>
+                            <div style={{ textAlign: 'center' }}>
+                                <h1 style={{ color: '#2ecc71', marginBottom: '10px' }}>VOCÊ VENCEU! 🏆</h1>
+                                <p style={{ marginBottom: '20px' }}>{message}</p>
+                                <select
+                                    className="form-control"
+                                    style={{ width: '100%', padding: '10px', marginBottom: '20px', borderRadius: '5px' }}
+                                    value={selectedCountryId}
+                                    onChange={(e) => setSelectedCountryId(e.target.value)}
+                                >
+                                    <option value="">Selecione o país real...</option>
+                                    {countries.map(c => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                    ))}
+                                </select>
+                                <button className="btn-primary" onClick={handleReveal}>ENVIAR RELATÓRIO</button>
+                            </div>
                         )}
 
-                        {/* 5. RELATÓRIO FINAL */}
+                        {/* 6. REPORT (Fim do jogo) */}
                         {gameStatus === 'REPORT' && (
                             <div style={{ textAlign: 'left' }}>
-                                <h2 style={{ textAlign: 'center', color: '#ff9f43', marginBottom: '20px' }}>
-                                    RELATÓRIO DO DETETIVE 🔍
-                                </h2>
-                                <div style={{
-                                    background: 'rgba(0,0,0,0.3)',
-                                    padding: '20px',
-                                    borderRadius: '10px',
-                                    maxHeight: '300px',
-                                    overflowY: 'auto'
-                                }}>
-                                    <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.8', fontSize: '1rem' }}>
-                                        {message}
-                                    </p>
+                                <h2 style={{ textAlign: 'center', color: '#ff9f43', marginBottom: '20px' }}>RELATÓRIO FINAL</h2>
+                                <div style={{ background: 'rgba(0,0,0,0.3)', padding: '15px', borderRadius: '10px', maxHeight: '200px', overflowY: 'auto' }}>
+                                    <p style={{ whiteSpace: 'pre-wrap' }}>{message}</p>
                                 </div>
-                                <button className="btn-primary" style={{ marginTop: '20px' }} onClick={handlePlayAgain}>
-                                    Jogar Novamente
-                                </button>
+                                <button className="btn-primary" style={{ marginTop: '20px', width: '100%' }} onClick={handlePlayAgain}>JOGAR NOVAMENTE</button>
                             </div>
                         )}
 
-                        {/* 6. ROBÔ VENCEU (FIM DE JOGO) */}
+                        {/* 7. ROBÔ VENCEU */}
                         {gameStatus === 'FINISHED_ROBOT' && (
-                            <>
-                                <h1 style={{ color: '#ff9f43' }}>O ROBÔ VENCEU! 🤖</h1>
+                            <div style={{ textAlign: 'center' }}>
+                                <h1 style={{ color: '#ff9f43' }}>ATLAS WINNER! 🤖</h1>
                                 <p style={{ fontSize: '1.2rem', margin: '20px 0' }}>{message}</p>
-                                <button className="btn-primary" onClick={handlePlayAgain}>
-                                    Jogar Novamente
-                                </button>
-                            </>
-                        )}
-
-                        {/* LOADING GENÉRICO */}
-                        {gameStatus === 'LOADING' && (
-                            <div style={{ padding: '40px' }}>
-                                <div className="spinner" style={{
-                                    width: '40px', height: '40px',
-                                    border: '4px solid rgba(255,255,255,0.3)',
-                                    borderTop: '4px solid #00e5ff',
-                                    borderRadius: '50%',
-                                    animation: 'spin 1s linear infinite',
-                                    margin: '0 auto 20px'
-                                }}></div>
-                                <p>Processando...</p>
-                                <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+                                <button className="btn-primary" onClick={handlePlayAgain}>JOGAR NOVAMENTE</button>
                             </div>
                         )}
 
                     </div>
                 </div>
+
+                {/* --- LADO DIREITO: MAPA HOLOGRÁFICO --- */}
+                <div className="map-zone">
+
+                    {/* O Mapa com tamanho controlado */}
+                    <div style={{ width: '100%', maxWidth: '700px', height: '80%', maxHeight: '800px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                        <SouthAmericaHologram activeLocations={mapLocations} />
+                    </div>
+                </div>
+
             </div>
         </>
     );
 }
-
-// Mapeamento MANUAL temporário (só para testar a feature visual)
-// A chave é o texto da pergunta (ou parte dele) e o valor são os IDs do mapa
-const QUESTION_MAP_DATA = {
-    "Andes": ['cl', 'pe', 'ec', 'co', 'bo', 'ar', 've'], // Países andinos
-    "litoral": ['br', 'uy', 'ar', 'cl', 'pe', 'ec', 'co', 've', 'gy', 'sr', 'gf'], // Tem mar
-    "Brasil": ['br'], // Faz fronteira com Brasil? (teria que ser lógica inversa, mas ok pro teste)
-    "Amazônia": ['br', 'pe', 'co', 've', 'ec', 'bo', 'gy', 'sr', 'gf'],
-    "equador": ['ec', 'br', 'co'], // Passa a linha do equador
-    "pequeno": ['sr', 'gy', 'gf', 'uy', 'ec'],
-    "grande": ['br', 'ar'],
-};
 
 export default Jogar;
