@@ -1,6 +1,5 @@
--- 1. Adiciona as colunas na tabela
-ALTER TABLE countries ADD COLUMN latitude DOUBLE;
-ALTER TABLE countries ADD COLUMN longitude DOUBLE;
+ALTER TABLE countries ADD COLUMN IF NOT EXISTS latitude DOUBLE;
+ALTER TABLE countries ADD COLUMN IF NOT EXISTS longitude DOUBLE;
 
 -- 2. Popula com os dados
 UPDATE countries SET latitude = -14.2350, longitude = -51.9253 WHERE iso_code = 'BR'; -- Brasil
