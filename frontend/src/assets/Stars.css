@@ -82,3 +82,38 @@
         opacity: 1;
     }
 }
+
+/* ===== CORREÇÃO PARA MOBILE ===== */
+/* Reduz o tamanho do background para evitar overflow horizontal */
+
+@media (max-width: 768px) {
+    .stars {
+        background-size: 300px 300px;
+        /* Reduzido de 500px */
+    }
+
+    .stars2 {
+        background-size: 250px 250px;
+        /* Reduzido de 400px */
+    }
+
+    .stars3 {
+        background-size: 350px 350px;
+        /* Reduzido de 600px */
+    }
+}
+
+@media (max-width: 480px) {
+    .stars {
+        background-size: 200px 200px;
+        /* Ainda menor para mobile pequeno */
+    }
+
+    .stars2 {
+        background-size: 180px 180px;
+    }
+
+    .stars3 {
+        background-size: 250px 250px;
+    }
+}
