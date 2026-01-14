@@ -17,15 +17,23 @@
   box-sizing: border-box;
 }
 
+html {
+  background: #000000 !important;
+  background-color: #000000 !important;
+}
+
 body {
   font-family: var(--font-main);
   /* Fundo espacial escuro limpo (as estrelas virão do Stars.css) */
-  background: linear-gradient(to bottom, #050505 0%, #0a0a0f 50%, #050505 100%);
+  background: linear-gradient(to bottom, #050505 0%, #0a0a0f 50%, #050505 100%) !important;
   background-attachment: fixed;
+  background-color: #000000 !important;
   color: var(--text-white);
   min-height: 100vh;
   overflow-x: hidden;
   position: relative;
+  -webkit-background-size: cover;
+  background-size: cover;
 }
 
 /* Overlay animado para dar vida ao fundo */
@@ -42,6 +50,13 @@ body::before {
   animation: nebulaFloat 60s ease-in-out infinite alternate;
   pointer-events: none;
   z-index: 0;
+}
+
+/* Garante que o root também tenha fundo preto */
+#root {
+  background: transparent;
+  min-height: 100vh;
+  position: relative;
 }
 
 /* =========================================
