@@ -1,38 +1,43 @@
-# 🌍 Atlas4Me - Jogo Educativo de Geografia
+# 🌍 Atlas4Me — Jogo Educativo de Geografia
 
-> Descubra países da América do Sul através de perguntas estratégicas! Um jogo estilo Akinator focado em geografia, construído com React e Spring Boot.
+> Descubra países da América do Sul através de perguntas estratégicas! Um jogo estilo Akinator focado em geografia, construído com React 19 e Spring Boot 3.2.
 
 [![Java](https://img.shields.io/badge/Java-21-orange.svg)](https://www.oracle.com/java/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
-[![React](https://img.shields.io/badge/React-19.2.0-blue.svg)](https://reactjs.org/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.x-brightgreen.svg)](https://spring.io/projects/spring-boot)
+[![React](https://img.shields.io/badge/React-19.x-blue.svg)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-7.x-purple.svg)](https://vitejs.dev/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
 ## 📖 Sobre o Projeto
 
-**Atlas4Me** é uma aplicação web educativa que gamifica o aprendizado de geografia, inspirada no famoso Akinator. O jogador **pensa em um país** da América do Sul e o sistema tenta adivinhar através de perguntas inteligentes.
+**Atlas4Me** é uma aplicação web educativa que gamifica o aprendizado de geografia da **América do Sul**, inspirada no famoso Akinator. O jogador **pensa em um país** e o sistema tenta adivinhar através de perguntas inteligentes sobre características geográficas, culturais, econômicas e visuais.
 
 ### 🎯 Como Funciona
 
-1. **Jogador pensa** em um país secreto dos 13 da América do Sul (não revela!)
-2. **Sistema faz perguntas** com respostas SIM ou NÃO (ex: "Fala Espanhol?", "Tem litoral?")
-3. **Jogador responde** honestamente sobre o país que pensou
-4. **Sistema filtra** países candidatos baseado nas respostas
-5. **Sistema tenta adivinhar** quando restarem poucos países
-6. **Sistema pontua** baseado em quantas tentativas precisou (menos é melhor)
+1. **Jogador pensa** em um dos 13 países da América do Sul — sem revelar!
+2. **Sistema faz perguntas** com respostas SIM ou NÃO ("Fala Espanhol?", "Tem litoral?")
+3. **Jogador responde** honestamente sobre o país que está pensando
+4. **Sistema elimina** progressivamente os países que não correspondem às respostas
+5. **Sistema tenta adivinhar** quando restam poucos candidatos
+6. **Jogador confirma ou nega** — caso o robô desista, o jogador revela o país
+7. **Sistema calcula pontuação** e registra no histórico de partidas
 
 ### ✨ Funcionalidades
 
-- ✅ **Autenticação JWT** - Login seguro com tokens
-- ✅ **Algoritmo Inteligente** - Filtragem progressiva de países
-- ✅ **Sistema de Pontuação** - Ranking global de jogadores
-- ✅ **16 Perguntas Estratégicas** - Geografia, cultura, bandeiras
-- ✅ **13 Países** - Todos da América do Sul
-- ✅ **Feedback Educativo** - Mostra onde você errou
-- ✅ **Histórico de Partidas** - Reveja seus jogos anteriores
-- ✅ **Design Responsivo** - Funciona em desktop e mobile
-- ✅ **Modo Visitante** - Jogue sem precisar criar conta
+| Feature | Status |
+|---|---|
+| Autenticação JWT (Login / Cadastro) | ✅ |
+| Modo Visitante (jogan sem conta) | ✅ |
+| Algoritmo inteligente de filtragem progressiva | ✅ |
+| 13 países da América do Sul | ✅ |
+| 16 perguntas estratégicas (geo, cultura, bandeira, economia) | ✅ |
+| Sistema de pontuação (100 pts, −10 por erro do robô) | ✅ |
+| Perfil do jogador com histórico de partidas | ✅ |
+| Tema espacial com estrelas animadas e componentes 3D | ✅ |
+| Design responsivo (desktop e mobile) | ✅ |
+| Deploy Railway (backend) + Vercel (frontend) | ✅ |
 
 ---
 
@@ -40,38 +45,29 @@
 
 ```
 Atlas4Me/
-├── backend/           # API REST Spring Boot
-│   ├── Java 21
-│   ├── Spring Security + JWT
-│   ├── Spring Data JPA
-│   ├── Flyway Migrations
-│   └── MySQL Database (Port 3307)
+├── backend/         # API REST — Java 21 + Spring Boot 3.2
+│   ├── config/      # JWT + Security + Swagger
+│   ├── controller/  # AuthController, GameController, CountryController
+│   ├── service/     # Lógica de negócio + algoritmo do jogo
+│   ├── entity/      # User, Country, GameSession, GameAttempt, Question...
+│   ├── repository/  # Spring Data JPA
+│   ├── dto/         # Request/Response DTOs
+│   └── exception/   # GlobalExceptionHandler
 │
-└── frontend/          # SPA React
-    ├── React 19 + Vite
-    ├── React Router
-    ├── Axios HTTP Client
-    └── CSS3 Moderno
+├── frontend/        # SPA — React 19 + Vite 7
+│   ├── pages/       # Home, Login, Cadastro, ComoJogar, Jogar, Perfil
+│   ├── components/  # Navbar, GameGlobe, Planet3D, SouthAmericaHologram
+│   ├── services/    # api.js (Axios + interceptors JWT)
+│   └── assets/      # CSS (glassmorphism, Stars, tema espacial)
+│
+└── docker-compose.yml  # MySQL + Backend + Frontend
 ```
 
-### Tecnologias Utilizadas
+### Tecnologias
 
-**Backend:**
-- Java 21
-- Spring Boot 3.2.0
-- Spring Security (JWT)
-- Spring Data JPA
-- Flyway
-- MySQL Database (Port 3307)
-- Lombok
-- Maven
+**Backend:** Java 21 · Spring Boot 3.2 · Spring Security · JWT · Spring Data JPA · Hibernate · MySQL 8.0 · Flyway · Lombok · Springdoc OpenAPI · Maven
 
-**Frontend:**
-- React 19.2.0
-- Vite 7.2.4
-- React Router DOM 7.10.1
-- Axios 1.13.2
-- CSS3 (sem frameworks)
+**Frontend:** React 19 · Vite 7 · React Router DOM 7 · Axios · CSS3 Puro
 
 ---
 
@@ -81,60 +77,62 @@ Atlas4Me/
 
 - **Java 21+** ([Download](https://www.oracle.com/java/technologies/downloads/))
 - **Node.js 18+** ([Download](https://nodejs.org/))
-- **Maven 3.8+** (incluído no wrapper)
-- **Git**
+- **Docker + Docker Compose** (para banco de dados local)
+- **Maven 3.8+** (incluído no wrapper `./mvnw`)
 
 ### 1️⃣ Clone o Repositório
 
 ```bash
-git clone https://github.com/seu-usuario/atlas4me-react.git
-cd atlas4me-react
+git clone https://github.com/Danlopesz/Atlas4me-React.git
+cd Atlas4me-React
 ```
 
-### 2️⃣ Executar Backend
+### 2️⃣ Suba o Banco de Dados
+
+```bash
+# Inicia apenas o MySQL (porta 3307)
+docker-compose up atlas_db -d
+```
+
+Ou suba tudo com Docker:
+
+```bash
+docker-compose up --build
+```
+
+### 3️⃣ Execute o Backend
 
 ```bash
 cd backend
-
-# Instalar dependências e compilar
-mvn clean install
-
-# Executar aplicação
 mvn spring-boot:run
 
-# Backend rodando em http://localhost:5202
+# Backend disponível em: http://localhost:5202
 ```
 
-**Verificar se está funcionando:**
+**Verificar:**
 ```bash
 curl http://localhost:5202/api/countries
-# Deve retornar JSON com lista de países
+# Deve retornar JSON com os 13 países
 ```
 
-**Acessar Banco MySQL (via DBeaver ou outro cliente):**
-- Host: `localhost:3307`
-- Database: `atlas4me`
-- Username: `root`
-- Password: `atlas`
+**Credenciais do banco local:**
+- Host: `localhost:3307` · Database: `atlas4me`
+- Username: `atlas_user` · Password: `atlas_password`
 
-### 3️⃣ Executar Frontend
+### 4️⃣ Execute o Frontend
 
 ```bash
 # Em outro terminal
 cd frontend
-
-# Instalar dependências
 npm install
-
-# Executar em modo desenvolvimento
 npm run dev
 
-# Frontend rodando em http://localhost:5173
+# Frontend disponível em: http://localhost:5173
 ```
 
-### 4️⃣ Acessar Aplicação
+### 5️⃣ Acesse a Aplicação
 
-Abra seu navegador em: **http://localhost:5173**
+Abra: **http://localhost:5173**
 
 ---
 
@@ -142,260 +140,162 @@ Abra seu navegador em: **http://localhost:5173**
 
 1. **Cadastre-se**, faça **Login** ou jogue como **Visitante**
 2. Clique em **"Jogar"**
-3. **PENSE em um país** da América do Sul (Brasil, Argentina, Chile, etc.) - **NÃO REVELE!**
-4. **Sistema faz perguntas** sobre o país que você pensou:
-   - "O país fala Espanhol?" → Você responde: SIM ou NÃO
-   - "Tem saída para o mar?" → Você responde: SIM ou NÃO
-   - "A Cordilheira dos Andes passa por ele?" → Você responde: SIM ou NÃO
-5. **Responda honestamente** sobre o país que você pensou
-6. Observe o sistema **eliminar países** que não correspondem às suas respostas
-7. Quando o sistema tiver certeza, ele **tentará adivinhar** o país!
-8. Se errar, ele tenta novamente até acertar ou desistir
-9. Pontuação: Quanto menos tentativas o sistema precisar, melhor para ele (e pior para você!) 🏆
+3. **PENSE em um país** da América do Sul — **NÃO REVELE!**
+4. O sistema faz perguntas — responda **SIM** ou **NÃO** honestamente
+5. Observe os países candidatos serem eliminados
+6. Quando o robô tiver um palpite, **confirme** ou **negue**
+7. Se o robô desistir, **revele** o país que pensou
+8. Veja sua pontuação e histórico no **Perfil** 🏆
 
-### Dicas para Vencer o Sistema
+### Sistema de Pontuação
 
-💡 **Pense em países menos óbvios:**
-- Países pequenos como Suriname ou Guiana são mais difíceis de adivinhar
-
-💡 **Responda com atenção:**
-- Um erro seu pode confundir o algoritmo e fazer você perder
-
-💡 **Conheça bem o país:**
-- Sistema pergunta sobre: geografia, cultura, bandeira, idioma, economia
+| Evento | Pontuação |
+|---|---|
+| Início da partida | 100 pts |
+| Cada erro do robô (palpite negado) | −10 pts |
+| Robô adivinhou (`ROBOT_WON`) | Score acumulado conforme erros |
+| Jogador venceu (`HUMAN_WON`) | 100 pts |
 
 ---
 
-## 📊 Estrutura do Banco de Dados
+## 📊 Banco de Dados
 
-### Entidades Principais
+### Schema (6 tabelas + 1 join table)
 
+| Tabela | Função |
+|---|---|
+| `users` | Jogadores cadastrados |
+| `countries` | 13 países da América do Sul (com lat/lon) |
+| `questions` | 16 perguntas do jogo |
+| `country_features` | Gabarito: País × Pergunta × Resposta |
+| `game_sessions` | Partidas individuais |
+| `game_attempts` | Log de cada resposta do jogador |
+| `game_session_rejected` | Países que o robô tentou e errou |
+
+### Migrations Flyway
+
+| Versão | Descrição |
+|---|---|
+| V1 | Criação de todas as tabelas |
+| V2 | Dados iniciais (países + perguntas + gabarito) |
+| V3 | Latitude e longitude nos países |
+| V4 | ISO code nas country_features |
+
+---
+
+## 📡 API Endpoints
+
+### Autenticação (Público)
 ```
-User ──(1:N)──> GameSession ──(1:N)──> GameAttempt
-                     │
-                     └──(N:1)──> Country
-                                    │
-                                    └──(1:N)──> CountryFeature ──(N:1)──> Question
+POST /api/auth/register  →  Cadastro de usuário
+POST /api/auth/login     →  Login + geração de JWT
 ```
 
-**6 Tabelas:**
-1. **users** - Jogadores cadastrados
-2. **game_sessions** - Partidas individuais
-3. **game_attempts** - Log de cada resposta
-4. **countries** - Países do jogo
-5. **questions** - Perguntas disponíveis
-6. **country_features** - Matriz (País × Pergunta × Resposta)
+### Jogo (Público — suporta visitante)
+```
+POST /api/games/start    →  Iniciar nova partida
+POST /api/games/answer   →  Responder pergunta
+POST /api/games/deny     →  Negar palpite do robô
+POST /api/games/confirm  →  Confirmar palpite do robô
+POST /api/games/reveal   →  Revelar país pensado
+GET  /api/games/history  →  Histórico de partidas
+```
+
+### Países (Público)
+```
+GET  /api/countries      →  Listar todos os países
+```
 
 ---
 
 ## 🔐 Segurança
 
-- **Autenticação:** JWT (JSON Web Tokens)
+- **Autenticação:** JWT (HS256, expiração 24h)
 - **Senhas:** Criptografadas com BCrypt
-- **CORS:** Configurado para permitir frontend
-- **SQL Injection:** Protegido pelo JPA/Hibernate
-- **XSS:** Headers de segurança configurados
-- **Token Expiration:** 24 horas (configurável)
-
----
-
-## 📚 Documentação
-
-- 📖 [**Documentação Completa**](DOCUMENTACAO_COMPLETA.md) - Guia técnico detalhado
-- 🔧 [**Backend README**](backend/README.md) - API REST e arquitetura
-- 🎨 [**Frontend README**](frontend/README.md) - Interface React
-- 📊 [**Migrations SQL**](backend/src/main/resources/db/migration/) - Schema do banco
-
-### Endpoints da API
-
-**Autenticação:**
-```
-POST /api/auth/register  - Cadastro de usuário
-POST /api/auth/login     - Login e geração de JWT
-```
-
-**Jogo:**
-```
-POST /api/game/start     - Iniciar nova partida
-POST /api/game/answer    - Responder pergunta
-GET  /api/game/history   - Histórico de jogos
-POST /api/game/deny      - Negar palpite do robô
-POST /api/game/confirm   - Confirmar palpite do robô
-POST /api/game/reveal    - Revelar resposta correta
-```
-
-**Países:**
-```
-GET  /api/countries      - Listar todos os países
-```
-
----
-
-## 🧪 Testes
-
-### Backend
-
-```bash
-cd backend
-
-# Executar todos os testes
-mvn test
-
-# Executar com coverage
-mvn test jacoco:report
-
-# Ver relatório em:
-# target/site/jacoco/index.html
-```
-
-### Frontend
-
-```bash
-cd frontend
-
-# Testes (a implementar)
-npm run test
-```
+- **CORS:** Configurado para frontend local e produção
+- **SQL Injection:** Protegido via JPA/Hibernate
+- **Stateless:** Backend sem sessão HTTP — escala horizontalmente
+- **Swagger:** Desabilitado em produção por padrão
 
 ---
 
 ## 📦 Build para Produção
 
-### Backend
+### Backend (JAR)
 
 ```bash
 cd backend
-
-# Gerar JAR executável
 mvn clean package -DskipTests
-
-# JAR em: target/atlas4me-backend-1.0.0.jar
-
-# Executar
-java -jar target/atlas4me-backend-1.0.0.jar
+java -jar target/atlas4me-backend-*.jar
 ```
 
-### Frontend
+### Frontend (dist/)
 
 ```bash
 cd frontend
-
-# Build otimizado
 npm run build
-
-# Arquivos em: dist/
-
-# Testar build localmente
-npm run preview
+npm run preview   # Testar localmente → http://localhost:4173
 ```
 
-### Docker (Opcional)
+### Deploy Completo
 
-```bash
-# Backend
-docker build -t atlas4me-backend ./backend
-docker run -p 5202:5202 atlas4me-backend
+- **Backend:** Railway (via Dockerfile em `./backend`)
+- **Frontend:** Vercel (via `vercel.json` na raiz)
 
-# Frontend
-docker build -t atlas4me-frontend ./frontend
-docker run -p 5173:5173 atlas4me-frontend
-```
+---
+
+## 📚 Documentação
+
+| Documento | Conteúdo |
+|---|---|
+| [**ARCHITECTURE.md**](ARCHITECTURE.md) | Arquitetura detalhada, modelo de dados, fluxos e decisões técnicas |
+| [**backend/README.md**](backend/README.md) | API REST, endpoints, autenticação JWT, configurações |
+| [**backend/ESTRUTURA.md**](backend/ESTRUTURA.md) | Estrutura de pacotes e arquivos do backend |
+| [**frontend/README.md**](frontend/README.md) | Páginas, componentes, estilos e fluxo de navegação |
 
 ---
 
 ## 🌱 Roadmap
 
-### Versão 1.0 ✅ (Atual)
-- [x] Sistema de autenticação JWT
-- [x] Algoritmo de filtragem de países
-- [x] 13 países da América do Sul
-- [x] 16 perguntas estratégicas
-- [x] Sistema de pontuação
-- [x] Interface responsiva
-- [x] Modo Visitante
+### Versão Atual ✅
 
-### Versão 1.1 🔄 (Em Progresso)
-- [ ] Migrar frontend para TypeScript
-- [ ] Adicionar testes unitários
-- [ ] Implementar cache Redis
-- [ ] Dark mode
-- [ ] Implementar features de Usuario
+- [x] Autenticação JWT + modo visitante
+- [x] Algoritmo de filtragem progressiva (Akinator)
+- [x] 13 países, 16 perguntas
+- [x] Ciclo completo: start → answer → deny/confirm → reveal
+- [x] Perfil com histórico de partidas
+- [x] Tema espacial com estrelas + componentes 3D
+- [x] Deploy Railway + Vercel
 
+### Próximas Versões 🔄
 
-### Versão 2.0 🔮 (Futuro)
-- [ ] Modo multiplayer online
+- [ ] Migrar frontend para **TypeScript**
+- [ ] **Ranking global** de jogadores
+- [ ] Substituir `alert()` por **toast notifications**
+- [ ] Testes unitários (Vitest + JUnit)
+- [ ] **PWA** (Progressive Web App)
 - [ ] Novos continentes (Europa, Ásia, África)
-- [ ] Sistema de conquistas
-- [ ] Chat em tempo real
-- [ ] PWA (modo offline)
-- [ ] Analytics e métricas
-
----
-### Padrões de Código
-
-- **Backend:** Seguir convenções Java/Spring Boot
-- **Frontend:** ESLint configurado
-- **Commits:** [Conventional Commits](https://www.conventionalcommits.org/)
-  - `feat:` Nova funcionalidade
-  - `fix:` Correção de bug
-  - `docs:` Documentação
-  - `refactor:` Refatoração
-  - `test:` Testes
 
 ---
 
 ## 🐛 Problemas Conhecidos
 
-- [ ] Navegador mobile: botões pequenos (melhorar UX)
-- [ ] Alert() nativo: substituir por toast notifications
-- [ ] Sem suporte a múltiplas sessões simultâneas
-- [ ] Validação de email duplicado: melhorar mensagem de erro
-
-**Reporte bugs em:** [GitHub Issues](https://github.com/seu-usuario/atlas4me-react/issues)
+- [ ] Menu mobile: sem hambúrguer (layout simplificado)
+- [ ] Histórico de datas na página Perfil exibe "Recente" (sem timestamp formatado)
+- [ ] Sem suporte a múltiplas sessões simultâneas por usuário logado
 
 ---
 
 ## 📄 Licença
 
-Este projeto está sob a licença **MIT**. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+Este projeto está sob a licença **MIT**. Veja [LICENSE](LICENSE) para detalhes.
 
 ---
 
-## 👨‍💻 Autores
+## 👨‍💻 Autor
 
-- **Daniel Lopes** - Desenvolvimento Full Stack 
-
----
-
-## 📞 Contato
-
-- **Email:** suporte@atlas4me.com
-- **Issues:** https://github.com/seu-usuario/atlas4me-react/issues
-- **Discussões:** https://github.com/seu-usuario/atlas4me-react/discussions
+**Daniel Lopes** — Desenvolvimento Full Stack
 
 ---
 
-## ⭐ Agradecimentos
-
-- **Spring Initializr** - Bootstrap do projeto backend
-- **Vite** - Build tool rápido e moderno
-- **ChatGPT** - Assistência em documentação
-- **Comunidade Open Source** - Bibliotecas incríveis
-
----
-
-## 📊 Estatísticas do Projeto
-
-- **Backend:** ~4.500 linhas de código Java
-- **Frontend:** ~2.000 linhas de código React/CSS
-- **Banco de Dados:** 6 tabelas, 16 perguntas, 13 países
-- **API Endpoints:** 9 principais
-- **Tempo de Desenvolvimento:** ~2 meses
-
----
-
-**🎮 Divirta-se aprendendo geografia! 🌎**
-
----
-
-*Última atualização: Dezembro 2025*
+*Última atualização: Fevereiro 2026*

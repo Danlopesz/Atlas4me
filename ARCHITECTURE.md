@@ -1,631 +1,414 @@
-# 📖 ARCHITECTURE - Atlas4Me
+# 🏗️ ARCHITECTURE — Atlas4Me
 
-> Guia detalhado de arquitetura, funcionamento e decisões técnicas do projeto Atlas4Me - Um jogo educativo de adivinhação de países estilo Akinator.
+> Guia técnico detalhado de arquitetura, decisões de design e funcionamento interno do projeto Atlas4Me — jogo educativo de adivinhação de países da América do Sul, estilo Akinator.
 
 ---
 
 ## 📑 Índice
 
 1. [Visão Geral do Sistema](#-visão-geral-do-sistema)
-2. [Arquitetura Completa](#-arquitetura-completa)
-3. [Modelo de Dados Detalhado](#-modelo-de-dados-detalhado)
-4. [Fluxo Completo do Jogo](#-fluxo-completo-do-jogo)
-5. [Algoritmo de Filtragem](#-algoritmo-de-filtragem)
-6. [Sistema de Autenticação JWT](#-sistema-de-autenticação-jwt)
-7. [Análise de Redundâncias](#-análise-de-redundâncias)
-8. [Decisões Técnicas](#-decisões-técnicas)
-9. [Melhorias Futuras](#-melhorias-futuras)
+2. [Stack Completo](#-stack-completo)
+3. [Arquitetura Full Stack](#-arquitetura-full-stack)
+4. [Modelo de Dados Detalhado](#-modelo-de-dados-detalhado)
+5. [Fluxo Completo do Jogo](#-fluxo-completo-do-jogo)
+6. [Algoritmo de Filtragem Progressiva](#-algoritmo-de-filtragem-progressiva)
+7. [Sistema de Autenticação JWT](#-sistema-de-autenticação-jwt)
+8. [Modo Visitante](#-modo-visitante)
+9. [Componentes Visuais Especiais](#-componentes-visuais-especiais)
+10. [Análise de Decisões Técnicas](#-análise-de-decisões-técnicas)
+11. [Infraestrutura e Deploy](#-infraestrutura-e-deploy)
 
 ---
 
 ## 🎯 Visão Geral do Sistema
 
-### O Problema que Resolve
+### Problema Resolvido
 
-Educação geográfica de forma **gamificada** e **interativa**, transformando o aprendizado sobre países da América do Sul em uma experiência divertida similar ao famoso jogo Akinator.
+Ensinar geografia de forma **gamificada** e **interativa**. O Atlas4Me transforma o aprendizado sobre os 13 países da América do Sul em uma experiência divertida — similar ao Akinator, mas com foco educativo.
 
 ### Funcionamento Básico
 
 ```
-1. JOGADOR pensa em um país da América do Sul (sem revelar ao sistema)
-2. SISTEMA faz perguntas sobre características do país
-   • "O país fala Espanhol?" → Jogador responde SIM ou NÃO
-   • "O país tem litoral?" → Jogador responde SIM ou NÃO
-3. Sistema ELIMINA países que não correspondem às respostas
-4. Sistema continua perguntando até restar poucos países
-5. Sistema TENTA ADIVINHAR: "Você pensou no Brasil?"
-6. Jogador confirma ou nega, sistema calcula pontuação
+1. JOGADOR  →  pensa em um país da América do Sul (não revela)
+2. SISTEMA  →  faz perguntas ("Fala Espanhol?", "Tem litoral?")
+3. JOGADOR  →  responde SIM ou NÃO honestamente
+4. SISTEMA  →  elimina países que não encaixam nas respostas
+5. SISTEMA  →  propõe um palpite quando poucos países restam
+6. JOGADOR  →  confirma ou nega; ao final revela o país
+7. SISTEMA  →  calcula pontuação e registra no histórico
 ```
 
-### Diferencial
+### Diferenciais
 
-- ✅ Algoritmo inteligente de eliminação progressiva
-- ✅ Sistema que "aprende" e adivinha como o Akinator
-- ✅ Base de conhecimento extensível (16 perguntas × 13 países)
-- ✅ Feedback educativo ao final (mostra as características do país)
-- ✅ Ranking global de jogadores vs sistema
-- ✅ Jogador pode vencer o sistema escolhendo países difíceis
+- ✅ Algoritmo de eliminação progressiva (similar ao Akinator)
+- ✅ Suporte a **Visitantes** — joga sem criar conta
+- ✅ **Perfil** com histórico e estatísticas de partidas
+- ✅ Base de conhecimento normalizada (País × Pergunta × Resposta)
+- ✅ Feedback educativo ao final de cada partida
+- ✅ Tema visual imersivo com estrelas animadas e componentes 3D
+- ✅ Deploy via Railway (backend) + Vercel (frontend)
 
 ---
 
-## 🏗️ Arquitetura Completa
+## 💻 Stack Completo
 
-### Stack Full Stack
+### Backend
+
+| Tecnologia | Versão | Função |
+|---|---|---|
+| Java | 21 | Linguagem principal |
+| Spring Boot | 3.2.x | Framework web e IoC |
+| Spring Security | 6.x | Autenticação e autorização |
+| JWT (JJWT) | — | Tokens stateless HS256 |
+| Spring Data JPA + Hibernate | — | ORM e acesso a dados |
+| MySQL | 8.0 | Banco relacional |
+| Flyway | 10.x | Migrations versionadas (4 versões) |
+| Springdoc OpenAPI | — | Swagger UI (habilitável por env var) |
+| Lombok | — | Redução de boilerplate |
+| Maven | 3.8+ | Build e dependências |
+
+### Frontend
+
+| Tecnologia | Versão | Função |
+|---|---|---|
+| React | 19.x | Biblioteca de UI |
+| Vite | 7.x | Build tool + HMR |
+| React Router DOM | 7.x | SPA routing |
+| Axios | 1.x | HTTP client + interceptors |
+| CSS3 Puro | — | Estilização (glassmorphism + animações) |
+
+### Infraestrutura
+
+| Serviço | Ambiente | Tecnologia |
+|---|---|---|
+| Database | Local | Docker (MySQL 8.0 na porta 3307) |
+| Backend | Local | `mvn spring-boot:run` (porta 5202) |
+| Frontend | Local | `npm run dev` (porta 5173) |
+| Database | Produção | Railway MySQL |
+| Backend | Produção | Railway (container Docker) |
+| Frontend | Produção | Vercel |
+
+---
+
+## 🏗️ Arquitetura Full Stack
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │                        FRONTEND                              │
-│  React 19 + Vite + React Router + Axios                     │
-│  Port: 5173 (dev) | Deployment: Vercel/Netlify              │
+│  React 19 + Vite 7 + React Router 7 + Axios                 │
+│  Port: 5173 (dev)  |  Vercel (prod)                         │
+│                                                              │
+│  Páginas: Home • Login • Cadastro • ComoJogar • Jogar • Perfil │
+│  Components: Navbar • GameGlobe • Planet3D • SouthAmericaHologram │
 └────────────────────┬─────────────────────────────────────────┘
-                     │
-                     │ HTTP REST API
-                     │ JWT Bearer Token
-                     │ JSON Payloads
+                     │ HTTP REST / JSON
+                     │ Authorization: Bearer <JWT>
                      │
 ┌────────────────────▼─────────────────────────────────────────┐
 │                        BACKEND                               │
-│  Spring Boot 3.2 + Spring Security + JWT                    │
-│  Port: 5202 | Deployment: AWS/Railway/Render                │
+│  Spring Boot 3.2  |  Port: 5202  |  Railway (prod)          │
 │                                                              │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │  Controller Layer                                      │ │
-│  │  • AuthController   • GameController                   │ │
-│  │  • CountryController                                   │ │
-│  └──────────────────┬─────────────────────────────────────┘ │
-│                     │                                        │
-│  ┌──────────────────▼─────────────────────────────────────┐ │
-│  │  Service Layer (Business Logic)                        │ │
-│  │  • LoginService         • RegisterService              │ │
-│  │  • GameService          • CountryService               │ │
-│  │  • CustomUserDetailsService                            │ │
-│  └──────────────────┬─────────────────────────────────────┘ │
-│                     │                                        │
-│  ┌──────────────────▼─────────────────────────────────────┐ │
-│  │  Repository Layer (Data Access)                        │ │
-│  │  Spring Data JPA Repositories                          │ │
-│  └──────────────────┬─────────────────────────────────────┘ │
-│                     │                                        │
-│  ┌──────────────────▼─────────────────────────────────────┐ │
-│  │  Security Layer                                        │ │
-│  │  • JwtAuthenticationFilter                             │ │
-│  │  • JwtTokenProvider                                    │ │
-│  │  • SecurityConfig                                      │ │
-│  └────────────────────────────────────────────────────────┘ │
-└────────────────────┬─────────────────────────────────────────┘
-                     │
-                     │ JDBC
-                     │ Flyway Migrations
-                     │
-┌────────────────────▼─────────────────────────────────────────┐
-│                    DATABASE LAYER                            │
-│                     MySQL (prod)                             │
-│  • Flyway versionamento automático                           │
-│  • 6 tabelas principais + 1 join table                       │
-└──────────────────────────────────────────────────────────────┘
-```
-
-### Comunicação Entre Camadas
-
-```
-Frontend → Backend:
-  POST /api/auth/login
-  Body: { "email": "user@email.com", "password": "123456" }
-  ↓
-  AuthController.login(LoginRequest)
-  ↓
-  LoginService.authenticate(email, password)
-  ↓
-  UserRepository.findByEmail(email)
-  ↓
-  Database SELECT
-  ↓
-  JwtTokenProvider.generateToken(user)
-  ↓
-  Response: { "token": "eyJhbG...", "userId": 1, ... }
-  ↓
-Frontend armazena token e usa em requests subsequentes
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │  CONFIG LAYER                                           │ │
+│  │  JwtAuthenticationFilter • JwtTokenProvider            │ │
+│  │  SecurityConfig (CORS + Auth rules) • SwaggerConfig    │ │
+│  └──────────────────────┬──────────────────────────────────┘ │
+│                         │                                    │
+│  ┌──────────────────────▼──────────────────────────────────┐ │
+│  │  PRESENTATION LAYER (Controllers)                       │ │
+│  │  AuthController  →  /api/auth/*                        │ │
+│  │  GameController  →  /api/games/*                       │ │
+│  │  CountryController → /api/countries                    │ │
+│  └──────────────────────┬──────────────────────────────────┘ │
+│                         │                                    │
+│  ┌──────────────────────▼──────────────────────────────────┐ │
+│  │  APPLICATION LAYER (Services)                           │ │
+│  │  LoginService • RegisterService                        │ │
+│  │  GameService (algoritmo + ciclo de vida)               │ │
+│  │  CountryService • CustomUserDetailsService             │ │
+│  └──────────────────────┬──────────────────────────────────┘ │
+│                         │                                    │
+│  ┌──────────────────────▼──────────────────────────────────┐ │
+│  │  DOMAIN LAYER (Entities + Enums)                        │ │
+│  │  User • Country • Question • CountryFeature             │ │
+│  │  GameSession • GameAttempt • GameStatus                 │ │
+│  └──────────────────────┬──────────────────────────────────┘ │
+│                         │                                    │
+│  ┌──────────────────────▼──────────────────────────────────┐ │
+│  │  INFRASTRUCTURE (Repositories + Exception Handlers)     │ │
+│  │  *Repository (JpaRepository) • GlobalExceptionHandler   │ │
+│  └──────────────────────┬──────────────────────────────────┘ │
+└─────────────────────────┼────────────────────────────────────┘
+                          │ JDBC + Flyway Migrations
+                          ▼
+          ┌───────────────────────────────────────┐
+          │          DATABASE (MySQL 8.0)          │
+          │  6 tabelas + 1 join table              │
+          │  4 migrations Flyway versionadas       │
+          └───────────────────────────────────────┘
 ```
 
 ---
 
 ## 📊 Modelo de Dados Detalhado
 
-### Diagrama Completo com Cardinalidades
+### Diagrama Completo
 
 ```
-                         ┌─────────────────────┐
-                         │       User          │
-                         │  (Jogador/Admin)    │
-                         ├─────────────────────┤
-                         │ PK: id              │
-                         │ UK: email           │
-                         │     firstName       │
-                         │     lastName        │
-                         │     password (hash) │
-                         │     totalScore      │◄─── Soma de todos os jogos
-                         │     gamesPlayed     │◄─── COUNT(sessions finalizadas)
-                         │     role (enum)     │◄─── USER | ADMIN
-                         │     active          │◄─── Soft delete
-                         │     createdAt       │
-                         │     updatedAt       │
-                         └──────────┬──────────┘
-                                    │ 1
-                                    │
-                                    │ N (um usuário tem muitas sessões)
-                         ┌──────────▼──────────┐
-                         │   GameSession       │
-                         │  (Partida única)    │
-                         ├─────────────────────┤
-                         │ PK: id              │
-                         │ FK: user_id         │
-                         │ FK: target_country  │◄─── País secreto sorteado
-                         │     status (enum)   │◄─── IN_PROGRESS|ROBOT_WON|HUMAN_WON...
-                         │     score           │◄─── 100 - (erros × 10)
-                         │     attempts        │◄─── Contador de tentativas
-                         │     startedAt       │
-                         │     finishedAt      │◄─── NULL se em andamento
-                         └──────────┬──────────┘
-                                    │ 1
-                                    │
-                                    │ N (uma sessão tem muitas tentativas)
-                         ┌──────────▼──────────┐
-                         │   GameAttempt       │
-                         │  (Log de resposta)  │
-                         ├─────────────────────┤
-                         │ PK: id              │
-                         │ FK: session_id      │
-                         │ FK: question_id     │◄─── Qual pergunta foi feita
-                         │     userAnswer      │◄─── TRUE (SIM) | FALSE (NÃO)
-                         │     isCorrect       │◄─── Se ajudou ou atrapalhou
-                         │     attemptedAt     │
-                         └─────────────────────┘
-
-
-     ┌──────────────────────┐
-     │      Country         │
-     │  (País do jogo)      │
-     ├──────────────────────┤
-     │ PK: id               │
-     │ UK: name             │◄─── "Brasil", "Argentina"...
-     │     isoCode          │◄─── "BR", "AR"
-     │     imageUrl         │◄─── Path para bandeira
-     └──────┬───────────────┘
+┌────────────────────────┐
+│         User           │
+├────────────────────────┤
+│ PK: id                 │
+│ UK: email              │
+│     firstName          │
+│     lastName           │
+│     password (BCrypt)  │
+│     totalScore         │◄─── Cache acumulado (performance no ranking)
+│     gamesPlayed        │◄─── Cache contagem (performance)
+│     role (USER|ADMIN)  │
+│     active             │◄─── Soft delete
+│     createdAt          │
+│     updatedAt          │
+└───────────┬────────────┘
             │ 1
-            │
-            │ N (um país tem muitas características)
-     ┌──────▼───────────────┐         ┌──────────────────────┐
-     │  CountryFeature      │         │     Question         │
-     │ (Gabarito do país)   │ N     1 │ (Pergunta do jogo)   │
-     ├──────────────────────┤─────────├──────────────────────┤
-     │ PK: id               │         │ PK: id               │
-     │ FK: country_id       │         │     text             │◄─── "Fala Espanhol?"
-     │ FK: question_id      │◄────────┤     category         │◄─── GEOGRAFIA|CULTURA...
-     │     isTrue           │         │     helperImageUrl   │◄─── Imagem auxiliar
-     └──────────────────────┘         └──────────────────────┘
-            ▲                                  ▲
-            │                                  │
-            │ Exemplo de dados:                │
-            │ ┌────────────┬────────────┬──────┴───┐
-            │ │ country_id │ question_id│  isTrue  │
-            │ ├────────────┼────────────┼──────────┤
-            │ │ 1 (Brasil) │ 1 (Espanhol)│  FALSE  │◄─── Brasil NÃO fala Espanhol
-            │ │ 2 (Argent.)│ 1 (Espanhol)│  TRUE   │◄─── Argentina SIM fala Espanhol
-            │ └────────────┴────────────┴──────────┘
-            │
-     ┌──────▼───────────────────┐
-     │ game_session_rejected    │
-     │ (Países já chutados)     │
-     ├──────────────────────────┤
-     │ PK: (session_id, country_id) │◄─── Chave composta
-     │ FK: session_id           │
-     │ FK: country_id           │
-     └──────────────────────────┘
-            ▲
-            │ Uso: Evita que robô chute "Brasil" múltiplas vezes
+            │ N (um user tem muitas sessões; NULL = visitante)
+┌───────────▼────────────┐
+│      GameSession        │
+├────────────────────────┤
+│ PK: id                 │
+│ FK: user_id  (NULL OK) │◄─── NULL para visitante
+│ FK: target_country_id  │◄─── País que o SISTEMA sorteia (oculto)
+│     status (enum)      │◄─── IN_PROGRESS | GUESSING | WAITING_FOR_REVEAL
+│                        │      | ROBOT_WON | HUMAN_WON | GAVE_UP | FINISHED_REVEALED
+│     score              │◄─── Inicia em 100, -10 por erro do robô
+│     attempts           │◄─── Contador de perguntas respondidas
+│     started_at         │
+│     finished_at        │◄─── NULL enquanto em andamento
+└─────────┬──────────────┘
+          │ 1
+          │ N
+┌─────────▼──────────────┐
+│      GameAttempt        │
+├────────────────────────┤
+│ PK: id                 │
+│ FK: session_id         │
+│ FK: question_id        │◄─── Qual pergunta foi feita
+│     user_answer (BOOL) │◄─── SIM (true) ou NÃO (false)
+│     is_correct  (BOOL) │◄─── Preenchido no reveal — se a resposta estava certa
+│     attempted_at       │
+└────────────────────────┘
+
+┌────────────────────────┐          ┌─────────────────────────┐
+│        Country          │  1    N  │      CountryFeature      │  N   1  ┌────────────────────────┐
+├────────────────────────┤──────────├─────────────────────────┤─────────►│        Question         │
+│ PK: id                 │          │ PK: id                   │          ├────────────────────────┤
+│ UK: name               │          │ FK: country_id           │          │ PK: id                 │
+│     iso_code           │          │ FK: question_id          │          │     text               │
+│     image_url          │          │     is_true (BOOL)       │◄─ gabarito    category        │
+│     latitude           │          │     iso_code             │          │     helper_image_url   │
+│     longitude          │          └─────────────────────────┘          └────────────────────────┘
+└────────────────────────┘
+
+game_session_rejected (N:N join table)
+  session_id (FK) | country_id (FK) ← países que o robô chutou e errou na sessão
 ```
 
 ### Explicação das Entidades
 
-#### **User** - Jogador do Sistema
-- **Propósito:** Autenticação + Estatísticas globais
-- **Implementa:** `UserDetails` (Spring Security)
-- **Relacionamentos:** 
-  - 1:N com GameSession (histórico de partidas)
-- **Validações:**
-  - Email único
-  - Senha criptografada com BCrypt
-  - Role validada pelo enum
+#### `User`
+Autenticação + estatísticas globais. Implementa `UserDetails` do Spring Security usando `email` como username. `totalScore` e `gamesPlayed` são campos de cache (evitam JOINs pesados no ranking).
 
-#### **GameSession** - Partida Individual
-- **Propósito:** Controlar estado de UMA partida do início ao fim
-- **Ciclo de Vida:**
-  ```
-  1. Criação: status = IN_PROGRESS, score = 100
-     → JOGADOR pensa mentalmente em um país (não revela)
-  2. Jogando: SISTEMA faz perguntas, JOGADOR responde, attempts aumenta
-  3. SISTEMA tenta adivinhar: se errar, score diminui e tenta de novo
-  4. Finalização: 
-     → ROBOT_WON: Sistema adivinhou corretamente
-     → HUMAN_WON: Jogador venceu (sistema errou muito/desistiu)
-  ```
-- **Regra de Negócio:** Um usuário só pode ter 1 sessão IN_PROGRESS por vez
-- **Relacionamentos:**
-  - N:1 com User (muitas sessões por usuário)
-  - N:1 com Country (país que o JOGADOR pensou - armazenado para validação)
-  - 1:N com GameAttempt (log de perguntas do SISTEMA e respostas do JOGADOR)
-  - N:N com Country (rejected - países que o SISTEMA já tentou adivinhar e errou)
+#### `GameSession`
+Controla UMA partida do início ao fim. `user_id` pode ser `NULL` (visitante). `target_country_id` é o país que o sistema sorteia internamente — invisível para o jogador.
 
-#### **GameAttempt** - Log de Resposta
-- **Propósito:** Registrar CADA resposta do JOGADOR às perguntas do SISTEMA
-- **Uso:**
-  1. **Algoritmo de Filtragem:** Base para calcular países restantes
-  2. **Feedback Educativo:** Mostrar características do país que o jogador pensou
-  3. **Auditoria:** Histórico imutável da partida
-- **Campos Importantes:**
-  - `isCorrect`: Se a resposta do jogador correspondeu à característica real do país que ele pensou (calculado no final quando revelado)
+#### `GameAttempt`
+Log imutável de cada resposta do jogador. `is_correct` é calculado apenas no `reveal` — quando o jogador finalmente diz qual país pensou, permite verificar se todas as respostas estavam corretas.
 
-#### **Country** - Entidade de País
-- **Propósito:** Dados básicos do país
-- **Por que é simples?**
-  - Características ficam em `CountryFeature` (normalização)
-  - Facilita adicionar países sem ALTER TABLE
-- **Relacionamentos:**
-  - 1:N com CountryFeature (características)
+#### `Country`
+Dados básicos do país. Características ficam na `CountryFeature` (normalização — princípio Open/Closed: adicionar feature = INSERT, não ALTER TABLE).
 
-#### **Question** - Pergunta do Jogo
-- **Propósito:** Perguntas configuráveis sobre países
-- **Extensibilidade:** Adicionar pergunta = INSERT, não código
-- **Categorias:**
-  - GEOGRAFIA (litoral, Andes, linha do Equador)
-  - CULTURA (idioma, futebol)
-  - BANDEIRA (cores, símbolos)
-  - ECONOMIA (moeda)
-  - POPULACAO (quantidade de habitantes)
+#### `Question`
+Perguntas configuráveis sem mudança de código. Categorias: `GEOGRAFIA`, `CULTURA`, `BANDEIRA`, `ECONOMIA`, `POPULACAO`.
 
-#### **CountryFeature** - Gabarito do Jogo
-- **Propósito:** Matriz de conhecimento (País × Pergunta × Resposta)
-- **Estrutura:**
-  ```
-  Brasil + "Fala Espanhol?" = FALSE
-  Argentina + "Fala Espanhol?" = TRUE
-  Brasil + "Tem litoral?" = TRUE
-  Bolívia + "Tem litoral?" = FALSE
-  ```
-- **Uso no Algoritmo:**
-  ```sql
-  -- Usuário respondeu SIM para "Fala Espanhol?"
-  SELECT DISTINCT c.* 
-  FROM countries c
-  JOIN country_features cf ON c.id = cf.country_id
-  WHERE cf.question_id = 1 -- ID da pergunta
-    AND cf.is_true = TRUE   -- Resposta do usuário
-  ```
-
-#### **game_session_rejected** - Join Table
-- **Propósito:** Rastrear países que robô já tentou e errou
-- **Uso:**
-  ```
-  1. Robô chuta "Brasil"
-  2. Usuário diz "NÃO"
-  3. INSERT INTO game_session_rejected (session_id=1, country_id=1)
-  4. Próximo chute do robô: WHERE id NOT IN (SELECT country_id FROM rejected WHERE session_id=1)
-  ```
+#### `CountryFeature`
+**O "cérebro" do sistema.** Matriz `País × Pergunta → Resposta booleana`. Exemplo:
+```
+Brasil   + "Fala Espanhol?" = FALSE
+Argentina + "Fala Espanhol?" = TRUE
+Brasil   + "Tem litoral?"   = TRUE
+Bolívia  + "Tem litoral?"   = FALSE
+```
 
 ---
 
 ## 🎮 Fluxo Completo do Jogo
 
-### Fase 1: Iniciar Partida
+### Fase 1 — Iniciar Partida
 
 ```
-FRONTEND                          BACKEND                         DATABASE
-   │                                 │                                │
-   │ POST /api/game/start            │                                │
-   │ Header: Bearer <token>          │                                │
-   ├────────────────────────────────►│                                │
-   │                                 │ JwtAuthenticationFilter        │
-   │                                 │ valida token e extrai email    │
-   │                                 │                                │
-   │                                 │ GameService.startNewGame()     │
-   │                                 ├───────────────────────────────►│
-   │                                 │ SELECT * FROM users            │
-   │                                 │ WHERE email = 'user@email.com' │
-   │                                 │◄───────────────────────────────┤
-   │                                 │ User encontrado                │
-   │                                 │                                │
-   │                                 │ Verifica se tem jogo ativo:    │
-   │                                 ├───────────────────────────────►│
-   │                                 │ SELECT * FROM game_sessions    │
-   │                                 │ WHERE user_id = 1              │
-   │                                 │   AND status = 'IN_PROGRESS'   │
-   │                                 │◄───────────────────────────────┤
-   │                                 │ Empty (OK para criar novo)     │
-   │                                 │                                │
-   │                                 │ Cria GameSession:              │
-   │                                 │ (target_country = NULL por ora)│
-   │                                 │ JOGADOR vai pensar em um país  │
-   │                                 ├───────────────────────────────►│
-   │                                 │ INSERT INTO game_sessions      │
-   │                                 │ (user_id, target_country_id,   │
-   │                                 │  status, score, attempts, ...)  │
-   │                                 │ VALUES (1, NULL, 'IN_PROGRESS',│
-   │                                 │         100, 0, NOW())         │
-   │                                 │◄───────────────────────────────┤
-   │                                 │ GameSession criado (id=42)     │
-   │                                 │                                │
-   │ ◄───────────────────────────────┤                                │
-   │ Response 200 OK:                │                                │
-   │ {                               │                                │
-   │   "gameId": 42,                 │                                │
-   │   "score": 100,                 │                                │
-   │   "attempts": 0,                │                                │
-   │   "remainingCountries": [       │                                │
-   │     "Brasil", "Argentina", ...  │ 13 países da América do Sul    │
-   │   ],                            │                                │
-   │   "message": "Pense em um país  │                                │
-   │               da América do Sul"│                                │
-   │   "completed": false            │                                │
-   │ }                               │                                │
-   │                                 │                                │
-   │ 🧠 JOGADOR PENSA: "Brasil"      │                                │
-   │    (Não revela ao sistema!)     │                                │
-```
+POST /api/games/start
+Header: Authorization: Bearer <token>  (ou sem header se visitante)
 
-### Fase 2: Sistema Faz Pergunta e Jogador Responde (Loop Principal)
-
-```
-FRONTEND                          BACKEND                         DATABASE
-   │                                 │                                │
-   │ SISTEMA FAZ PERGUNTA:           │                                │
-   │ "O país que você pensou         │                                │
-   │  fala Espanhol?"                │                                │
-   │                                 │                                │
-   │ JOGADOR PENSA: "Pensei no       │                                │
-   │ Brasil... Brasil não fala       │                                │
-   │ Espanhol, fala Português"       │                                │
-   │                                 │                                │
-   │ JOGADOR RESPONDE: NÃO (false)   │                                │
-   │                                 │                                │
-   │ POST /api/game/answer           │                                │
-   │ Body: {                         │                                │
-   │   "gameId": 42,                 │                                │
-   │   "questionId": 1,              │                                │
-   │   "answer": false               │                                │
-   │ }                               │                                │
-   ├────────────────────────────────►│                                │
-   │                                 │ GameService.submitAnswer()     │
-   │                                 │                                │
-   │                                 │ 1. Busca GameSession:          │
-   │                                 ├───────────────────────────────►│
-   │                                 │ SELECT * FROM game_sessions    │
-   │                                 │ WHERE id = 42 AND user_id = 1  │
-   │                                 │◄───────────────────────────────┤
-   │                                 │ Session found                  │
-   │                                 │                                │
-   │                                 │ 2. Busca pergunta:             │
-   │                                 ├───────────────────────────────►│
-   │                                 │ SELECT * FROM questions        │
-   │                                 │ WHERE id = 1                   │
-   │                                 │◄───────────────────────────────┤
-   │                                 │ Question: "Fala Espanhol?"     │
-   │                                 │                                │
-   │                                 │ 3. Registra resposta:          │
-   │                                 │ (isCorrect será validado só    │
-   │                                 │  no final quando jogador       │
-   │                                 │  revelar qual país pensou)     │
-   │                                 │                                │
-   │                                 │ 4. Registra tentativa:         │
-   │                                 ├───────────────────────────────►│
-   │                                 │ INSERT INTO game_attempts      │
-   │                                 │ (session_id, question_id,      │
-   │                                 │  user_answer, is_correct, ...) │
-   │                                 │ VALUES (42, 1, FALSE, NULL,...)│
-   │                                 │◄───────────────────────────────┤
-   │                                 │                                │
-   │                                 │ 5. Atualiza sessão:            │
-   │                                 │ attempts = 0 + 1 = 1           │
-   │                                 ├───────────────────────────────►│
-   │                                 │ UPDATE game_sessions           │
-   │                                 │ SET attempts = 1               │
-   │                                 │ WHERE id = 42                  │
-   │                                 │◄───────────────────────────────┤
-   │                                 │                                │
-   │                                 │ 6. ALGORITMO DE FILTRAGEM:     │
-   │                                 │ "Quais países NÃO falam        │
-   │                                 │  Espanhol?" (resposta=FALSE)   │
-   │                                 ├───────────────────────────────►│
-   │                                 │ SELECT c.*                     │
-   │                                 │ FROM countries c               │
-   │                                 │ JOIN country_features cf       │
-   │                                 │   ON c.id = cf.country_id      │
-   │                                 │ WHERE cf.question_id = 1       │
-   │                                 │   AND cf.is_true = FALSE       │
-   │                                 │◄───────────────────────────────┤
-   │                                 │ Result: [Brasil, Guiana,       │
-   │                                 │          Suriname, G.Francesa] │
-   │                                 │                                │
-   │                                 │ ✅ Sistema eliminou 9 países!  │
-   │                                 │ Candidatos: 13 → 4             │
-   │                                 │                                │
-   │ ◄───────────────────────────────┤                                │
-   │ Response 200 OK:                │                                │
-   │ {                               │                                │
-   │   "gameId": 42,                 │                                │
-   │   "score": 100,                 │                                │
-   │   "attempts": 1,                │                                │
-   │   "remainingCountries": [       │                                │
-   │     "Brasil",                   │                                │
-   │     "Guiana",                   │                                │
-   │     "Suriname",                 │                                │
-   │     "Guiana Francesa"           │                                │
-   │   ],                            │ Filtrado de 13 para 4!         │
-   │   "completed": false            │                                │
-   │ }                               │                                │
-```
-
-### Fase 3: Segunda Pergunta (Filtragem Progressiva)
-
-```
-SISTEMA PERGUNTA: "O país que você pensou tem saída para o mar?"
-JOGADOR PENSA: "Brasil tem sim, litoral enorme!"
-JOGADOR RESPONDE: SIM (true)
-
-Backend aplica DOIS filtros (intersecção):
-  1. question_id=1 (Espanhol) AND is_true=FALSE  → [Brasil, Guiana, Suriname, G.Francesa]
-  2. question_id=3 (Litoral) AND is_true=TRUE    → [Brasil, Guiana, Suriname, G.Francesa]
-
-Intersecção: [Brasil, Guiana, Suriname, G.Francesa] (4 países)
-✅ Todos os 4 restantes têm litoral, pergunta não eliminou ninguém mas validou!
-```
-
-### Fase 4: Finalização do Jogo
-
-**Cenário A: Sistema Acerta (Sistema Vence)**
-```
-Resta apenas 1 país na lista após várias perguntas
-Sistema: "Você pensou no Brasil?"
-Jogador: "SIM!" ✅
-
-UPDATE game_sessions
-SET status = 'ROBOT_WON',
-    finished_at = NOW()
-WHERE id = 42;
-
-UPDATE users
-SET total_score = total_score + 70,  -- 100 - 30 (sistema errou 3 vezes antes)
-    games_played = games_played + 1
-WHERE id = 1;
+GameService.startNewGame():
+  1. Verifica se usuário já tem sessão IN_PROGRESS → BusinessException se sim
+  2. Sorteia país alvo aleatoriamente (oculto)
+  3. Cria GameSession (score=100, attempts=0, status=IN_PROGRESS)
+  4. Retorna GameResponse com todos os 13 países + primeira pergunta
 
 Response:
 {
-  "completed": true,
-  "won": false,  // Jogador perdeu, sistema venceu
-  "targetCountry": { "id": 1, "name": "Brasil", "imageUrl": "..." },
-  "score": 70,
-  "feedback": "Eu venci! Você pensou no Brasil. Acertei em 4 tentativas."
+  "gameId": 42,
+  "score": 100,
+  "attempts": 0,
+  "status": "IN_PROGRESS",
+  "remainingCountries": ["Brasil", "Argentina", ...],  // 13 países
+  "nextQuestion": { "id": 1, "text": "A língua principal é o Espanhol?", ... },
+  "completed": false
 }
 ```
 
-**Cenário B: Sistema Desiste (Jogador Vence)**
+### Fase 2 — Loop de Perguntas
+
 ```
-Sistema errou 10 vezes tentando adivinhar
-Sistema: "Desisto! Qual país você pensou?"
-Jogador revela: "Suriname"
+POST /api/games/answer
+Body: { "gameId": 42, "questionId": 1, "answer": false }
 
-UPDATE game_sessions
-SET status = 'HUMAN_WON',
-    finished_at = NOW()
-WHERE id = 42;
+GameService.submitAnswer():
+  1. Busca GameSession ativa do usuário
+  2. Registra GameAttempt (session=42, question=1, userAnswer=false, isCorrect=null)
+  3. Incrementa attempts
+  4. Aplica algoritmo de filtragem (veja seção abaixo)
+  5. Se remainingCountries.size() <= 1 → muda status para GUESSING
+  6. Retorna países restantes + próxima pergunta
 
-UPDATE users
-SET total_score = total_score + 100,  -- Jogador venceu o sistema!
-    games_played = games_played + 1
-WHERE id = 1;
+Response:
+{
+  "gameId": 42,
+  "score": 100,
+  "attempts": 1,
+  "status": "IN_PROGRESS",
+  "remainingCountries": ["Brasil", "Guiana", "Suriname", "Guiana Francesa"],
+  "nextQuestion": { "id": 3, "text": "O país tem saída para o mar?" },
+  "completed": false
+}
+```
+
+### Fase 3 — Robô Tenta Adivinhar (GUESSING)
+
+```
+Sistema propõe: "Você pensou no Brasil?"
+
+Se jogador niega:
+  POST /api/games/deny   →  { gameId: 42 }
+  GameService.denyRobotGuess():
+    - Adiciona país tentado em game_session_rejected
+    - Tenta próximo candidato
+    - Se esgotou candidatos → status = WAITING_FOR_REVEAL
+
+Se jogador confirma:
+  POST /api/games/confirm   →  { gameId: 42 }
+  GameService.confirmRobotGuess():
+    - status = ROBOT_WON
+    - Atualiza totalScore e gamesPlayed do usuário
+    - Retorna GameResponse com completed=true
+```
+
+### Fase 4 — Reveal (WAITING_FOR_REVEAL)
+
+```
+Robô desistiu — pede ao jogador que revele o país
+
+POST /api/games/reveal
+Body: { "gameId": 42, "countryId": 1 }   // countryId = Brasil
+
+GameService.revealAnswer():
+  1. Atualiza target_country_id na sessão (se era NULL)
+  2. Para cada GameAttempt da sessão:
+     - Compara userAnswer com CountryFeature(countryId, questionId).isTrue
+     - Preenche isCorrect
+  3. Se sistema acertaria com o país revelado → ROBOT_WON
+  4. Caso contrário → HUMAN_WON
+  5. Atualiza totalScore e gamesPlayed
+  6. status = FINISHED_REVEALED
 
 Response:
 {
   "completed": true,
-  "won": true,  // Jogador venceu!
-  "targetCountry": { "id": 12, "name": "Suriname", "imageUrl": "..." },
+  "status": "HUMAN_WON",
   "score": 100,
-  "feedback": "Você venceu! Eu não consegui adivinhar que era Suriname."
+  "targetCountry": { "id": 12, "name": "Suriname", ... },
+  "feedback": [
+    { "question": "Fala Espanhol?", "yourAnswer": false, "correct": true },
+    ...
+  ]
 }
 ```
 
 ---
 
-## 🧠 Algoritmo de Filtragem
+## 🧠 Algoritmo de Filtragem Progressiva
 
 ### Pseudocódigo
 
 ```python
-def filter_countries(session_id):
-    # 1. Buscar todas as tentativas CORRETAS da sessão
-    attempts = SELECT * FROM game_attempts 
-               WHERE session_id = session_id 
-                 AND is_correct = TRUE
+def get_remaining_countries(session_id):
+    # Busca todas tentativas da sessão
+    attempts = SELECT * FROM game_attempts
+               WHERE session_id = session_id
                ORDER BY attempted_at ASC
-    
-    # 2. Começar com todos os países ativos
-    remaining = SELECT * FROM countries WHERE active = TRUE
-    
-    # 3. Para cada tentativa, aplicar filtro
+
+    # Começa com todos os países
+    candidates = SELECT * FROM countries
+
+    # Aplica cada filtro sequencialmente
     for attempt in attempts:
-        question_id = attempt.question_id
-        user_answer = attempt.user_answer  # TRUE ou FALSE
-        
-        # Filtrar países que correspondem à resposta
-        remaining = SELECT c.* FROM countries c
-                    JOIN country_features cf ON c.id = cf.country_id
-                    WHERE cf.question_id = question_id
-                      AND cf.is_true = user_answer
-                      AND c.id IN (remaining_ids)
-    
-    # 4. Retornar lista final
-    return remaining
+        # Filtra países onde a feature corresponde à resposta do jogador
+        candidates = [
+            c for c in candidates
+            if CountryFeature(c.id, attempt.question_id).is_true == attempt.user_answer
+        ]
+
+    return candidates
 ```
 
-### Exemplo Prático
+### Exemplo Prático — Jogador Pensa em Brasil
 
-**Estado Inicial:**
 ```
-Países: [Brasil, Argentina, Chile, Paraguai, Bolívia, 
-         Peru, Equador, Colômbia, Venezuela, Uruguai,
-         Guiana, Suriname, Guiana Francesa]
-Total: 13 países
+Estado inicial: 13 países
+
+Pergunta 1: "A língua principal é o Espanhol?" → NÃO (false)
+  Filtro: country_features.question_id=1 AND is_true=FALSE
+  Restam: Brasil, Guiana, Suriname, Guiana Francesa  (4 países)
+
+Pergunta 2: "O país tem saída para o mar?" → SIM (true)
+  Filtro: question_id=3 AND is_true=TRUE  ∩  candidatos anteriores
+  Restam: Brasil, Guiana, Suriname, Guiana Francesa  (todos têm litoral)
+
+Pergunta 3: "O país usa o Euro como moeda?" → NÃO (false)
+  Filtro: question_id=7 AND is_true=FALSE
+  Restam: Brasil, Guiana, Suriname  (3 países — excluiu G. Francesa)
+
+Pergunta 4: "A língua principal é o Inglês?" → NÃO (false)
+  Filtro: question_id=15 AND is_true=FALSE
+  Restam: Brasil, Suriname  (2 países — excluiu Guiana)
+
+Pergunta 5: "A língua principal é o Holandês?" → NÃO (false)
+  Filtro: question_id=16 AND is_true=FALSE
+  Restam: Brasil  (1 país!)  →  status = GUESSING
+
+Robô propõe: "Você pensou no Brasil?" → Jogador confirma → ROBOT_WON 🎉
 ```
 
-**Tentativa 1:** "Fala Espanhol?" → NÃO
+### Implementação SQL Real
+
 ```sql
-SELECT c.name FROM countries c
+SELECT DISTINCT c.*
+FROM countries c
 JOIN country_features cf ON c.id = cf.country_id
-WHERE cf.question_id = 1  -- "Fala Espanhol?"
-  AND cf.is_true = FALSE  -- Resposta: NÃO
+WHERE cf.question_id = :questionId
+  AND cf.is_true = :userAnswer
+  AND c.id IN (:currentCandidateIds)
 ```
-**Resultado:** [Brasil, Guiana, Suriname, Guiana Francesa] (4 países)
-
-**Tentativa 2:** "Tem litoral?" → SIM
-```sql
-SELECT c.name FROM countries c
-JOIN country_features cf ON c.id = cf.country_id
-WHERE cf.question_id = 3  -- "Tem litoral?"
-  AND cf.is_true = TRUE   -- Resposta: SIM
-  AND c.id IN (1, 11, 12, 13)  -- IDs do filtro anterior
-```
-**Resultado:** [Brasil, Guiana, Suriname, Guiana Francesa] (todos têm litoral)
-
-**Tentativa 3:** "Usa Euro como moeda?" → NÃO
-```sql
-SELECT c.name FROM countries c
-JOIN country_features cf ON c.id = cf.country_id
-WHERE cf.question_id = 7  -- "Usa Euro?"
-  AND cf.is_true = FALSE  -- Resposta: NÃO
-  AND c.id IN (1, 11, 12, 13)
-```
-**Resultado:** [Brasil, Guiana, Suriname] (3 países - excluiu Guiana Francesa)
-
-**Tentativa 4:** "Fala Inglês?" → NÃO
-```sql
-SELECT c.name FROM countries c
-JOIN country_features cf ON c.id = cf.country_id
-WHERE cf.question_id = 15  -- "Fala Inglês?"
-  AND cf.is_true = FALSE   -- Resposta: NÃO
-  AND c.id IN (1, 11, 12)
-```
-**Resultado:** [Brasil, Suriname] (2 países - excluiu Guiana)
-
-**Tentativa 5:** "Fala Holandês?" → NÃO
-```sql
-SELECT c.name FROM countries c
-JOIN country_features cf ON c.id = cf.country_id
-WHERE cf.question_id = 16  -- "Fala Holandês?"
-  AND cf.is_true = FALSE   -- Resposta: NÃO
-  AND c.id IN (1, 12)
-```
-**Resultado:** [Brasil] (1 país restante!)
-
-**Sistema:** "É o Brasil?" → Usuário: "SIM!" → 🎉 VITÓRIA!
 
 ---
 
@@ -635,322 +418,191 @@ WHERE cf.question_id = 16  -- "Fala Holandês?"
 
 ```
 1. REGISTRO
-   ├─ POST /api/auth/register
-   ├─ Backend cria User com senha BCrypt
-   ├─ Gera JWT token
-   └─ Retorna token + dados do usuário
+   POST /api/auth/register
+   ├─ Email duplicado? → DuplicateEmailException (409)
+   ├─ Senha criptografada com BCrypt
+   ├─ User salvo com role=USER
+   └─ JWT gerado e retornado
 
 2. LOGIN
-   ├─ POST /api/auth/login
+   POST /api/auth/login
    ├─ AuthenticationManager valida credenciais
-   ├─ UserDetailsService carrega User
-   ├─ Gera JWT token assinado
-   └─ Retorna token
+   ├─ JwtTokenProvider.generateToken(email)
+   └─ AuthResponse { token, userId, firstName, ... }
 
-3. ARMAZENAMENTO (Frontend)
-   └─ localStorage.setItem('token', token)
+3. REQUEST AUTENTICADA
+   Frontend adiciona: Authorization: Bearer <token>
+   ├─ JwtAuthenticationFilter intercepta
+   ├─ Extrai email do payload JWT
+   ├─ CustomUserDetailsService.loadUserByUsername(email)
+   ├─ Injeta Authentication no SecurityContextHolder
+   └─ Controller acessa via authentication.getName()
 
-4. REQUISIÇÕES AUTENTICADAS
-   ├─ Axios Interceptor adiciona: Authorization: Bearer <token>
-   ├─ JwtAuthenticationFilter extrai e valida token
-   ├─ Se válido: Injeta User no SecurityContext
-   └─ Controller acessa via @AuthenticationPrincipal
-
-5. LOGOUT
-   └─ localStorage.clear() + Redirect para /login
+4. TOKEN EXPIRADO (24h)
+   ├─ Backend retorna 401
+   ├─ Interceptor Axios detecta 401
+   ├─ localStorage.clear()
+   └─ Redireciona para /login
 ```
 
-### Estrutura do Token JWT
+### Estrutura do JWT
 
 ```json
 // Header
-{
-  "alg": "HS256",
-  "typ": "JWT"
-}
+{ "alg": "HS256", "typ": "JWT" }
 
 // Payload
-{
-  "sub": "user@email.com",
-  "iat": 1702920000,
-  "exp": 1703006400
-}
-
-// Signature
-HMACSHA256(
-  base64UrlEncode(header) + "." + base64UrlEncode(payload),
-  secret_key
-)
+{ "sub": "user@email.com", "iat": 1740000000, "exp": 1740086400 }
 ```
 
-### Validações de Segurança
+### Rotas Públicas vs Protegidas
 
-1. **Assinatura:** Verifica se token não foi modificado
-2. **Expiração:** Valida se ainda está dentro do prazo (24h)
-3. **Subject:** Carrega usuário pelo email no payload
-4. **Active:** Verifica se usuário não foi desativado
-
----
-
-## ⚠️ Análise de Redundâncias
-
-### 1. ✅ Removida: `completed` e `won` substituídos por `status`
-
-**Antes:**
-```java
-private Boolean completed;
-private Boolean won;
 ```
-
-**Problema:**
-- 2 campos para representar 3+ estados possíveis
-- Possibilidade de estados inválidos (`completed=false, won=true`)
-
-**Solução:**
-```java
-public enum GameStatus {
-    IN_PROGRESS, ROBOT_WON, HUMAN_WON, GAVE_UP, WAITING_FOR_REVEAL
-}
-private GameStatus status;
-```
-
-**Benefícios:**
-- Estado único e claro
-- Extensível (novos status sem alterar schema)
-- Type-safe
-
----
-
-### 2. ✅ Justificada: `totalScore` vs `GameSession.score`
-
-**Não é redundância:**
-- `User.totalScore` = Soma acumulada de TODOS os jogos (ranking global)
-- `GameSession.score` = Pontuação da partida individual
-
-**Exemplo:**
-```
-Partida 1: 90 pontos
-Partida 2: 70 pontos
-Partida 3: 100 pontos
-
-User.totalScore = 260
-GameSession[1].score = 90
-GameSession[2].score = 70
-GameSession[3].score = 100
+PÚBLICO:   POST /api/auth/**
+PÚBLICO:   GET  /api/countries
+PÚBLICO:   POST /api/games/start, answer, deny, confirm, reveal
+PROTEGIDO: GET  /api/games/history  (vazio para visitante)
+PROTEGIDO: qualquer outra rota
 ```
 
 ---
 
-### 3. ⚡ Cache Justificado: `gamesPlayed`
+## 👥 Modo Visitante
 
-**Aparenta redundância:**
-```sql
--- Poderia calcular:
-SELECT COUNT(*) FROM game_sessions 
-WHERE user_id = 1 AND status != 'IN_PROGRESS'
-```
-
-**Por que mantemos:**
-- ✅ Performance: Leaderboard sem JOIN pesado
-- ✅ Cached Value Pattern
-- ✅ Queries de ranking muito mais rápidas
-
-**Trade-off:** Espaço (4 bytes) × Tempo (50ms por COUNT)
-
----
-
-### 4. ✅ Necessária: `GameAttempt.isCorrect`
-
-**Não é redundância:**
-
-**Poderia calcular:**
-```sql
-SELECT cf.is_true = ga.user_answer AS is_correct
-FROM game_attempts ga
-JOIN country_features cf ON ...
-```
-
-**Por que armazena:**
-- ✅ Histórico Imutável: Se admin corrigir `CountryFeature`, histórico não muda
-- ✅ Performance: Feedback sem JOIN triplo
-- ✅ Auditoria: Registra "verdade" no momento da resposta
-
-**Exemplo de problema:**
-```
-1. Usuário responde errado
-2. isCorrect = FALSE gravado
-3. Admin descobre bug nos dados: Brasil.speaksSpanish = TRUE (erro!)
-4. Admin corrige: UPDATE country_features SET is_true = FALSE
-5. Histórico permanece correto (isCorrect=FALSE estava certo)
-```
-
----
-
-### 5. ✅ Necessária: `finishedAt`
-
-**Não é redundância:**
-
-**Alternativa:** Pegar timestamp do último `GameAttempt`
-```sql
-SELECT MAX(attempted_at) FROM game_attempts WHERE session_id = 1
-```
-
-**Por que tem campo dedicado:**
-- ✅ Semântica: Jogo pode terminar SEM tentativas (desistência imediata)
-- ✅ Performance: Evita MAX() em listagens
-- ✅ Integridade: Campo explícito é mais claro
-
----
-
-### Redundâncias que FALTAM (Otimizações Futuras)
-
-#### ❌ Falta: Índices otimizados
-
-```sql
--- DEVERIA TER:
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_game_sessions_user_status ON game_sessions(user_id, status);
-CREATE INDEX idx_game_attempts_session ON game_attempts(session_id);
-CREATE INDEX idx_country_features_lookup ON country_features(country_id, question_id, is_true);
-```
-
-#### ❌ Falta: Cache de consultas frequentes
+Todos os endpoints de jogo aceitam requests sem autenticação JWT.
 
 ```java
-@Cacheable("activeCountries")
-public List<Country> findAllActive() { ... }
+// Padrão em todos os controllers de jogo
+String userEmail = (authentication != null && authentication.isAuthenticated())
+    ? authentication.getName()
+    : "guest";
+```
 
-@Cacheable("questions")
-public List<Question> findAllQuestions() { ... }
+Comportamento para visitante:
+- `GameSession.user_id = NULL`
+- Jogo funciona normalmente
+- Histórico retorna lista vazia (`GET /api/games/history`)
+- Pontuação NÃO é persistida no perfil
+
+---
+
+## 🎨 Componentes Visuais Especiais
+
+O frontend possui componentes CSS art / SVG art criados para o tema espacial:
+
+| Componente | Tipo | Descrição |
+|---|---|---|
+| `Stars.css` (3 layers) | CSS puro | Estrelas animadas em 3 planos de profundidade, presentes em todas as páginas via `App.jsx` |
+| `SouthAmericaHologram.jsx` | SVG + CSS | Mapa holográfico interativo da América do Sul com efeito de brilho neon |
+| `Planet3D.jsx` | CSS 3D transforms | Planeta decorativo com gradientes e sombras 3D, animação de rotação |
+| `GameGlobe.jsx` | CSS + SVG | Globo interativo exibido durante o jogo |
+
+---
+
+## 🔍 Análise de Decisões Técnicas
+
+### 1. ✅ `CountryFeature` — Normalização vs Simplicidade
+
+**Alternativa rejeitada:** 20+ campos booleanos em `Country` (`hasBeach`, `speaksSpanish`, etc.)
+
+**Problema:** Adicionar nova pergunta exigiria `ALTER TABLE country ADD COLUMN`.
+
+**Decisão:** Tabela separada `country_features (country_id, question_id, is_true)`.
+- Adicionar pergunta = `INSERT INTO questions` + `INSERT INTO country_features × 13`
+- Nenhuma alteração de schema (princípio Open/Closed)
+
+---
+
+### 2. ✅ `GameStatus` enum — Múltiplos estados
+
+**Alternativa rejeitada:** Campos `completed (boolean)` + `won (boolean)`.
+
+**Problema:** 2 booleanos = 4 combinações, mas 3+ estados reais. Possível estado inválido (`completed=false, won=true`).
+
+**Decisão:** Enum com 7 estados claros e extensíveis.
+
+---
+
+### 3. ✅ `user_id NULL` para visitante
+
+**Alternativa rejeitada:** Criar um User "guest" compartilhado.
+
+**Problema:** Múltiplos visitantes simultâneos com sessões conflitantes.
+
+**Decisão:** `user_id` nullable. Visitante tem sessão isolada sem vínculo a usuário.
+
+---
+
+### 4. ✅ `totalScore` e `gamesPlayed` como cache
+
+**Aparente redundância:** poderiam ser calculados com `SUM(score)` e `COUNT(*)` sobre `game_sessions`.
+
+**Motivo para manter:**
+- Queries de ranking executam em milliseconds sem JOIN pesado
+- Cached Value Pattern — troca 4 bytes de espaço por 50ms de tempo
+
+---
+
+### 5. ✅ `GameAttempt.is_correct` calculado no reveal
+
+**Por que não calcular na hora da resposta?**
+O sistema não conhece o país do jogador durante o jogo (é o ponto central do Akinator). O `is_correct` só pode ser calculado quando o jogador revela o país ao final — comparando each `userAnswer` com o `CountryFeature` do país revelado.
+
+---
+
+### 6. ✅ Stateless Backend (JWT sem sessão HTTP)
+
+Sem `HttpSession`, sem estado no servidor. Escala horizontalmente sem sticky sessions. Token carrega identidade completa.
+
+---
+
+## 🚀 Infraestrutura e Deploy
+
+### Docker Compose (Desenvolvimento Local)
+
+```yaml
+services:
+  atlas_db:       # MySQL 8.0, porta 3307
+  atlas_backend:  # Spring Boot, porta 5202
+  atlas_frontend: # React/Vite, porta 5173
+```
+
+```bash
+# Tudo de uma vez
+docker-compose up --build
+
+# Só o banco (backend e frontend rodados localmente)
+docker-compose up atlas_db -d
+```
+
+### Produção
+
+| Serviço | Plataforma | Configuração |
+|---|---|---|
+| Banco | Railway | Variáveis: `MYSQLHOST`, `MYSQLPORT`, `MYSQLDATABASE`, `MYSQLUSER`, `MYSQLPASSWORD` |
+| Backend | Railway | Container Docker; variáveis JWT_SECRET, CORS_ORIGINS |
+| Frontend | Vercel | `vercel.json` com rewrite para SPA |
+
+### Variáveis de Ambiente Críticas (Produção)
+
+```bash
+JWT_SECRET=<chave-base64-256bit-segura>
+CORS_ORIGINS=https://www.atlas4me.com,https://atlas4me.com
+SWAGGER_ENABLED=false
+LOG_LEVEL=INFO
 ```
 
 ---
 
-## 🎯 Decisões Técnicas
+## 📈 Flyway Migrations
 
-### Por que Spring Boot?
-
-- ✅ Ecossistema maduro e completo
-- ✅ Spring Security integrado (JWT out-of-the-box)
-- ✅ Spring Data JPA (reduz 80% do código JDBC)
-- ✅ Embedded server (fácil deploy)
-- ✅ Vasta documentação e comunidade
-
-### Por que React?
-
-- ✅ Component-based (reutilização)
-- ✅ Virtual DOM (performance)
-- ✅ Ecossistema rico (React Router, etc)
-- ✅ Fácil integração com APIs REST
-- ✅ Developer experience (Hot Reload)
-
-### Por que JWT em vez de sessões?
-
-- ✅ Stateless (backend não guarda estado)
-- ✅ Escalável horizontalmente (múltiplos servidores)
-- ✅ Mobile-friendly (sem cookies)
-- ✅ Descentralizado (token auto-contido)
-
-### Por que MySQL desde o desenvolvimento?
-
-- ✅ Mesmo banco em dev e produção (paridade)
-- ✅ Flyway migrations testadas no ambiente real
-- ✅ DBeaver para visualização e queries
-- ✅ Banco persistente (dados não se perdem ao reiniciar)
-- ✅ Performance real desde o início
-
-### Por que Flyway?
-
-- ✅ Versionamento de database
-- ✅ Migrations rastreáveis (Git)
-- ✅ Rollback controlado
-- ✅ Reproduzível em qualquer ambiente
-
-### Por que Lombok?
-
-- ✅ Reduz boilerplate em 70%
-- ✅ Getters/Setters automáticos
-- ✅ Builders fluentes
-- ✅ Código mais legível
-
-### Por que não TypeScript no Frontend?
-
-- ⚠️ Decisão de trade-off:
-  - ✅ Desenvolvimento mais rápido (MVP)
-  - ✅ Menos configuração inicial
-  - ❌ Menos type safety
-  - ❌ Mais difícil refatoração
-
-**Recomendação:** Migrar para TS em produção
+| Versão | Arquivo | Conteúdo |
+|---|---|---|
+| V1 | `create_table.sql` | Criação de todas as 7 tabelas |
+| V2 | `insert_initial_data.sql` | 13 países + 16 perguntas + gabarito completo |
+| V3 | `Add_Lat_Lon_To_Countries.sql` | Colunas `latitude` e `longitude` |
+| V4 | `Add_IsoCode_To_CountryFeatures.sql` | `iso_code` redundante nas features |
 
 ---
 
-## 🚀 Melhorias Futuras
-
-### Backend
-
-- [ ] **Cache Redis** para países e perguntas
-- [ ] **WebSocket** para jogos multiplayer
-- [ ] **GraphQL** para queries flexíveis
-- [ ] **Testes** unitários e integração (JUnit, Mockito)
-- [ ] **API Rate Limiting** (Spring Cloud Gateway)
-- [ ] **Swagger 3.0** com autenticação JWT
-- [ ] **Observabilidade** (Prometheus + Grafana)
-- [ ] **Docker Compose** para desenvolvimento
-- [ ] **CI/CD** (GitHub Actions)
-- [ ] **Soft Delete** em todas as entidades
-
-### Frontend
-
-- [ ] **TypeScript** (type safety)
-- [ ] **React Query** (cache de API calls)
-- [ ] **Context API** (estado global)
-- [ ] **Toast Notifications** (substituir `alert()`)
-- [ ] **Loading States** (skeleton screens)
-- [ ] **Error Boundaries** (fallback UI)
-- [ ] **PWA** (offline support)
-- [ ] **Dark Mode**
-- [ ] **i18n** (internacionalização)
-- [ ] **E2E Tests** (Playwright)
-
-### Features de Negócio
-
-- [ ] **Ranking Global** com paginação
-- [ ] **Histórico Detalhado** de partidas
-- [ ] **Conquistas/Badges** (gamificação)
-- [ ] **Modo Competitivo** (versus online)
-- [ ] **Dicas do Sistema** (custoam pontos)
-- [ ] **Criação de Perguntas** por admins
-- [ ] **Novos Continentes** (Europa, Ásia, África)
-- [ ] **Análise de Estratégias** (melhores perguntas)
-- [ ] **Sistema de Amizades**
-- [ ] **Chat em Tempo Real**
-
----
-
-## 📚 Glossário Técnico
-
-- **JWT:** JSON Web Token - Token assinado com informações do usuário
-- **BCrypt:** Algoritmo de hash para senhas com salt automático
-- **ORM:** Object-Relational Mapping - Mapeamento objeto-relacional
-- **DTO:** Data Transfer Object - Objeto para transferir dados entre camadas
-- **Lazy Loading:** Carregamento sob demanda de relacionamentos
-- **Flyway:** Ferramenta de versionamento de banco de dados
-- **Lombok:** Biblioteca para reduzir boilerplate em Java
-- **CORS:** Cross-Origin Resource Sharing - Controle de acesso entre origens
-- **SPA:** Single Page Application - Aplicação de página única
-- **HMR:** Hot Module Replacement - Atualização de código sem refresh
-
----
-
-## 📞 Suporte e Contribuições
-
-- **Issues:** [GitHub Issues](https://github.com/seu-usuario/atlas4me-react/issues)
-- **Pull Requests:** Sempre bem-vindos!
-- **Discussões:** [GitHub Discussions](https://github.com/seu-usuario/atlas4me-react/discussions)
-
----
-
-**Desenvolvido por DanLopes.Croix para educação geográfica**
-
-*Última atualização: Dezembro 2025*
+*Última atualização: Fevereiro 2026*
