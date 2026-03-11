@@ -8,17 +8,22 @@ import atlas4me.entity.*;
 import atlas4me.exception.BusinessException;
 import atlas4me.exception.ResourceNotFoundException;
 import atlas4me.repository.*;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class GameService {
 
     private final GameSessionRepository gameSessionRepository;
@@ -29,10 +34,26 @@ public class GameService {
     private final QuestionRepository questionRepository;
     private final CountryRepository countryRepository;
     private final CountryFeatureRepository countryFeatureRepository;
+    private final Map<Long, Map<Long, Boolean>> knowledgeBase = new HashMap<>();
+
+    @PostConstruct
+    public void initCache() {
+        log.info("Iniciando carregamento da Base de Conhecimento para a memória...");
+        // Traz TODAS as features do banco de uma vez só!
+        List<CountryFeature> allFeatures = countryFeatureRepository.findAll();
+
+        for (CountryFeature cf : allFeatures) {
+            knowledgeBase
+                    .computeIfAbsent(cf.getCountry().getId(), k -> new HashMap<>())
+                    .put(cf.getQuestion().getId(), cf.getIsTrue());
+        }
+        log.info("Cérebro carregado com sucesso! {} características mapeadas na RAM.", allFeatures.size());
+    }
+
 
     // --- INÍCIO DO JOGO ---
     @Transactional
-    public GameResponse startNewGame(String userEmail) {
+    public GameResponse startNewGame(String userEmail, String continent) {
         User user = null;
 
         // MUDANÇA: Só busca no banco se NÃO for convidado/nulo
@@ -113,197 +134,6 @@ public class GameService {
 
         gameSessionRepository.save(session);
         return buildGameResponse(session, feedback, nextQuestion);
-    }
-
-    // --- O CÉREBRO DO ROBÔ (A Lógica Matemática) ---
-
-    private QuestionResponse getNextBestQuestion(GameSession session) {
-        // 1. Quem ainda está no jogo?
-        List<Country> remainingCountries = getRemainingCountries(session);
-
-        // 2. Quais perguntas eu JÁ fiz?
-        List<Long> askedQuestionIds = session.getGameAttempts().stream()
-                .map(a -> a.getQuestion().getId())
-                .collect(Collectors.toList());
-
-        // 3. Pega todas as perguntas disponíveis
-        List<Question> availableQuestions = questionRepository.findAll().stream()
-                .filter(q -> !askedQuestionIds.contains(q.getId()))
-                .collect(Collectors.toList());
-
-        if (availableQuestions.isEmpty()) {
-            throw new BusinessException("Sem mais perguntas disponíveis.");
-        }
-
-        // --- AQUI COMEÇA A OTIMIZAÇÃO ---
-        
-        // Passo Mágico: Trazemos TODOS os dados de uma vez só (1 consulta em vez de 300)
-        List<CountryFeature> bulkFeatures = countryFeatureRepository.findByCountryInAndQuestionIn(remainingCountries, availableQuestions);
-
-        // Criamos um Mapa na memória para acesso instantâneo
-        // Mapa: CountryID -> (QuestionID -> Resposta)
-        // Isso permite perguntar: "O País X tem a Característica Y?" sem ir no banco.
-        java.util.Map<Long, java.util.Map<Long, Boolean>> memoryCache = new java.util.HashMap<>();
-
-        for (CountryFeature cf : bulkFeatures) {
-            memoryCache
-                .computeIfAbsent(cf.getCountry().getId(), k -> new java.util.HashMap<>())
-                .put(cf.getQuestion().getId(), cf.getIsTrue());
-        }
-
-        // 4. CALCULAR O MELHOR SPLIT (50/50) AGORA NA MEMÓRIA
-        Question bestQuestion = null;
-        int bestBalanceScore = -1;
-
-        for (Question q : availableQuestions) {
-            int countYes = 0;
-            int countNo = 0;
-
-            for (Country c : remainingCountries) {
-                // --- LÓGICA OTIMIZADA ---
-                // Em vez de ir no banco, olhamos no nosso mapa local
-                // Se não existir no mapa, assumimos 'false' (igual ao .orElse(false) de antes)
-                boolean isTrue = false;
-                
-                if (memoryCache.containsKey(c.getId())) {
-                    isTrue = memoryCache.get(c.getId()).getOrDefault(q.getId(), false);
-                }
-
-                if (isTrue) countYes++;
-                else countNo++;
-            }
-
-            // O resto da lógica continua idêntica
-            if (countYes == 0 || countNo == 0) continue;
-
-            int currentBalance = Math.min(countYes, countNo);
-
-            if (currentBalance > bestBalanceScore) {
-                bestBalanceScore = currentBalance;
-                bestQuestion = q;
-            }
-        }
-
-        if (bestQuestion == null) {
-            bestQuestion = availableQuestions.get(0);
-        }
-        // Buscamos TODOS os países (mesmo os eliminados) que têm essa característica como TRUE
-        // para acender no mapa educativo.
-        List<LocationResponse> mapLocations = countryFeatureRepository.findByQuestion(bestQuestion).stream()
-                .filter(CountryFeature::getIsTrue)
-                .map(cf -> new LocationResponse( // Usando LocationResponse
-                        cf.getCountry().getIsoCode().toLowerCase(),
-                        cf.getCountry().getLatitude(),
-                        cf.getCountry().getLongitude()
-                ))
-                .collect(Collectors.toList());
-
-        return new QuestionResponse(
-                bestQuestion.getId(),
-                bestQuestion.getText(),
-                bestQuestion.getCategory(),
-                bestQuestion.getHelperImageUrl(),
-                mapLocations // Passa a lista de LocationResponse
-        );
-    }
-
-    // Filtra os países baseados no histórico de respostas
-    private List<Country> getRemainingCountries(GameSession session) {
-        List<Country> candidates = countryRepository.findAll(); // Começa com todos (13)
-
-        for (GameAttempt attempt : session.getGameAttempts()) {
-            candidates = candidates.stream()
-                    .filter(c -> {
-                        // O país tem essa característica?
-                        boolean featureIsTrue = countryFeatureRepository
-                                .findByCountryAndQuestion(c, attempt.getQuestion())
-                                .map(CountryFeature::getIsTrue)
-                                .orElse(false);
-
-                        // O país sobrevive se a característica bater com o que o usuário respondeu
-                        // Ex: Usuário disse "TEM PRAIA" (true). O país tem praia? (true). Mantém.
-                        // Ex: Usuário disse "TEM PRAIA" (true). Bolívia não tem (false). Elimina.
-                        return featureIsTrue == attempt.getUserAnswer();
-                    })
-                    .collect(Collectors.toList());
-        }
-        candidates.removeAll(session.getRejectedCountries());
-        return candidates;
-    }
-
-    // --- MÉTODOS AUXILIARES ---
-
-    private void processAttempt(GameSession session, GameAnswerRequest request) {
-        // Busca a pergunta real pelo ID (Segurança)
-        Question question = questionRepository.findById(request.getQuestionId())
-                .orElseThrow(() -> new ResourceNotFoundException("Pergunta inválida"));
-
-        GameAttempt attempt = new GameAttempt();
-        attempt.setGameSession(session);
-        attempt.setQuestion(question); // Salva o Objeto Question
-        attempt.setUserAnswer(request.getAnswer());
-        attempt.setAttemptedAt(LocalDateTime.now());
-
-        gameAttemptRepository.save(attempt);
-        session.setAttempts(session.getAttempts() + 1);
-        // Atualiza a lista em memória para o getNextBestQuestion usar na mesma
-        // transação
-        session.getGameAttempts().add(attempt);
-    }
-
-    private GameSession createNewSession(User user) {
-        GameSession session = new GameSession();
-        session.setUser(user);
-        // Pega um país qualquer só para preencher o campo @NotNull, mas o alvo é
-        // dinâmico
-        session.setTargetCountry(countryRepository.findAll().get(0));
-        session.setScore(100);
-        session.setAttempts(0);
-        session.setStatus(GameStatus.IN_PROGRESS);
-        session.setStartedAt(LocalDateTime.now());
-        return gameSessionRepository.save(session);
-    }
-
-    private void updateScore(GameSession session) {
-        // Cada pergunta custa 2 pontos, por exemplo
-        session.setScore(Math.max(0, session.getScore() - 2));
-    }
-
-    // Substitua o seu método 'buildGameResponse' atual por este:
-    private GameResponse buildGameResponse(GameSession session, String feedback, QuestionResponse nextQuestion) {
-
-        String robotGuess = null;
-
-        // No estilo Akinator, só mostramos o país quando o Robô tem certeza (Status =
-        // ROBOT_WON)
-        // Enquanto estiver JOGANDO (IN_PROGRESS) ou se o HUMANO GANHAR (HUMAN_WON -
-        // robô desistiu),
-        // mandamos null para não mostrar o "chute" errado ou precoce.
-        if (session.getStatus() == GameStatus.ROBOT_WON || session.getStatus() == GameStatus.GUESSING) {
-            if (session.getTargetCountry() != null) {
-                robotGuess = session.getTargetCountry().getName();
-            }
-        }
-
-        return GameResponse.builder()
-                .gameId(session.getId())
-                .status(session.getStatus().toString())
-                .score(session.getScore())
-                .attempts(session.getAttempts())
-                // O status HUMAN_WON avisa o front que é hora de mostrar a tela de Vitória do
-                // Humano
-                .won(session.getStatus() == GameStatus.HUMAN_WON)
-                .targetCountry(robotGuess)
-                .nextQuestion(nextQuestion)
-                .feedback(feedback)
-                .questionText(feedback)
-                .build();
-    }
-
-    // Métodos de validação padrão
-    private User getUserOrThrow(String email) {
-        return userRepository.findByEmailAndActiveTrue(email)
-                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado"));
     }
 
     public List<GameResponse> getUserGameHistory(String userEmail) {
@@ -475,5 +305,207 @@ public class GameService {
                 .targetCountry(realCountry.getName())
                 .feedback(finalMessage)
                 .build();
+    }
+
+    // --- O CÉREBRO DO ROBÔ (A Lógica Matemática de Entropia) ---
+    private QuestionResponse getNextBestQuestion(GameSession session) {
+        // 1. Quem ainda está no jogo?
+        List<Country> remainingCountries = getRemainingCountries(session);
+
+        // 2. Quais perguntas eu JÁ fiz?
+        List<Long> askedQuestionIds = session.getGameAttempts().stream()
+                .map(a -> a.getQuestion().getId())
+                .collect(Collectors.toList());
+
+        // 3. Pega todas as perguntas disponíveis
+        List<Question> availableQuestions = questionRepository.findAll().stream()
+                .filter(q -> !askedQuestionIds.contains(q.getId()))
+                .collect(Collectors.toList());
+
+        if (availableQuestions.isEmpty()) {
+            throw new BusinessException("Sem mais perguntas disponíveis.");
+        }
+
+        // 4. CALCULAR O MELHOR SPLIT COM ENTROPIA E DESEMPATE (100% NA MEMÓRIA)
+        Question bestQuestion = null;
+        double maxEntropy = -1.0;
+        int bestPriority = -1;
+
+        for (Question q : availableQuestions) {
+            int countYes = 0;
+            int countNo = 0;
+
+            for (Country c : remainingCountries) {
+                // Busca a resposta direto do nosso mapa rápido em RAM!
+                boolean isTrue = knowledgeBase
+                        .getOrDefault(c.getId(), new HashMap<>())
+                        .getOrDefault(q.getId(), false);
+
+                if (isTrue) countYes++;
+                else countNo++;
+            }
+
+            // Se a pergunta não divide o grupo (todo mundo responde igual), ignoramos
+            if (countYes == 0 || countNo == 0) continue;
+
+            // Calcula a incerteza (ganho de informação)
+            double currentEntropy = calculateEntropy(countYes, countNo);
+            int currentPriority = getCategoryPriority(q.getCategory());
+
+            // A Mágica: Escolhe quem tem maior entropia. Se empatar, olha a categoria!
+            if (currentEntropy > maxEntropy) {
+                maxEntropy = currentEntropy;
+                bestPriority = currentPriority;
+                bestQuestion = q;
+            } else if (currentEntropy == maxEntropy && currentPriority > bestPriority) {
+                // Empate matemático: vence a categoria com maior prioridade (ex: Geografia)
+                bestPriority = currentPriority;
+                bestQuestion = q;
+            }
+        }
+
+        // Se por algum motivo bizarro todas as perguntas forem inúteis, pega a primeira
+        if (bestQuestion == null) {
+            bestQuestion = availableQuestions.get(0);
+        }
+
+        // Buscamos TODOS os países (mesmo os eliminados) que têm essa característica
+        // para acender no mapa educativo.
+        final Long bestQuestionId = bestQuestion.getId();
+        List<LocationResponse> mapLocations = countryRepository.findAll().stream()
+                .filter(c -> knowledgeBase.getOrDefault(c.getId(), new HashMap<>()).getOrDefault(bestQuestionId, false))
+                .map(c -> new LocationResponse(
+                        c.getIsoCode().toLowerCase(),
+                        c.getLatitude(),
+                        c.getLongitude()
+                ))
+                .collect(Collectors.toList());
+
+        return new QuestionResponse(
+                bestQuestion.getId(),
+                bestQuestion.getText(),
+                bestQuestion.getCategory(),
+                bestQuestion.getHelperImageUrl(),
+                mapLocations
+        );
+    }
+    // Filtra os países baseados no histórico de respostas (100% em RAM!)
+    private List<Country> getRemainingCountries(GameSession session) {
+        List<Country> candidates = countryRepository.findByContinent("SOUTH_AMERICA");
+
+        for (GameAttempt attempt : session.getGameAttempts()) {
+            candidates = candidates.stream()
+                    .filter(c -> {
+                        // Verifica no Cache Rápido em vez de fazer query no banco!
+                        boolean featureIsTrue = knowledgeBase
+                                .getOrDefault(c.getId(), new HashMap<>())
+                                .getOrDefault(attempt.getQuestion().getId(), false);
+
+                        return featureIsTrue == attempt.getUserAnswer();
+                    })
+                    .collect(Collectors.toList());
+        }
+        candidates.removeAll(session.getRejectedCountries());
+        return candidates;
+    }
+
+
+    // --- MÉTODOS AUXILIARES ---
+    private void processAttempt(GameSession session, GameAnswerRequest request) {
+        // Busca a pergunta real pelo ID (Segurança)
+        Question question = questionRepository.findById(request.getQuestionId())
+                .orElseThrow(() -> new ResourceNotFoundException("Pergunta inválida"));
+
+        GameAttempt attempt = new GameAttempt();
+        attempt.setGameSession(session);
+        attempt.setQuestion(question); // Salva o Objeto Question
+        attempt.setUserAnswer(request.getAnswer());
+        attempt.setAttemptedAt(LocalDateTime.now());
+
+        gameAttemptRepository.save(attempt);
+        session.setAttempts(session.getAttempts() + 1);
+        // Atualiza a lista em memória para o getNextBestQuestion usar na mesma
+        // transação
+        session.getGameAttempts().add(attempt);
+    }
+    private GameSession createNewSession(User user) {
+        GameSession session = new GameSession();
+        session.setUser(user);
+        // Pega um país qualquer só para preencher o campo @NotNull, mas o alvo é
+        // dinâmico
+        session.setTargetCountry(countryRepository.findAll().get(0));
+        session.setScore(100);
+        session.setAttempts(0);
+        session.setStatus(GameStatus.IN_PROGRESS);
+        session.setStartedAt(LocalDateTime.now());
+        return gameSessionRepository.save(session);
+    }
+    private void updateScore(GameSession session) {
+        // Cada pergunta custa 2 pontos, por exemplo
+        session.setScore(Math.max(0, session.getScore() - 2));
+    }
+    private GameResponse buildGameResponse(GameSession session, String feedback, QuestionResponse nextQuestion) {
+
+        String robotGuess = null;
+
+        // No estilo Akinator, só mostramos o país quando o Robô tem certeza (Status =
+        // ROBOT_WON)
+        // Enquanto estiver JOGANDO (IN_PROGRESS) ou se o HUMANO GANHAR (HUMAN_WON -
+        // robô desistiu),
+        // mandamos null para não mostrar o "chute" errado ou precoce.
+        if (session.getStatus() == GameStatus.ROBOT_WON || session.getStatus() == GameStatus.GUESSING) {
+            if (session.getTargetCountry() != null) {
+                robotGuess = session.getTargetCountry().getName();
+            }
+        }
+
+        return GameResponse.builder()
+                .gameId(session.getId())
+                .status(session.getStatus().toString())
+                .score(session.getScore())
+                .attempts(session.getAttempts())
+                // O status HUMAN_WON avisa o front que é hora de mostrar a tela de Vitória do
+                // Humano
+                .won(session.getStatus() == GameStatus.HUMAN_WON)
+                .targetCountry(robotGuess)
+                .nextQuestion(nextQuestion)
+                .feedback(feedback)
+                .questionText(feedback)
+                .build();
+    }
+    private User getUserOrThrow(String email) {
+        return userRepository.findByEmailAndActiveTrue(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado"));
+    }
+
+
+    // Define a prioridade da pergunta caso haja empate matemático (Entropia igual)
+    // Valores maiores = maior prioridade
+    private int getCategoryPriority(String category) {
+        if (category == null) return 0;
+        return switch (category.toUpperCase()) {
+            case "GEOGRAFIA" -> 4;
+            case "POPULACAO" -> 3;
+            case "CULTURA" -> 2;
+            case "ECONOMIA" -> 1;
+            case "BANDEIRA" -> 0;
+            default -> 0;
+        };
+    }
+
+    // Calcula a Entropia de Shannon para um grupo dividido entre "Sim" e "Não"
+    private double calculateEntropy(int countYes, int countNo) {
+        int total = countYes + countNo;
+        if (total == 0) return 0.0;
+
+        double pYes = (double) countYes / total;
+        double pNo = (double) countNo / total;
+
+        double entropy = 0.0;
+        // Fórmula da entropia: -p * log2(p)
+        if (pYes > 0) entropy -= pYes * (Math.log(pYes) / Math.log(2));
+        if (pNo > 0) entropy -= pNo * (Math.log(pNo) / Math.log(2));
+
+        return entropy;
     }
 }

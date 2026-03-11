@@ -32,4 +32,7 @@ public class Country {
 
     @Column(name = "longitude")
     private Double longitude;
+
+    @Column(name = "continent")
+    private String continent;
 }

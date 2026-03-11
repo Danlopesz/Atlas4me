@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import api from "../services/api";
 import Navbar from "../components/Navbar";
-import SouthAmericaHologram from '../components/SouthAmericaHologram';
-import '../assets/Jogar.css'; // Importando o CSS novo
-
+import GameGlobe from '../components/GameGlobe';
+import '../assets/Jogar.css';
 function Jogar() {
-    // --- ESTADOS ---
-    const [userName] = useState(() => localStorage.getItem('userName') || '');
 
+    // --- ESTADOS ---
     const [gameId, setGameId] = useState(null);
     const [gameStatus, setGameStatus] = useState('LOBBY'); // LOBBY, LOADING, PLAYING, GUESSING, FINISHED_ROBOT, REPORT, WAITING_FOR_REVEAL
     const [question, setQuestion] = useState(null);
@@ -265,7 +263,7 @@ function Jogar() {
 
                     {/* O Mapa com tamanho controlado */}
                     <div style={{ width: '100%', maxWidth: '700px', height: '80%', maxHeight: '800px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                        <SouthAmericaHologram activeLocations={mapLocations} />
+                        <GameGlobe markers={mapLocations} />
                     </div>
                 </div>
 

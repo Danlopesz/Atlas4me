@@ -22,11 +22,16 @@ public class GameController {
     private final GameService gameService;
 
     @PostMapping("/start")
-    public ResponseEntity<GameResponse> startGame(Authentication authentication) {
-        String userEmail = (authentication != null && authentication.isAuthenticated()) 
-                           ? authentication.getName() 
-                           : "guest"; //visitante jogar sem login
-        GameResponse response = gameService.startNewGame(userEmail);
+    public ResponseEntity<GameResponse> startGame(
+            @RequestParam(required = false, defaultValue = "SOUTH_AMERICA") String continent,
+            Authentication authentication) {
+
+        String userEmail = (authentication != null && authentication.isAuthenticated())
+                ? authentication.getName()
+                : "guest"; // visitante jogar sem login
+
+        // Passamos o continente para o GameService (você terá que adicionar esse parâmetro lá)
+        GameResponse response = gameService.startNewGame(userEmail, continent);
         return ResponseEntity.ok(response);
     }
 
