@@ -1,6 +1,6 @@
 # 📁 Estrutura do Projeto Atlas4Me — Backend
 
-> Organização atualizada do backend Spring Boot (Fevereiro 2026), refletindo a estrutura real de pacotes e arquivos.
+> Organização do backend Spring Boot (Março 2026), refletindo a estrutura real de pacotes e arquivos.
 
 ---
 
@@ -34,17 +34,17 @@ backend/src/main/java/atlas4me/
 │       ├── CountryResponse.java       # { id, name, isoCode, imageUrl }
 │       ├── ErrorResponse.java         # { status, message, timestamp }
 │       ├── GameResponse.java          # Resposta principal do jogo
-│       ├── LocationResponse.java      # { latitude, longitude } — coordenadas do país
+│       ├── LocationResponse.java      # { latitude, longitude }
 │       ├── QuestionResponse.java      # { id, text, category, helperImageUrl }
 │       └── ValidationErrorResponse.java  # Erros de Bean Validation
 │
 ├── 📁 entity/                          # Entidades JPA (Domínio)
 │   ├── Country.java                   # País do jogo
-│   ├── CountryFeature.java            # Matriz de conhecimento (País × Pergunta)
-│   ├── GameAttempt.java               # Log de cada resposta do jogador
-│   ├── GameSession.java               # Sessão/partida individual
-│   ├── GameStatus.java                # Enum de status do jogo
-│   ├── Question.java                  # Pergunta do jogo
+│   ├── CountryFeature.java            # Base de conhecimento (País × Pergunta → Bool)
+│   ├── GameAttempt.java               # Log de cada resposta do usuário
+│   ├── GameSession.java               # Sessão de inferência individual
+│   ├── GameStatus.java                # Enum de status da sessão
+│   ├── Question.java                  # Atributo/pergunta do jogo
 │   └── User.java                      # Jogador (implementa UserDetails)
 │
 ├── 📁 exception/                       # Tratamento centralizado de erros
@@ -64,7 +64,7 @@ backend/src/main/java/atlas4me/
 └── 📁 service/                         # Camada de Aplicação (Lógica de Negócio)
     ├── CountryService.java            # Consulta e listagem de países
     ├── CustomUserDetailsService.java  # Integração Spring Security ↔ UserRepository
-    ├── GameService.java               # Algoritmo do jogo + ciclo de vida da partida
+    ├── GameService.java               # MOTOR DE INFERÊNCIA: entropia + ciclo da sessão
     ├── LoginService.java              # Autenticação e geração de JWT
     └── RegisterService.java           # Cadastro de novo usuário
 ```
@@ -77,15 +77,15 @@ backend/src/main/java/atlas4me/
 resources/
 ├── application.properties             # Configurações da aplicação
 └── db/migration/                      # Migrations Flyway (versionadas)
-    ├── V1__create_table.sql           # Criação de todas as tabelas
-    ├── V2__insert_initial_data.sql    # Dados iniciais (países + perguntas)
-    ├── V3__Add_Lat_Lon_To_Countries.sql    # Latitude/longitude nos países
-    └── V4__Add_IsoCode_To_CountryFeatures.sql  # isoCode nas features
+    ├── V1__create_table.sql           # Criação de todas as 7 tabelas
+    ├── V2__insert_initial_data.sql    # 13 países + 16 perguntas + gabarito
+    ├── V3__Add_Lat_Lon_To_Countries.sql          # latitude e longitude
+    └── V4__Add_IsoCode_To_CountryFeatures.sql    # iso_code nas features
 ```
 
 ---
 
-## �️ Organização por Camadas
+## 🏛️ Organização por Camadas
 
 ### Camada de Configuração (`config/`)
 | Arquivo | Responsabilidade |
@@ -105,9 +105,9 @@ resources/
 ### Camada de Serviço (`service/`)
 | Serviço | Responsabilidade Principal |
 |---|---|
+| `GameService` | **Motor de inferência**: seleciona perguntas por entropia, filtra candidatos, gerencia o ciclo completo da sessão |
 | `LoginService` | Autentica credenciais via `AuthenticationManager`, gera JWT |
 | `RegisterService` | Cria usuário novo com senha BCrypt |
-| `GameService` | Orquestra todo o ciclo de vida do jogo (start → answer → guess → reveal) |
 | `CountryService` | Busca e filtra países do banco |
 | `CustomUserDetailsService` | Integra `UserRepository` com Spring Security |
 
@@ -119,21 +119,21 @@ resources/
 |---|---|---|
 | `User` | `users` | Jogador; implementa `UserDetails` |
 | `Country` | `countries` | País com nome, ISO code, bandeira, lat/lon |
-| `Question` | `questions` | Pergunta com texto, categoria e imagem auxiliar |
-| `CountryFeature` | `country_features` | Relação País × Pergunta × resposta booleana |
-| `GameSession` | `game_sessions` | Partida do início ao fim |
-| `GameAttempt` | `game_attempts` | Log de cada resposta do jogador |
-| `GameStatus` | (enum) | `IN_PROGRESS`, `ROBOT_WON`, `HUMAN_WON`, `GAVE_UP`, `WAITING_FOR_REVEAL`, `FINISHED_REVEALED`, `GUESSING` |
+| `Question` | `questions` | Atributo com texto, categoria e imagem auxiliar |
+| `CountryFeature` | `country_features` | Base de conhecimento: País × Pergunta × Resposta booleana |
+| `GameSession` | `game_sessions` | Sessão de inferência do início ao fim |
+| `GameAttempt` | `game_attempts` | Log de cada resposta do usuário |
+| `GameStatus` | (enum) | `IN_PROGRESS`, `GUESSING`, `WAITING_FOR_REVEAL`, `ROBOT_WON`, `HUMAN_WON`, `GAVE_UP`, `FINISHED_REVEALED` |
 
 **Join Tables:**
 
 | Tabela | Propósito |
 |---|---|
-| `game_session_rejected` | Países que o robô já chutou e errou na sessão atual |
+| `game_session_rejected` | Países que o sistema já propôs e foram negados na sessão atual |
 
 ---
 
-## 🔄 Fluxo de Requisição
+## 🔄 Fluxo de uma Requisição
 
 ```
 HTTP Request
@@ -148,13 +148,13 @@ SecurityConfig           ← verifica se rota exige autenticação
 Controller               ← recebe DTO de Request, delega ao Service
     │
     ▼
-Service                  ← executa regras de negócio, chama Repositories
+GameService              ← MOTOR DE INFERÊNCIA: filtra candidatos, calcula entropia
     │
     ▼
 Repository               ← acessa banco via Spring Data JPA
     │
     ▼
-Database (MySQL)
+Database (MySQL) — country_features (base de conhecimento)
     │
     ▼
 DTO de Response          ← montado pelo Service
@@ -162,34 +162,6 @@ DTO de Response          ← montado pelo Service
     ▼
 HTTP Response (JSON)
 ```
-
----
-
-## 📦 Endpoints da API
-
-### Autenticação (`/api/auth`) — Público
-
-| Método | Rota | Request | Response |
-|---|---|---|---|
-| `POST` | `/api/auth/register` | `RegisterRequest` | `AuthResponse` |
-| `POST` | `/api/auth/login` | `LoginRequest` | `AuthResponse` |
-
-### Jogo (`/api/games`) — Autenticado ou Visitante
-
-| Método | Rota | Descrição |
-|---|---|---|
-| `POST` | `/api/games/start` | Iniciar nova partida |
-| `POST` | `/api/games/answer` | Responder pergunta do robô |
-| `GET` | `/api/games/history` | Histórico de partidas (requer login) |
-| `POST` | `/api/games/deny` | Negar palpite do robô |
-| `POST` | `/api/games/confirm` | Confirmar palpite do robô |
-| `POST` | `/api/games/reveal` | Revelar país pensado (após desistência) |
-
-### Países (`/api/countries`) — Público
-
-| Método | Rota | Descrição |
-|---|---|---|
-| `GET` | `/api/countries` | Listar todos os países |
 
 ---
 
@@ -225,7 +197,7 @@ Backend é 100% stateless — sem sessão HTTP. Autenticação via token JWT em 
 
 ---
 
-## � Comandos Rápidos
+## 🛠️ Comandos Rápidos
 
 ```bash
 # Compilar e verificar
@@ -243,4 +215,4 @@ mvn clean package -DskipTests
 
 ---
 
-*Última atualização: Fevereiro 2026*
+*Última atualização: Março 2026*

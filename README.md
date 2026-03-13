@@ -1,6 +1,6 @@
-# 🌍 Atlas4Me — Jogo Educativo de Geografia
+# 🌍 Atlas4Me — Jogo Interativo de Dedução Geográfica
 
-> Descubra países da América do Sul através de perguntas estratégicas! Um jogo estilo Akinator focado em geografia, construído com React 19 e Spring Boot 3.2.
+> Um jogo de adivinhação de países da América do Sul sustentado por um **motor de inferência baseado em Entropia de Shannon**. O sistema identifica o país pensado pelo usuário através de perguntas binárias selecionadas dinamicamente por ganho de informação.
 
 [![Java](https://img.shields.io/badge/Java-21-orange.svg)](https://www.oracle.com/java/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.x-brightgreen.svg)](https://spring.io/projects/spring-boot)
@@ -12,28 +12,64 @@
 
 ## 📖 Sobre o Projeto
 
-**Atlas4Me** é uma aplicação web educativa que gamifica o aprendizado de geografia da **América do Sul**, inspirada no famoso Akinator. O jogador **pensa em um país** e o sistema tenta adivinhar através de perguntas inteligentes sobre características geográficas, culturais, econômicas e visuais.
+**Atlas4Me** é um jogo interativo de dedução geográfica focado nos **13 países da América do Sul**. O jogador pensa em um país e o sistema tenta identificá-lo através de perguntas de resposta binária (SIM/NÃO).
 
-### 🎯 Como Funciona
+Internamente, o Atlas4Me não adivinha por força bruta — ele opera como um **sistema de inferência determinístico**: cada pergunta é selecionada com base no cálculo de **Entropia de Shannon**, priorizando a pergunta que maximiza o ganho de informação e divide o espaço de hipóteses da forma mais eficiente possível.
 
-1. **Jogador pensa** em um dos 13 países da América do Sul — sem revelar!
+> A experiência do usuário é a de um jogo estilo Akinator. O mecanismo por trás é inspirado em **árvores de decisão** e **teoria da informação**.
+
+---
+
+## 🧠 Como Funciona o Sistema
+
+### Visão do Usuário
+
+1. **Pense** em um dos 13 países da América do Sul — sem revelar!
 2. **Sistema faz perguntas** com respostas SIM ou NÃO ("Fala Espanhol?", "Tem litoral?")
-3. **Jogador responde** honestamente sobre o país que está pensando
-4. **Sistema elimina** progressivamente os países que não correspondem às respostas
-5. **Sistema tenta adivinhar** quando restam poucos candidatos
-6. **Jogador confirma ou nega** — caso o robô desista, o jogador revela o país
-7. **Sistema calcula pontuação** e registra no histórico de partidas
+3. **Responda** honestamente sobre o país que está pensando
+4. **Observe** os candidatos sendo eliminados progressivamente
+5. **Confirme ou negue** quando o sistema propõe um palpite
+6. Se o sistema desistir, **revele** o país — e veja se você o enganou
 
-### ✨ Funcionalidades
+### Motor de Inferência (por dentro)
+
+```
+Estado inicial: conjunto de 13 países candidatos + 16 perguntas
+
+Para cada rodada:
+  1. Calcular Entropia de Shannon do conjunto atual de candidatos
+  2. Para cada pergunta disponível:
+       - Calcular ganho de informação (IG = H(antes) − H(depois|resposta))
+  3. Selecionar a pergunta com maior IG
+  4. Receber resposta binária do usuário
+  5. Filtrar candidatos incompatíveis com a resposta
+  6. Se |candidatos| ≤ 1 → passar para fase de palpite (GUESSING)
+  7. Repetir até identificação ou desistência
+```
+
+A tabela `country_features` (País × Pergunta → Booleano) é a **base de conhecimento** do sistema. O `GameService` é o **motor de inferência** que opera sobre ela.
+
+### Sistema de Pontuação
+
+| Evento | Pontuação |
+|---|---|
+| Início da partida | 100 pts |
+| Cada palpite errado do sistema | −10 pts |
+| Sistema adivinhou (`ROBOT_WON`) | Score acumulado conforme erros |
+| Jogador venceu (`HUMAN_WON`) | 100 pts |
+
+---
+
+## ✨ Funcionalidades
 
 | Feature | Status |
 |---|---|
-| Autenticação JWT (Login / Cadastro) | ✅ |
-| Modo Visitante (jogan sem conta) | ✅ |
-| Algoritmo inteligente de filtragem progressiva | ✅ |
+| Motor de inferência por Entropia de Shannon | ✅ |
+| Seleção dinâmica de perguntas por ganho de informação | ✅ |
 | 13 países da América do Sul | ✅ |
 | 16 perguntas estratégicas (geo, cultura, bandeira, economia) | ✅ |
-| Sistema de pontuação (100 pts, −10 por erro do robô) | ✅ |
+| Autenticação JWT (Login / Cadastro) | ✅ |
+| Modo Visitante (jogar sem conta) | ✅ |
 | Perfil do jogador com histórico de partidas | ✅ |
 | Tema espacial com estrelas animadas e componentes 3D | ✅ |
 | Design responsivo (desktop e mobile) | ✅ |
@@ -41,26 +77,26 @@
 
 ---
 
-## 🏗️ Arquitetura
+## 🏗️ Estrutura do Repositório
 
 ```
 Atlas4Me/
-├── backend/         # API REST — Java 21 + Spring Boot 3.2
-│   ├── config/      # JWT + Security + Swagger
-│   ├── controller/  # AuthController, GameController, CountryController
-│   ├── service/     # Lógica de negócio + algoritmo do jogo
-│   ├── entity/      # User, Country, GameSession, GameAttempt, Question...
-│   ├── repository/  # Spring Data JPA
-│   ├── dto/         # Request/Response DTOs
-│   └── exception/   # GlobalExceptionHandler
+├── backend/              # API REST — Java 21 + Spring Boot 3.2
+│   ├── config/           # JWT + Security + Swagger
+│   ├── controller/       # AuthController, GameController, CountryController
+│   ├── service/          # GameService (motor de inferência) + demais serviços
+│   ├── entity/           # User, Country, GameSession, GameAttempt, Question...
+│   ├── repository/       # Spring Data JPA
+│   ├── dto/              # Request/Response DTOs
+│   └── exception/        # GlobalExceptionHandler
 │
-├── frontend/        # SPA — React 19 + Vite 7
-│   ├── pages/       # Home, Login, Cadastro, ComoJogar, Jogar, Perfil
-│   ├── components/  # Navbar, GameGlobe, Planet3D, SouthAmericaHologram
-│   ├── services/    # api.js (Axios + interceptors JWT)
-│   └── assets/      # CSS (glassmorphism, Stars, tema espacial)
+├── frontend/             # SPA — React 19 + Vite 7
+│   ├── pages/            # Home, Login, Cadastro, ComoJogar, Jogar, Perfil
+│   ├── components/       # Navbar, GameGlobe, Planet3D, SouthAmericaHologram
+│   ├── services/         # api.js (Axios + interceptors JWT)
+│   └── assets/           # CSS (glassmorphism, Stars, tema espacial)
 │
-└── docker-compose.yml  # MySQL + Backend + Frontend
+└── docker-compose.yml    # MySQL + Backend + Frontend
 ```
 
 ### Tecnologias
@@ -136,53 +172,6 @@ Abra: **http://localhost:5173**
 
 ---
 
-## 📱 Como Jogar
-
-1. **Cadastre-se**, faça **Login** ou jogue como **Visitante**
-2. Clique em **"Jogar"**
-3. **PENSE em um país** da América do Sul — **NÃO REVELE!**
-4. O sistema faz perguntas — responda **SIM** ou **NÃO** honestamente
-5. Observe os países candidatos serem eliminados
-6. Quando o robô tiver um palpite, **confirme** ou **negue**
-7. Se o robô desistir, **revele** o país que pensou
-8. Veja sua pontuação e histórico no **Perfil** 🏆
-
-### Sistema de Pontuação
-
-| Evento | Pontuação |
-|---|---|
-| Início da partida | 100 pts |
-| Cada erro do robô (palpite negado) | −10 pts |
-| Robô adivinhou (`ROBOT_WON`) | Score acumulado conforme erros |
-| Jogador venceu (`HUMAN_WON`) | 100 pts |
-
----
-
-## 📊 Banco de Dados
-
-### Schema (6 tabelas + 1 join table)
-
-| Tabela | Função |
-|---|---|
-| `users` | Jogadores cadastrados |
-| `countries` | 13 países da América do Sul (com lat/lon) |
-| `questions` | 16 perguntas do jogo |
-| `country_features` | Gabarito: País × Pergunta × Resposta |
-| `game_sessions` | Partidas individuais |
-| `game_attempts` | Log de cada resposta do jogador |
-| `game_session_rejected` | Países que o robô tentou e errou |
-
-### Migrations Flyway
-
-| Versão | Descrição |
-|---|---|
-| V1 | Criação de todas as tabelas |
-| V2 | Dados iniciais (países + perguntas + gabarito) |
-| V3 | Latitude e longitude nos países |
-| V4 | ISO code nas country_features |
-
----
-
 ## 📡 API Endpoints
 
 ### Autenticação (Público)
@@ -193,18 +182,34 @@ POST /api/auth/login     →  Login + geração de JWT
 
 ### Jogo (Público — suporta visitante)
 ```
-POST /api/games/start    →  Iniciar nova partida
-POST /api/games/answer   →  Responder pergunta
-POST /api/games/deny     →  Negar palpite do robô
-POST /api/games/confirm  →  Confirmar palpite do robô
-POST /api/games/reveal   →  Revelar país pensado
+POST /api/games/start    →  Iniciar nova sessão de inferência
+POST /api/games/answer   →  Enviar resposta binária
+POST /api/games/deny     →  Negar palpite do sistema
+POST /api/games/confirm  →  Confirmar palpite do sistema
+POST /api/games/reveal   →  Revelar país pensado (quando sistema desiste)
 GET  /api/games/history  →  Histórico de partidas
 ```
 
 ### Países (Público)
 ```
-GET  /api/countries      →  Listar todos os países
+GET  /api/countries      →  Listar todos os países (base de conhecimento)
 ```
+
+---
+
+## 📊 Modelo de Dados (Visão Geral)
+
+| Tabela | Função |
+|---|---|
+| `users` | Jogadores cadastrados |
+| `countries` | 13 países da América do Sul (com lat/lon) |
+| `questions` | 16 atributos (perguntas) utilizados na inferência |
+| `country_features` | Base de conhecimento: País × Pergunta × Resposta |
+| `game_sessions` | Sessões de inferência individuais |
+| `game_attempts` | Log de cada resposta durante a sessão |
+| `game_session_rejected` | Países descartados após palpite negado |
+
+> Detalhes completos do modelo e diagrama ER em [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ---
 
@@ -213,9 +218,7 @@ GET  /api/countries      →  Listar todos os países
 - **Autenticação:** JWT (HS256, expiração 24h)
 - **Senhas:** Criptografadas com BCrypt
 - **CORS:** Configurado para frontend local e produção
-- **SQL Injection:** Protegido via JPA/Hibernate
 - **Stateless:** Backend sem sessão HTTP — escala horizontalmente
-- **Swagger:** Desabilitado em produção por padrão
 
 ---
 
@@ -248,8 +251,8 @@ npm run preview   # Testar localmente → http://localhost:4173
 
 | Documento | Conteúdo |
 |---|---|
-| [**ARCHITECTURE.md**](ARCHITECTURE.md) | Arquitetura detalhada, modelo de dados, fluxos e decisões técnicas |
-| [**backend/README.md**](backend/README.md) | API REST, endpoints, autenticação JWT, configurações |
+| [**ARCHITECTURE.md**](ARCHITECTURE.md) | Arquitetura detalhada, motor de inferência, modelo de dados, decisões técnicas |
+| [**backend/README.md**](backend/README.md) | API REST, endpoints, motor de inferência, configurações |
 | [**backend/ESTRUTURA.md**](backend/ESTRUTURA.md) | Estrutura de pacotes e arquivos do backend |
 | [**frontend/README.md**](frontend/README.md) | Páginas, componentes, estilos e fluxo de navegação |
 
@@ -259,9 +262,9 @@ npm run preview   # Testar localmente → http://localhost:4173
 
 ### Versão Atual ✅
 
+- [x] Motor de inferência por Entropia de Shannon
 - [x] Autenticação JWT + modo visitante
-- [x] Algoritmo de filtragem progressiva (Akinator)
-- [x] 13 países, 16 perguntas
+- [x] 13 países, 16 perguntas (atributos)
 - [x] Ciclo completo: start → answer → deny/confirm → reveal
 - [x] Perfil com histórico de partidas
 - [x] Tema espacial com estrelas + componentes 3D
@@ -274,7 +277,8 @@ npm run preview   # Testar localmente → http://localhost:4173
 - [ ] Substituir `alert()` por **toast notifications**
 - [ ] Testes unitários (Vitest + JUnit)
 - [ ] **PWA** (Progressive Web App)
-- [ ] Novos continentes (Europa, Ásia, África)
+- [ ] Novos conjuntos de países (Europa, Ásia, África)
+- [ ] Visualização do processo de eliminação em tempo real
 
 ---
 
@@ -298,4 +302,4 @@ Este projeto está sob a licença **MIT**. Veja [LICENSE](LICENSE) para detalhes
 
 ---
 
-*Última atualização: Fevereiro 2026*
+*Última atualização: Março 2026*

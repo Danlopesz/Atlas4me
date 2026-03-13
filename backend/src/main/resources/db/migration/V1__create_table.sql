@@ -33,7 +33,10 @@ CREATE TABLE IF NOT EXISTS countries (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE,
     iso_code VARCHAR(5) NOT NULL,
-    image_url VARCHAR(255)
+    image_url VARCHAR(255),
+    latitude DOUBLE,
+    longitude DOUBLE,
+    continent VARCHAR(50) DEFAULT 'SOUTH_AMERICA'
 );
 
 -- Tabela de Perguntas
@@ -50,6 +53,7 @@ CREATE TABLE IF NOT EXISTS country_features (
     country_id BIGINT NOT NULL,
     question_id BIGINT NOT NULL,
     is_true BOOLEAN NOT NULL, -- A verdade absoluta sobre o país
+    iso_code VARCHAR(10) NOT NULL,
     FOREIGN KEY (country_id) REFERENCES countries(id),
     FOREIGN KEY (question_id) REFERENCES questions(id),
     UNIQUE (country_id, question_id) -- Garante que não duplique fatos

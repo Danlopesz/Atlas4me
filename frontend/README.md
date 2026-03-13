@@ -1,6 +1,6 @@
 # 🌍 Atlas4Me Frontend — Interface Web
 
-> SPA React moderna com tema espacial, autenticação JWT, jogo interativo de adivinhação geográfica e página de perfil com histórico de partidas.
+> SPA React com tema espacial que expõe a experiência do jogo de dedução geográfica ao usuário. Interface para o motor de inferência: exibe o conjunto de candidatos, a pergunta selecionada por entropia e o resultado de cada rodada.
 
 [![React](https://img.shields.io/badge/React-19.x-blue.svg)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-7.x-purple.svg)](https://vitejs.dev/)
@@ -74,7 +74,7 @@ frontend/
 ├── vite.config.js                 # Configuração Vite
 ├── eslint.config.js               # Regras ESLint
 ├── package.json                   # Dependências e scripts
-└── vercel.json                    # Configuração de deploy Vercel
+└── Dockerfile                     # Container para deploy
 ```
 
 ---
@@ -125,13 +125,13 @@ Formulário de criação de conta com campos: `firstName`, `lastName`, `email`, 
 
 ### ❓ **ComoJogar.jsx** — Tutorial (`/como-jogar`)
 
-Página estática com regras, pontuação e dicas de estratégia. Sem chamadas à API.
+Página estática com regras, pontuação e explicação do mecanismo de dedução. Sem chamadas à API.
 
 ---
 
 ### 🎮 **Jogar.jsx** — Tela do Jogo (`/jogar` e `/game`)
 
-Coração da aplicação. Gerencia todo o ciclo de vida do jogo.
+Componente central da aplicação. Gerencia todo o ciclo de vida da sessão de inferência.
 
 **Estados principais:**
 ```js
@@ -140,19 +140,19 @@ const [score, setScore]                        // Pontuação atual
 const [attempts, setAttempts]                  // Tentativas realizadas
 const [remainingCountries, setRemainingCountries]  // Candidatos restantes
 const [questions, setQuestions]                // Lista de perguntas disponíveis
-const [selectedQuestion, setSelectedQuestion]  // Pergunta selecionada
+const [selectedQuestion, setSelectedQuestion]  // Pergunta atual (selecionada pelo motor)
 const [userAnswer, setUserAnswer]              // SIM (true) | NÃO (false)
-const [gameStatus, setGameStatus]              // Status atual do jogo
+const [gameStatus, setGameStatus]              // Status atual da sessão
 const [targetCountry, setTargetCountry]        // País revelado ao final
 ```
 
-**Fases do jogo no frontend:**
-1. **Inicialização** — `POST /api/games/start` → carrega países e perguntas
-2. **Loop de perguntas** — `POST /api/games/answer` → atualiza candidatos
-3. **Fase de palpite (GUESSING)** — robô propõe um país
-   - `POST /api/games/deny` — jogador nega → robô tenta outro
-   - `POST /api/games/confirm` — jogador confirma → `ROBOT_WON`
-4. **Reveal (WAITING_FOR_REVEAL)** — robô desistiu
+**Fases da sessão no frontend:**
+1. **Inicialização** — `POST /api/games/start` → carrega países e primeira pergunta (por entropia)
+2. **Loop de perguntas** — `POST /api/games/answer` → atualiza lista de candidatos
+3. **Fase de palpite (GUESSING)** — sistema propõe um país
+   - `POST /api/games/deny` — usuário nega → sistema tenta próximo candidato
+   - `POST /api/games/confirm` — usuário confirma → `ROBOT_WON`
+4. **Reveal (WAITING_FOR_REVEAL)** — sistema desistiu
    - `POST /api/games/reveal` → `{ countryId }` → calcula `HUMAN_WON`
 
 **Suporta visitante:** Rota acessível sem token JWT.
@@ -161,7 +161,7 @@ const [targetCountry, setTargetCountry]        // País revelado ao final
 
 ### 👤 **Perfil.jsx** — Perfil e Histórico (`/perfil`)
 
-Página do usuário logado com estatísticas e histórico de partidas.
+Página do usuário logado com estatísticas e histórico de sessões.
 
 **Dados exibidos:**
 - Nome do usuário
@@ -284,7 +284,7 @@ O `App.jsx` renderiza globalmente três camadas de estrelas animadas via CSS:
 <div className="stars3"></div>
 ```
 
-Definidas em `Stars.css` — estrelas de diferentes tamanhos e velocidades de animação, criando profundidade de campo no fundo de toda a aplicação.
+Definidas em `Stars.css` — estrelas de diferentes tamanhos e velocidades de animação, criando profundidade de campo em todas as páginas.
 
 ### Sistema de Cores (CSS Custom Properties)
 
@@ -366,7 +366,6 @@ npm run preview
 O arquivo `vercel.json` está na raiz do repositório e configura redirecionamento SPA:
 
 ```json
-// vercel.json
 {
   "rewrites": [{ "source": "/(.*)", "destination": "/" }]
 }
@@ -389,12 +388,12 @@ Verifique `SecurityConfig.java` — adicione a origem `http://localhost:5173` à
 ```js
 // Verifique se o token está sendo enviado:
 console.log(localStorage.getItem('token'));
-// E se o interceptor está ativo verificando os headers da request no DevTools → Network
+// E se o interceptor está ativo — verifique os headers da request no DevTools → Network
 ```
 
 ### Refresh em rota diferente de `/` dá 404
 
-Configure seu servidor/reverse-proxy para redirecionar tudo ao `index.html` (comportamento de SPA). O `vercel.json` já faz isso para deploy na Vercel.
+Configure seu servidor para redirecionar tudo ao `index.html` (comportamento de SPA). O `vercel.json` já faz isso para deploy na Vercel.
 
 ---
 
@@ -404,9 +403,10 @@ Configure seu servidor/reverse-proxy para redirecionar tudo ao `index.html` (com
 - [ ] Implementar **Context API** ou **Zustand** para estado global
 - [ ] Substituir `alert()` por **Toast notifications**
 - [ ] Testes unitários com **Vitest + Testing Library**
-- [ ] **PWA** (Progressive Web App) 
+- [ ] **PWA** (Progressive Web App)
+- [ ] Visualização em tempo real do processo de eliminação de candidatos
 - [ ] Página de **Ranking** global de jogadores
 
 ---
 
-*Última atualização: Fevereiro 2026*
+*Última atualização: Março 2026*

@@ -1,6 +1,6 @@
 # 🏗️ ARCHITECTURE — Atlas4Me
 
-> Guia técnico detalhado de arquitetura, decisões de design e funcionamento interno do projeto Atlas4Me — jogo educativo de adivinhação de países da América do Sul, estilo Akinator.
+> Guia técnico detalhado da arquitetura, motor de inferência, modelo de dados e decisões de design do Atlas4Me — jogo interativo de dedução geográfica sustentado por um sistema de inferência baseado em Entropia de Shannon.
 
 ---
 
@@ -10,8 +10,8 @@
 2. [Stack Completo](#-stack-completo)
 3. [Arquitetura Full Stack](#-arquitetura-full-stack)
 4. [Modelo de Dados Detalhado](#-modelo-de-dados-detalhado)
-5. [Fluxo Completo do Jogo](#-fluxo-completo-do-jogo)
-6. [Algoritmo de Filtragem Progressiva](#-algoritmo-de-filtragem-progressiva)
+5. [Motor de Inferência: Entropia de Shannon](#-motor-de-inferência-entropia-de-shannon)
+6. [Fluxo Completo da Sessão de Inferência](#-fluxo-completo-da-sessão-de-inferência)
 7. [Sistema de Autenticação JWT](#-sistema-de-autenticação-jwt)
 8. [Modo Visitante](#-modo-visitante)
 9. [Componentes Visuais Especiais](#-componentes-visuais-especiais)
@@ -22,31 +22,26 @@
 
 ## 🎯 Visão Geral do Sistema
 
-### Problema Resolvido
+### Duas Dimensões do Atlas4Me
 
-Ensinar geografia de forma **gamificada** e **interativa**. O Atlas4Me transforma o aprendizado sobre os 13 países da América do Sul em uma experiência divertida — similar ao Akinator, mas com foco educativo.
+**Dimensão de Produto (experiência do usuário):**
+O Atlas4Me é um jogo interativo de adivinhação de países. O usuário pensa em um dos 13 países da América do Sul e o sistema tenta identificá-lo através de perguntas binárias (SIM/NÃO). A experiência é similar a sistemas como o Akinator, mas com foco em geografia.
 
-### Funcionamento Básico
+**Dimensão Técnica (mecanismo interno):**
+O sistema opera como um **motor de inferência determinístico** baseado em **Teoria da Informação**. A cada rodada, o sistema calcula o **Ganho de Informação** de cada pergunta disponível usando a **Entropia de Shannon** e seleciona a pergunta que mais divide o espaço de hipóteses — reduzindo o conjunto de candidatos de forma ótima.
+
+### Funcionamento Resumido
 
 ```
-1. JOGADOR  →  pensa em um país da América do Sul (não revela)
-2. SISTEMA  →  faz perguntas ("Fala Espanhol?", "Tem litoral?")
-3. JOGADOR  →  responde SIM ou NÃO honestamente
-4. SISTEMA  →  elimina países que não encaixam nas respostas
-5. SISTEMA  →  propõe um palpite quando poucos países restam
-6. JOGADOR  →  confirma ou nega; ao final revela o país
-7. SISTEMA  →  calcula pontuação e registra no histórico
+1. USUÁRIO   →  pensa em um país (não revela)
+2. SISTEMA   →  calcula entropia do conjunto atual de candidatos
+3. SISTEMA   →  seleciona a pergunta com maior ganho de informação
+4. USUÁRIO   →  responde SIM ou NÃO
+5. SISTEMA   →  elimina países incompatíveis com a resposta
+6. SISTEMA   →  repete até |candidatos| ≤ 1 → propõe palpite
+7. USUÁRIO   →  confirma ou nega; ao final revela o país
+8. SISTEMA   →  calcula pontuação e registra no histórico
 ```
-
-### Diferenciais
-
-- ✅ Algoritmo de eliminação progressiva (similar ao Akinator)
-- ✅ Suporte a **Visitantes** — joga sem criar conta
-- ✅ **Perfil** com histórico e estatísticas de partidas
-- ✅ Base de conhecimento normalizada (País × Pergunta × Resposta)
-- ✅ Feedback educativo ao final de cada partida
-- ✅ Tema visual imersivo com estrelas animadas e componentes 3D
-- ✅ Deploy via Railway (backend) + Vercel (frontend)
 
 ---
 
@@ -124,7 +119,7 @@ Ensinar geografia de forma **gamificada** e **interativa**. O Atlas4Me transform
 │  ┌──────────────────────▼──────────────────────────────────┐ │
 │  │  APPLICATION LAYER (Services)                           │ │
 │  │  LoginService • RegisterService                        │ │
-│  │  GameService (algoritmo + ciclo de vida)               │ │
+│  │  GameService ← MOTOR DE INFERÊNCIA (entropia + ciclo)  │ │
 │  │  CountryService • CustomUserDetailsService             │ │
 │  └──────────────────────┬──────────────────────────────────┘ │
 │                         │                                    │
@@ -142,7 +137,8 @@ Ensinar geografia de forma **gamificada** e **interativa**. O Atlas4Me transform
                           │ JDBC + Flyway Migrations
                           ▼
           ┌───────────────────────────────────────┐
-          │          DATABASE (MySQL 8.0)          │
+          │         DATABASE (MySQL 8.0)           │
+          │  Base de conhecimento: country_features │
           │  6 tabelas + 1 join table              │
           │  4 migrations Flyway versionadas       │
           └───────────────────────────────────────┘
@@ -180,7 +176,7 @@ Ensinar geografia de forma **gamificada** e **interativa**. O Atlas4Me transform
 │ FK: target_country_id  │◄─── País que o SISTEMA sorteia (oculto)
 │     status (enum)      │◄─── IN_PROGRESS | GUESSING | WAITING_FOR_REVEAL
 │                        │      | ROBOT_WON | HUMAN_WON | GAVE_UP | FINISHED_REVEALED
-│     score              │◄─── Inicia em 100, -10 por erro do robô
+│     score              │◄─── Inicia em 100, -10 por palpite errado
 │     attempts           │◄─── Contador de perguntas respondidas
 │     started_at         │
 │     finished_at        │◄─── NULL enquanto em andamento
@@ -192,9 +188,9 @@ Ensinar geografia de forma **gamificada** e **interativa**. O Atlas4Me transform
 ├────────────────────────┤
 │ PK: id                 │
 │ FK: session_id         │
-│ FK: question_id        │◄─── Qual pergunta foi feita
+│ FK: question_id        │◄─── Qual atributo foi consultado
 │     user_answer (BOOL) │◄─── SIM (true) ou NÃO (false)
-│     is_correct  (BOOL) │◄─── Preenchido no reveal — se a resposta estava certa
+│     is_correct  (BOOL) │◄─── Preenchido no reveal — se a resposta estava correta
 │     attempted_at       │
 └────────────────────────┘
 
@@ -210,40 +206,147 @@ Ensinar geografia de forma **gamificada** e **interativa**. O Atlas4Me transform
 └────────────────────────┘
 
 game_session_rejected (N:N join table)
-  session_id (FK) | country_id (FK) ← países que o robô chutou e errou na sessão
+  session_id (FK) | country_id (FK) ← países descartados após palpite negado
 ```
 
 ### Explicação das Entidades
 
+#### `CountryFeature` — A Base de Conhecimento
+**O núcleo do sistema.** Matriz `País × Pergunta → Resposta booleana`. Esta é a base de conhecimento sobre a qual o motor de inferência opera.
+```
+Brasil    + "Fala Espanhol?" = FALSE
+Argentina + "Fala Espanhol?" = TRUE
+Brasil    + "Tem litoral?"   = TRUE
+Bolívia   + "Tem litoral?"   = FALSE
+```
+
+#### `GameSession`
+Controla UMA sessão de inferência do início ao fim. `user_id` pode ser `NULL` (visitante). `target_country_id` é o país que o sistema sorteia internamente — invisível ao usuário durante o jogo.
+
+#### `GameAttempt`
+Log imutável de cada resposta do usuário. `is_correct` é calculado apenas no `reveal` — quando o usuário finalmente diz qual país pensou, permitindo verificar se todas as respostas foram consistentes.
+
 #### `User`
 Autenticação + estatísticas globais. Implementa `UserDetails` do Spring Security usando `email` como username. `totalScore` e `gamesPlayed` são campos de cache (evitam JOINs pesados no ranking).
 
-#### `GameSession`
-Controla UMA partida do início ao fim. `user_id` pode ser `NULL` (visitante). `target_country_id` é o país que o sistema sorteia internamente — invisível para o jogador.
-
-#### `GameAttempt`
-Log imutável de cada resposta do jogador. `is_correct` é calculado apenas no `reveal` — quando o jogador finalmente diz qual país pensou, permite verificar se todas as respostas estavam corretas.
-
-#### `Country`
-Dados básicos do país. Características ficam na `CountryFeature` (normalização — princípio Open/Closed: adicionar feature = INSERT, não ALTER TABLE).
-
 #### `Question`
-Perguntas configuráveis sem mudança de código. Categorias: `GEOGRAFIA`, `CULTURA`, `BANDEIRA`, `ECONOMIA`, `POPULACAO`.
+Atributos configuráveis sem mudança de código. Categorias: `GEOGRAFIA`, `CULTURA`, `BANDEIRA`, `ECONOMIA`, `POPULACAO`.
 
-#### `CountryFeature`
-**O "cérebro" do sistema.** Matriz `País × Pergunta → Resposta booleana`. Exemplo:
+---
+
+## 🧠 Motor de Inferência: Entropia de Shannon
+
+### Fundamento Teórico
+
+O sistema utiliza a **Entropia de Shannon** para mensurar a incerteza sobre qual país o usuário está pensando. O objetivo é sempre selecionar a pergunta que maximiza a **redução de entropia** (máximo Ganho de Informação).
+
+**Fórmula da Entropia:**
 ```
-Brasil   + "Fala Espanhol?" = FALSE
-Argentina + "Fala Espanhol?" = TRUE
-Brasil   + "Tem litoral?"   = TRUE
-Bolívia  + "Tem litoral?"   = FALSE
+H(S) = -∑ p(i) × log₂(p(i))
+
+Onde:
+  S = conjunto atual de países candidatos
+  p(i) = probabilidade do país i ser o alvo
+         (assumida uniforme: p(i) = 1/|S|)
+```
+
+**Ganho de Informação de uma pergunta Q:**
+```
+IG(S, Q) = H(S) − [ P(sim) × H(S_sim) + P(não) × H(S_não) ]
+
+Onde:
+  S_sim = candidatos que responderiam SIM à pergunta Q
+  S_não = candidatos que responderiam NÃO à pergunta Q
+  P(sim) = |S_sim| / |S|
+  P(não) = |S_não| / |S|
+```
+
+> A pergunta com maior `IG` divide o conjunto de candidatos de forma mais equilibrada, convergindo para a identificação do país com o menor número possível de perguntas.
+
+### Pseudocódigo do Motor
+
+```python
+def select_next_question(candidates, available_questions):
+    H_current = entropy(candidates)     # Entropia do estado atual
+    best_question = None
+    best_ig = -1
+
+    for question in available_questions:
+        sim_group = [c for c in candidates if feature(c, question) == True]
+        nao_group = [c for c in candidates if feature(c, question) == False]
+
+        p_sim = len(sim_group) / len(candidates)
+        p_nao = len(nao_group) / len(candidates)
+
+        ig = H_current - (p_sim * entropy(sim_group) + p_nao * entropy(nao_group))
+
+        if ig > best_ig:
+            best_ig = ig
+            best_question = question
+
+    return best_question
+
+def entropy(group):
+    n = len(group)
+    if n <= 1: return 0
+    p = 1 / n
+    return -n * (p * log2(p))   # uniforme: -log₂(1/n) = log₂(n)
+```
+
+### Filtragem dos Candidatos
+
+Após cada resposta, o sistema aplica a filtragem:
+
+```python
+def filter_candidates(candidates, question, user_answer):
+    return [
+        c for c in candidates
+        if CountryFeature(c.id, question.id).is_true == user_answer
+    ]
+```
+
+### Exemplo Prático — Usuário Pensa em Brasil
+
+```
+Estado inicial: 13 países (H = log₂(13) ≈ 3.7 bits)
+
+Pergunta 1 (maior IG): "A língua principal é o Espanhol?" → NÃO (false)
+  Restam: Brasil, Guiana, Suriname, Guiana Francesa  (4 países)
+  H ≈ 2.0 bits
+
+Pergunta 2: "O país tem saída para o mar?" → SIM (true)
+  Restam: Brasil, Guiana, Suriname, Guiana Francesa  (todos têm litoral)
+  Próxima pergunta busca novo IG máximo...
+
+Pergunta 3: "O país usa o Euro como moeda?" → NÃO (false)
+  Restam: Brasil, Guiana, Suriname  (3 países — excluiu G. Francesa)
+
+Pergunta 4: "A língua principal é o Inglês?" → NÃO (false)
+  Restam: Brasil, Suriname  (2 países — excluiu Guiana)
+
+Pergunta 5: "A língua principal é o Holandês?" → NÃO (false)
+  Restam: Brasil  (1 país! H = 0 bits)  →  status = GUESSING
+
+Sistema propõe: "Você pensou no Brasil?" → Usuário confirma → ROBOT_WON 🎉
+```
+
+### Implementação SQL da Filtragem
+
+```sql
+-- Filtra países compatíveis com a resposta do usuário
+SELECT DISTINCT c.*
+FROM countries c
+JOIN country_features cf ON c.id = cf.country_id
+WHERE cf.question_id = :questionId
+  AND cf.is_true = :userAnswer
+  AND c.id IN (:currentCandidateIds)
 ```
 
 ---
 
-## 🎮 Fluxo Completo do Jogo
+## 🎮 Fluxo Completo da Sessão de Inferência
 
-### Fase 1 — Iniciar Partida
+### Fase 1 — Iniciar Sessão
 
 ```
 POST /api/games/start
@@ -253,7 +356,8 @@ GameService.startNewGame():
   1. Verifica se usuário já tem sessão IN_PROGRESS → BusinessException se sim
   2. Sorteia país alvo aleatoriamente (oculto)
   3. Cria GameSession (score=100, attempts=0, status=IN_PROGRESS)
-  4. Retorna GameResponse com todos os 13 países + primeira pergunta
+  4. Calcula primeira pergunta por Ganho de Informação
+  5. Retorna GameResponse com todos os 13 países + primeira pergunta
 
 Response:
 {
@@ -267,7 +371,7 @@ Response:
 }
 ```
 
-### Fase 2 — Loop de Perguntas
+### Fase 2 — Loop de Inferência
 
 ```
 POST /api/games/answer
@@ -277,9 +381,10 @@ GameService.submitAnswer():
   1. Busca GameSession ativa do usuário
   2. Registra GameAttempt (session=42, question=1, userAnswer=false, isCorrect=null)
   3. Incrementa attempts
-  4. Aplica algoritmo de filtragem (veja seção abaixo)
-  5. Se remainingCountries.size() <= 1 → muda status para GUESSING
-  6. Retorna países restantes + próxima pergunta
+  4. Filtra candidatos incompatíveis com a resposta
+  5. Seleciona próxima pergunta por maior Ganho de Informação
+  6. Se |remainingCountries| ≤ 1 → muda status para GUESSING
+  7. Retorna países restantes + próxima pergunta
 
 Response:
 {
@@ -293,19 +398,19 @@ Response:
 }
 ```
 
-### Fase 3 — Robô Tenta Adivinhar (GUESSING)
+### Fase 3 — Palpite (GUESSING)
 
 ```
 Sistema propõe: "Você pensou no Brasil?"
 
-Se jogador niega:
+Se usuário nega:
   POST /api/games/deny   →  { gameId: 42 }
   GameService.denyRobotGuess():
     - Adiciona país tentado em game_session_rejected
     - Tenta próximo candidato
     - Se esgotou candidatos → status = WAITING_FOR_REVEAL
 
-Se jogador confirma:
+Se usuário confirma:
   POST /api/games/confirm   →  { gameId: 42 }
   GameService.confirmRobotGuess():
     - status = ROBOT_WON
@@ -316,17 +421,17 @@ Se jogador confirma:
 ### Fase 4 — Reveal (WAITING_FOR_REVEAL)
 
 ```
-Robô desistiu — pede ao jogador que revele o país
+Sistema desistiu — pede ao usuário que revele o país
 
 POST /api/games/reveal
 Body: { "gameId": 42, "countryId": 1 }   // countryId = Brasil
 
 GameService.revealAnswer():
-  1. Atualiza target_country_id na sessão (se era NULL)
+  1. Atualiza target_country_id na sessão
   2. Para cada GameAttempt da sessão:
      - Compara userAnswer com CountryFeature(countryId, questionId).isTrue
      - Preenche isCorrect
-  3. Se sistema acertaria com o país revelado → ROBOT_WON
+  3. Se sistema teria acertado com o país revelado → ROBOT_WON
   4. Caso contrário → HUMAN_WON
   5. Atualiza totalScore e gamesPlayed
   6. status = FINISHED_REVEALED
@@ -342,72 +447,6 @@ Response:
     ...
   ]
 }
-```
-
----
-
-## 🧠 Algoritmo de Filtragem Progressiva
-
-### Pseudocódigo
-
-```python
-def get_remaining_countries(session_id):
-    # Busca todas tentativas da sessão
-    attempts = SELECT * FROM game_attempts
-               WHERE session_id = session_id
-               ORDER BY attempted_at ASC
-
-    # Começa com todos os países
-    candidates = SELECT * FROM countries
-
-    # Aplica cada filtro sequencialmente
-    for attempt in attempts:
-        # Filtra países onde a feature corresponde à resposta do jogador
-        candidates = [
-            c for c in candidates
-            if CountryFeature(c.id, attempt.question_id).is_true == attempt.user_answer
-        ]
-
-    return candidates
-```
-
-### Exemplo Prático — Jogador Pensa em Brasil
-
-```
-Estado inicial: 13 países
-
-Pergunta 1: "A língua principal é o Espanhol?" → NÃO (false)
-  Filtro: country_features.question_id=1 AND is_true=FALSE
-  Restam: Brasil, Guiana, Suriname, Guiana Francesa  (4 países)
-
-Pergunta 2: "O país tem saída para o mar?" → SIM (true)
-  Filtro: question_id=3 AND is_true=TRUE  ∩  candidatos anteriores
-  Restam: Brasil, Guiana, Suriname, Guiana Francesa  (todos têm litoral)
-
-Pergunta 3: "O país usa o Euro como moeda?" → NÃO (false)
-  Filtro: question_id=7 AND is_true=FALSE
-  Restam: Brasil, Guiana, Suriname  (3 países — excluiu G. Francesa)
-
-Pergunta 4: "A língua principal é o Inglês?" → NÃO (false)
-  Filtro: question_id=15 AND is_true=FALSE
-  Restam: Brasil, Suriname  (2 países — excluiu Guiana)
-
-Pergunta 5: "A língua principal é o Holandês?" → NÃO (false)
-  Filtro: question_id=16 AND is_true=FALSE
-  Restam: Brasil  (1 país!)  →  status = GUESSING
-
-Robô propõe: "Você pensou no Brasil?" → Jogador confirma → ROBOT_WON 🎉
-```
-
-### Implementação SQL Real
-
-```sql
-SELECT DISTINCT c.*
-FROM countries c
-JOIN country_features cf ON c.id = cf.country_id
-WHERE cf.question_id = :questionId
-  AND cf.is_true = :userAnswer
-  AND c.id IN (:currentCandidateIds)
 ```
 
 ---
@@ -480,15 +519,13 @@ String userEmail = (authentication != null && authentication.isAuthenticated())
 
 Comportamento para visitante:
 - `GameSession.user_id = NULL`
-- Jogo funciona normalmente
+- Jogo e motor de inferência funcionam normalmente
 - Histórico retorna lista vazia (`GET /api/games/history`)
-- Pontuação NÃO é persistida no perfil
+- Pontuação **não** é persistida no perfil
 
 ---
 
 ## 🎨 Componentes Visuais Especiais
-
-O frontend possui componentes CSS art / SVG art criados para o tema espacial:
 
 | Componente | Tipo | Descrição |
 |---|---|---|
@@ -501,19 +538,20 @@ O frontend possui componentes CSS art / SVG art criados para o tema espacial:
 
 ## 🔍 Análise de Decisões Técnicas
 
-### 1. ✅ `CountryFeature` — Normalização vs Simplicidade
+### 1. ✅ `CountryFeature` — Base de Conhecimento Normalizada
 
 **Alternativa rejeitada:** 20+ campos booleanos em `Country` (`hasBeach`, `speaksSpanish`, etc.)
 
 **Problema:** Adicionar nova pergunta exigiria `ALTER TABLE country ADD COLUMN`.
 
 **Decisão:** Tabela separada `country_features (country_id, question_id, is_true)`.
-- Adicionar pergunta = `INSERT INTO questions` + `INSERT INTO country_features × 13`
+- Adicionar atributo = `INSERT INTO questions` + `INSERT INTO country_features × 13`
 - Nenhuma alteração de schema (princípio Open/Closed)
+- Permite que o motor de inferência itere dinamicamente sobre todos os atributos
 
 ---
 
-### 2. ✅ `GameStatus` enum — Múltiplos estados
+### 2. ✅ `GameStatus` enum — Múltiplos Estados
 
 **Alternativa rejeitada:** Campos `completed (boolean)` + `won (boolean)`.
 
@@ -539,14 +577,14 @@ O frontend possui componentes CSS art / SVG art criados para o tema espacial:
 
 **Motivo para manter:**
 - Queries de ranking executam em milliseconds sem JOIN pesado
-- Cached Value Pattern — troca 4 bytes de espaço por 50ms de tempo
+- Cached Value Pattern — troca 4 bytes de espaço por latência reduzida
 
 ---
 
 ### 5. ✅ `GameAttempt.is_correct` calculado no reveal
 
 **Por que não calcular na hora da resposta?**
-O sistema não conhece o país do jogador durante o jogo (é o ponto central do Akinator). O `is_correct` só pode ser calculado quando o jogador revela o país ao final — comparando each `userAnswer` com o `CountryFeature` do país revelado.
+O sistema não conhece o país do usuário durante o jogo — essa é a premissa fundamental. O `is_correct` só pode ser calculado quando o usuário revela o país ao final, comparando cada `userAnswer` com o `CountryFeature` do país revelado.
 
 ---
 
@@ -598,11 +636,10 @@ LOG_LEVEL=INFO
 
 | Versão | Arquivo | Conteúdo |
 |---|---|---|
-| V1 | `create_table.sql` | Criação de todas as 7 tabelas |
-| V2 | `insert_initial_data.sql` | 13 países + 16 perguntas + gabarito completo |
-| V3 | `Add_Lat_Lon_To_Countries.sql` | Colunas `latitude` e `longitude` |
-| V4 | `Add_IsoCode_To_CountryFeatures.sql` | `iso_code` redundante nas features |
+| V1 | `V1__create_table.sql` | Criação de todas as 7 tabelas |
+| V2 | `V2__insert_initial_data.sql` | 13 países + 16 perguntas + gabarito completo (`country_features`) |
+
 
 ---
 
-*Última atualização: Fevereiro 2026*
+*Última atualização: Março 2026*

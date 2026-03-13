@@ -1,6 +1,6 @@
-# 🌍 Atlas4Me Backend — API REST
+# 🌍 Atlas4Me Backend — API REST & Motor de Inferência
 
-> Backend Java Spring Boot do jogo de adivinhação de países Atlas4Me. Sistema completo com autenticação JWT, algoritmo de filtragem progressiva, suporte a visitantes e deploy via Railway/Docker.
+> Backend Java Spring Boot do Atlas4Me. Responsável pela API REST, autenticação JWT e pelo **motor de inferência** que seleciona perguntas dinamicamente usando **Entropia de Shannon** para identificar o país pensado pelo usuário.
 
 [![Java](https://img.shields.io/badge/Java-21-orange.svg)](https://www.oracle.com/java/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.x-brightgreen.svg)](https://spring.io/projects/spring-boot)
@@ -12,16 +12,16 @@
 ## 📋 Índice
 
 1. [Stack Tecnológica](#-stack-tecnológica)
-2. [Conceito do Jogo](#-conceito-do-jogo)
-3. [Arquitetura em Camadas](#-arquitetura-em-camadas)
-4. [Modelo de Dados](#-modelo-de-dados)
-5. [Endpoints da API](#-endpoints-da-api)
-6. [Fluxo Completo do Jogo](#-fluxo-completo-do-jogo)
-7. [Sistema de Autenticação JWT](#-sistema-de-autenticação-jwt)
-8. [Modo Visitante](#-modo-visitante)
-9. [Configurações e Variáveis de Ambiente](#-configurações-e-variáveis-de-ambiente)
-10. [Como Executar](#-como-executar)
-11. [Flyway Migrations](#-flyway-migrations)
+2. [Arquitetura em Camadas](#-arquitetura-em-camadas)
+3. [Motor de Inferência (GameService)](#-motor-de-inferência-gameservice)
+4. [Endpoints da API](#-endpoints-da-api)
+5. [Fluxo da Sessão de Inferência](#-fluxo-da-sessão-de-inferência)
+6. [Sistema de Autenticação JWT](#-sistema-de-autenticação-jwt)
+7. [Modo Visitante](#-modo-visitante)
+8. [Configurações e Variáveis de Ambiente](#-configurações-e-variáveis-de-ambiente)
+9. [Como Executar](#-como-executar)
+10. [Flyway Migrations](#-flyway-migrations)
+11. [Troubleshooting](#-troubleshooting)
 
 ---
 
@@ -32,43 +32,14 @@
 | Java | 21 | Linguagem principal |
 | Spring Boot | 3.2.x | Framework web e IoC |
 | Spring Security | 6.x | Autenticação e autorização |
-| JWT (JJWT) | — | Tokens stateless |
+| JWT (JJWT) | — | Tokens stateless HS256 |
 | Spring Data JPA | — | ORM / abstração de persistência |
 | Hibernate | — | Implementação JPA |
-| MySQL | 8.0 | Banco relacional (prod e local) |
+| MySQL | 8.0 | Banco relacional |
 | Flyway | 10.x | Migrations versionadas |
 | Lombok | — | Redução de boilerplate |
 | Springdoc OpenAPI | — | Documentação Swagger |
 | Maven | 3.8+ | Gerenciamento de dependências |
-
----
-
-## 🎮 Conceito do Jogo
-
-### O que é o Atlas4Me?
-
-O **Atlas4Me** é um jogo educativo estilo **Akinator**, focado em **geografia da América do Sul**. O jogador **pensa** em um dos 13 países e o sistema tenta **adivinhar** fazendo perguntas estratégicas.
-
-### Fluxo Simplificado
-
-```
-1. Jogador pensa em um país (ex: Brasil) — NÃO revela!
-2. Sistema pergunta: "A língua principal é o Espanhol?"
-3. Jogador responde: NÃO
-4. Sistema elimina países que falam Espanhol → restam 4
-5. Sistema continua até restar 1 candidato
-6. Sistema tenta: "Você pensou no Brasil?" → Jogador confirma ou nega
-7. Ao final, jogador revela o país → sistema calcula pontuação
-```
-
-### Sistema de Pontuação
-
-| Evento | Efeito |
-|---|---|
-| Pontuação inicial | 100 pontos |
-| Cada erro do sistema (palpite negado) | −10 pontos |
-| Sistema adivinhou (`ROBOT_WON`) | Jogador perde pontos conforme erros |
-| Jogador venceu (`HUMAN_WON`) | 100 pontos garantidos |
 
 ---
 
@@ -97,8 +68,8 @@ O **Atlas4Me** é um jogo educativo estilo **Akinator**, focado em **geografia d
 │                         │                                   │
 │  ┌──────────────────────▼────────────────────────────────┐  │
 │  │  APPLICATION LAYER (Services)                         │  │
-│  │  LoginService • RegisterService                       │  │
-│  │  GameService  • CountryService                        │  │
+│  │  LoginService • RegisterService • CountryService      │  │
+│  │  GameService  ← MOTOR DE INFERÊNCIA                   │  │
 │  │  CustomUserDetailsService                             │  │
 │  └──────────────────────┬────────────────────────────────┘  │
 │                         │                                   │
@@ -117,79 +88,55 @@ O **Atlas4Me** é um jogo educativo estilo **Akinator**, focado em **geografia d
                           ▼
             ┌─────────────────────────────┐
             │   DATABASE (MySQL 8.0)      │
-            │   Port: 3307 (local)        │
-            │   Host: Railway (prod)      │
+            │   Base de conhecimento:     │
+            │   country_features          │
             └─────────────────────────────┘
 ```
 
 ---
 
-## 📊 Modelo de Dados
+## 🧠 Motor de Inferência (GameService)
 
-### Diagrama ER
+O `GameService` é o núcleo do sistema. Ele implementa o motor de inferência que, a cada rodada, seleciona a pergunta com maior **Ganho de Informação** baseado na **Entropia de Shannon**.
+
+### Como funciona
 
 ```
-┌──────────────────┐        ┌──────────────────────┐
-│      User        │ 1    N │     GameSession       │
-│──────────────────│────────│──────────────────────│
-│ id (PK)          │        │ id (PK)               │
-│ email (UNIQUE)   │        │ user_id (FK) ← NULL   │ ← visitante
-│ firstName        │        │ target_country_id (FK)│
-│ lastName         │        │ status (ENUM)         │
-│ password (BCrypt)│        │ score                 │
-│ totalScore       │        │ attempts              │
-│ gamesPlayed      │        │ started_at            │
-│ role (USER|ADMIN)│        │ finished_at           │
-│ active           │        └──────────┬───────────┘
-│ createdAt        │                   │ 1
-│ updatedAt        │                   │
-└──────────────────┘                   │ N
-                            ┌──────────▼───────────┐
-                            │     GameAttempt      │
-                            │──────────────────────│
-                            │ id (PK)              │
-                            │ session_id (FK)      │
-                            │ question_id (FK)     │
-                            │ user_answer (BOOL)   │
-                            │ is_correct (BOOL)    │
-                            │ attempted_at         │
-                            └──────────────────────┘
+1. Recebe resposta do usuário (SIM/NÃO) para a pergunta atual
+2. Filtra candidatos: elimina países incompatíveis com a resposta
+3. Calcula Entropia de Shannon do conjunto restante
+4. Para cada pergunta ainda não feita:
+     - Calcula IG = H(estado atual) − entropia ponderada após a pergunta
+5. Seleciona a pergunta com maior IG → divide o espaço de hipóteses de forma ótima
+6. Se |candidatos| ≤ 1 → passa para fase GUESSING
+```
 
-┌──────────────────┐        ┌──────────────────────┐
-│     Country      │ 1    N │   CountryFeature      │
-│──────────────────│────────│──────────────────────│
-│ id (PK)          │        │ id (PK)               │
-│ name (UNIQUE)    │        │ country_id (FK)       │
-│ iso_code         │        │ question_id (FK)      │
-│ image_url        │        │ is_true (BOOL)        │ ← gabarito
-│ latitude         │        └──────────────────────┘
-│ longitude        │
-└──────────────────┘        ┌──────────────────────┐
-                            │      Question        │
-                            │──────────────────────│
-                            │ id (PK)               │
-                            │ text                  │
-                            │ category              │
-                            │ helper_image_url      │
-                            └──────────────────────┘
+### Base de Conhecimento
 
-game_session_rejected (join table N:N)
- session_id (FK) | country_id (FK)  ← países que o robô chutou e errou
+A tabela `country_features` é a matriz `País × Pergunta → Resposta booleana` que alimenta o motor:
+
+```
+Brasil    + "Fala Espanhol?"   = FALSE
+Argentina + "Fala Espanhol?"   = TRUE
+Brasil    + "Tem litoral?"     = TRUE
+Bolívia   + "Tem litoral?"     = FALSE
 ```
 
 ### Enum `GameStatus`
 
 ```java
 public enum GameStatus {
-    IN_PROGRESS,        // Jogo ativo — fazendo perguntas
-    GUESSING,           // Robô está tentando adivinhar o país
-    WAITING_FOR_REVEAL, // Robô desistiu — aguardando reveal do jogador
-    ROBOT_WON,          // Robô adivinhou corretamente
-    HUMAN_WON,          // Jogador venceu — robô errou/desistiu
-    GAVE_UP,            // Jogador desistiu
-    FINISHED_REVEALED   // Jogo encerrado após revelação
+    IN_PROGRESS,        // Motor ativo — fazendo perguntas
+    GUESSING,           // Candidatos ≤ 1 — sistema propõe palpite
+    WAITING_FOR_REVEAL, // Sistema desistiu — aguardando reveal do usuário
+    ROBOT_WON,          // Sistema identificou corretamente
+    HUMAN_WON,          // Usuário enganou o sistema
+    GAVE_UP,            // Usuário desistiu
+    FINISHED_REVEALED   // Sessão encerrada após revelação
 }
 ```
+
+> Para detalhes completos do algoritmo (fórmulas, pseudocódigo, exemplo step-by-step), consulte [ARCHITECTURE.md](../ARCHITECTURE.md#-motor-de-inferência-entropia-de-shannon).
 
 ---
 
@@ -220,11 +167,11 @@ public enum GameStatus {
 
 | Método | Rota | Descrição |
 |---|---|---|
-| `POST` | `/api/games/start` | Iniciar nova partida |
-| `POST` | `/api/games/answer` | Responder pergunta |
+| `POST` | `/api/games/start` | Iniciar nova sessão de inferência |
+| `POST` | `/api/games/answer` | Enviar resposta binária (SIM/NÃO) |
 | `GET` | `/api/games/history` | Histórico (vazio para visitante) |
-| `POST` | `/api/games/deny` | Negar palpite do robô |
-| `POST` | `/api/games/confirm` | Confirmar palpite do robô |
+| `POST` | `/api/games/deny` | Negar palpite do sistema |
+| `POST` | `/api/games/confirm` | Confirmar palpite do sistema |
 | `POST` | `/api/games/reveal` | Revelar o país pensado |
 
 ```json
@@ -247,58 +194,38 @@ public enum GameStatus {
 
 | Método | Rota | Resposta |
 |---|---|---|
-| `GET` | `/api/countries` | `List<CountryResponse>` |
+| `GET` | `/api/countries` | `List<CountryResponse>` (base de conhecimento) |
 
 ---
 
-## 🎮 Fluxo Completo do Jogo
+## 🎮 Fluxo da Sessão de Inferência
 
 ```
 1. POST /api/games/start
-   ├─ Sistema sorteia país alvo (oculto do jogador)
+   ├─ Sistema sorteia país alvo (oculto do usuário)
    ├─ Cria GameSession (status=IN_PROGRESS, score=100)
-   └─ Retorna lista de todos os países + primeira pergunta
+   └─ Seleciona 1ª pergunta por maior Ganho de Informação
 
-2. POST /api/games/answer  [loop]
+2. POST /api/games/answer  [loop até candidatos ≤ 1]
    ├─ Salva resposta em GameAttempt
-   ├─ Aplica algoritmo de filtragem progressiva
-   ├─ remainingCountries.size() <= 1 → passa para fase GUESSING
+   ├─ Filtra candidatos incompatíveis
+   ├─ Recalcula melhor pergunta por entropia
    └─ Retorna países restantes + próxima pergunta
 
 3. Fase GUESSING (status=GUESSING)
    ├─ Sistema propõe: "Você pensou no Brasil?"
-   ├─ POST /api/games/deny → robô errou, tenta próximo
-   └─ POST /api/games/confirm → ROBOT_WON, jogo encerra
+   ├─ POST /api/games/deny    → sistema erra, tenta próximo candidato
+   └─ POST /api/games/confirm → ROBOT_WON, sessão encerra
 
 4. Fase REVEAL (status=WAITING_FOR_REVEAL)
-   ├─ Robô desistiu após erros demais
-   ├─ POST /api/games/reveal  →  { countryId: X }
-   └─ Sistema valida, calcula pontuação → HUMAN_WON ou FINISHED_REVEALED
-```
-
-### Algoritmo de Filtragem (dentro de `GameService`)
-
-```
-Para cada GameAttempt da sessão:
-  → Filtra countries onde country_features.is_true = userAnswer
-  → Intersecta com candidatos anteriores
-
-Brasil, Argentina, Chile... (13 países)
-  ↓ "Fala Espanhol?" = NÃO
-Brasil, Guiana, Suriname, Guiana Francesa (4 países)
-  ↓ "Usa Euro?" = NÃO
-Brasil, Guiana, Suriname (3 países)
-  ↓ "Fala Inglês?" = NÃO
-Brasil, Suriname (2 países)
-  ↓ "Fala Holandês?" = NÃO
-Brasil ← 1 candidato → GUESSING!
+   ├─ Sistema desistiu após esgotar candidatos
+   ├─ POST /api/games/reveal → { countryId: X }
+   └─ Sistema valida, calcula Feedback → HUMAN_WON ou FINISHED_REVEALED
 ```
 
 ---
 
 ## 🔐 Sistema de Autenticação JWT
-
-### Fluxo
 
 ```
 1. POST /api/auth/login
@@ -322,26 +249,12 @@ Brasil ← 1 candidato → GUESSING!
 10. Controller acessa usuário via authentication.getName()
 ```
 
-### Payload do JWT
-
-```json
-{
-  "sub": "user@email.com",
-  "iat": 1740000000,
-  "exp": 1740086400
-}
-```
-
-### Configuração de Segurança (rotas públicas)
+### Rotas públicas vs protegidas
 
 ```
 PUBLIC: POST /api/auth/**
 PUBLIC: GET  /api/countries
-PUBLIC: POST /api/games/start    (visitante)
-PUBLIC: POST /api/games/answer   (visitante)
-PUBLIC: POST /api/games/deny     (visitante)
-PUBLIC: POST /api/games/confirm  (visitante)
-PUBLIC: POST /api/games/reveal   (visitante)
+PUBLIC: POST /api/games/start, answer, deny, confirm, reveal
 SECURED: GET /api/games/history
 SECURED: qualquer outra rota
 ```
@@ -363,7 +276,7 @@ String userEmail = (authentication != null && authentication.isAuthenticated())
 
 ## ⚙️ Configurações e Variáveis de Ambiente
 
-O arquivo `application.properties` usa `${VAR:default}` para suportar deploy em produção (Railway) e ambiente local.
+O `application.properties` usa `${VAR:default}` para suportar Railway (produção) e ambiente local.
 
 | Variável de Ambiente | Default local | Descrição |
 |---|---|---|
@@ -379,7 +292,7 @@ O arquivo `application.properties` usa `${VAR:default}` para suportar deploy em 
 | `SHOW_SQL` | `false` | Loga SQL no console |
 | `LOG_LEVEL` | `INFO` | Nível de log |
 
-### Banco de Dados Local (Docker Compose)
+### Banco de Dados Local
 
 ```
 Host:     localhost
@@ -428,14 +341,14 @@ docker-compose up --build
 
 | Migration | Descrição |
 |---|---|
-| `V1__create_table.sql` | Criação de todas as tabelas (users, countries, questions, country_features, game_sessions, game_attempts, game_session_rejected) |
-| `V2__insert_initial_data.sql` | Inserção dos 13 países da América do Sul + 16 perguntas + gabarito country_features |
-| `V3__Add_Lat_Lon_To_Countries.sql` | Adiciona colunas `latitude` e `longitude` à tabela countries |
-| `V4__Add_IsoCode_To_CountryFeatures.sql` | Adiciona iso_code redundante em country_features (otimização de consulta) |
+| `V1__create_table.sql` | Criação de todas as 7 tabelas |
+| `V2__insert_initial_data.sql` | 13 países + 16 perguntas + gabarito `country_features` |
+| `V3__Add_Lat_Lon_To_Countries.sql` | Colunas `latitude` e `longitude` nos países |
+| `V4__Add_IsoCode_To_CountryFeatures.sql` | `iso_code` redundante nas features |
 
 ---
 
-## 🐛 Troubleshooting Comum
+## 🐛 Troubleshooting
 
 ### Erro ao conectar ao banco
 ```
@@ -450,10 +363,10 @@ Token JWT expirado (validade 24h) ou inválido.
 Faça login novamente: POST /api/auth/login
 ```
 
-### Erro 409 Conflict ao iniciar jogo
+### Erro 409 Conflict ao iniciar sessão
 ```
 Usuário já tem uma sessão IN_PROGRESS ativa.
-Só é permitida 1 partida simultânea por usuário logado.
+Só é permitida 1 sessão simultânea por usuário logado.
 ```
 
 ### Flyway baseline error
@@ -464,4 +377,4 @@ Solução: spring.flyway.baseline-on-migrate=true (já configurado)
 
 ---
 
-*Última atualização: Fevereiro 2026*
+*Última atualização: Março 2026*
