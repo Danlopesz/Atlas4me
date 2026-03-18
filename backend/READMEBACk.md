@@ -69,14 +69,17 @@
 │  ┌──────────────────────▼────────────────────────────────┐  │
 │  │  APPLICATION LAYER (Services)                         │  │
 │  │  LoginService • RegisterService • CountryService      │  │
-│  │  GameService  ← MOTOR DE INFERÊNCIA                   │  │
+│  │  GameService  ← orquestra o ciclo da sessão            │  │
 │  │  CustomUserDetailsService                             │  │
+│  │  ─── inference/ (submódulo stateless) ──────────────  │  │
+│  │  InferenceEngine (motor Shannon) • KnowledgeBaseCache │  │
+│  │  GameState (record imutável)                          │  │
 │  └──────────────────────┬────────────────────────────────┘  │
 │                         │                                   │
 │  ┌──────────────────────▼────────────────────────────────┐  │
 │  │  DOMAIN LAYER (Entities + Enums)                      │  │
 │  │  User • Country • Question • CountryFeature           │  │
-│  │  GameSession • GameAttempt • GameStatus               │  │
+│  │  GameSession (@Version) • GameAttempt • GameStatus    │  │
 │  └──────────────────────┬────────────────────────────────┘  │
 │                         │                                   │
 │  ┌──────────────────────▼────────────────────────────────┐  │
@@ -95,20 +98,29 @@
 
 ---
 
-## 🧠 Motor de Inferência (GameService)
+## 🧠 Motor de Inferência
 
-O `GameService` é o núcleo do sistema. Ele implementa o motor de inferência que, a cada rodada, seleciona a pergunta com maior **Ganho de Informação** baseado na **Entropia de Shannon**.
+O `GameService` orquestra o ciclo da sessão, delegando a inteligência ao submódulo `service/inference/`.
+
+### Submódulo `inference/`
+
+| Classe | Tipo | Responsabilidade |
+|---|---|---|
+| `KnowledgeBaseCache` | `@Component` | Carrega a tabela `country_features` inteira em memória via `@PostConstruct`. Expõe índices invertidos (`getTrueCountries`, `getFalseCountries`), mapa de prioridades de categoria e a matriz completa `país → pergunta → boolean`. Sem acesso ao banco durante o jogo. |
+| `InferenceEngine` | `@Service` | Motor **stateless**: `selectBestQuestion(GameState)` escolhe a pergunta com maior Ganho de Informação (IG = H − entropia ponderada esperada); `filterCandidates(candidates, questionId, answer)` retorna o subconjunto compatível. Nunca acessa o banco — opera apenas sobre o `KnowledgeBaseCache`. |
+| `GameState` | `record` (Java 21) | Value object imutável com `currentCandidates: Set<Long>` e `askedQuestions: Set<Long>`. Entrada do `InferenceEngine`. |
 
 ### Como funciona
 
 ```
-1. Recebe resposta do usuário (SIM/NÃO) para a pergunta atual
-2. Filtra candidatos: elimina países incompatíveis com a resposta
-3. Calcula Entropia de Shannon do conjunto restante
-4. Para cada pergunta ainda não feita:
-     - Calcula IG = H(estado atual) − entropia ponderada após a pergunta
-5. Seleciona a pergunta com maior IG → divide o espaço de hipóteses de forma ótima
-6. Se |candidatos| ≤ 1 → passa para fase GUESSING
+1. GameService cria um GameState com os candidatos atuais e perguntas já feitas
+2. InferenceEngine.selectBestQuestion(state) calcula a entropia de Shannon para
+   cada pergunta disponível e elege a de maior IG:
+     IG(Q) = H(S) − [p(sim)·H(S_sim) + p(não)·H(S_não)]
+3. Usuário responde SIM ou NÃO
+4. InferenceEngine.filterCandidates(candidates, questionId, answer) retorna
+   novo conjunto compatível com a resposta
+5. Se |candidatos| ≤ 1 → passa para fase GUESSING
 ```
 
 ### Base de Conhecimento
@@ -169,12 +181,18 @@ public enum GameStatus {
 |---|---|---|
 | `POST` | `/api/games/start` | Iniciar nova sessão de inferência |
 | `POST` | `/api/games/answer` | Enviar resposta binária (SIM/NÃO) |
+| `POST` | `/api/games/guess-feedback` | **Novo** — feedback unificado `{ gameId, correct }` |
+| `POST` | `/api/games/deny` | Negar palpite _(compat. legado → guess-feedback false)_ |
+| `POST` | `/api/games/confirm` | Confirmar palpite _(compat. legado → guess-feedback true)_ |
 | `GET` | `/api/games/history` | Histórico (vazio para visitante) |
-| `POST` | `/api/games/deny` | Negar palpite do sistema |
-| `POST` | `/api/games/confirm` | Confirmar palpite do sistema |
 | `POST` | `/api/games/reveal` | Revelar o país pensado |
 
 ```json
+// POST /api/games/guess-feedback — GuessFeedbackRequest
+{ "gameId": 42, "correct": true }
+// correct = true  → ROBOT_WON
+// correct = false → tenta próximo candidato ou WAITING_FOR_REVEAL
+
 // POST /api/games/answer — GameAnswerRequest
 { "gameId": 42, "questionId": 3, "answer": true }
 
@@ -184,11 +202,13 @@ public enum GameStatus {
   "score": 90,
   "attempts": 2,
   "status": "IN_PROGRESS",
-  "remainingCountries": ["Brasil", "Guiana", "Suriname"],
+  "remainingCountries": ["BR", "GY", "SR"],
   "nextQuestion": { "id": 5, "text": "O país tem saída para o mar?", "category": "GEOGRAFIA" },
   "completed": false
 }
 ```
+
+> **Optimistic Locking:** Requests simultâneas sobre a mesma sessão retornam `409 Conflict` (tratado em `GameController` via `@ExceptionHandler(ObjectOptimisticLockingFailureException.class)`).
 
 ### Países — Público
 
@@ -204,18 +224,18 @@ public enum GameStatus {
 1. POST /api/games/start
    ├─ Sistema sorteia país alvo (oculto do usuário)
    ├─ Cria GameSession (status=IN_PROGRESS, score=100)
-   └─ Seleciona 1ª pergunta por maior Ganho de Informação
+   └─ InferenceEngine seleciona 1ª pergunta por maior Ganho de Informação
 
 2. POST /api/games/answer  [loop até candidatos ≤ 1]
    ├─ Salva resposta em GameAttempt
-   ├─ Filtra candidatos incompatíveis
-   ├─ Recalcula melhor pergunta por entropia
-   └─ Retorna países restantes + próxima pergunta
+   ├─ InferenceEngine.filterCandidates() elimina incompatíveis
+   ├─ InferenceEngine.selectBestQuestion() recalcula melhor pergunta
+   └─ Retorna países restantes (ISO codes) + próxima pergunta
 
 3. Fase GUESSING (status=GUESSING)
    ├─ Sistema propõe: "Você pensou no Brasil?"
-   ├─ POST /api/games/deny    → sistema erra, tenta próximo candidato
-   └─ POST /api/games/confirm → ROBOT_WON, sessão encerra
+   ├─ POST /api/games/guess-feedback { correct: false } → sistema erra, tenta próximo
+   └─ POST /api/games/guess-feedback { correct: true }  → ROBOT_WON, sessão encerra
 
 4. Fase REVEAL (status=WAITING_FOR_REVEAL)
    ├─ Sistema desistiu após esgotar candidatos

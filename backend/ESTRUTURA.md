@@ -21,28 +21,30 @@ backend/src/main/java/atlas4me/
 │   ├── AuthController.java            # POST /api/auth/register e /api/auth/login
 │   ├── CountryController.java         # GET /api/countries
 │   └── GameController.java            # Endpoints do jogo (/api/games/*)
+│                                      # start · answer · guess-feedback · deny · confirm · reveal · history
 │
 ├── 📁 dto/                             # Data Transfer Objects
 │   ├── 📁 request/
 │   │   ├── GameAnswerRequest.java     # { gameId, questionId, answer }
-│   │   ├── GameIdRequest.java         # { gameId }  — usado em deny/confirm
+│   │   ├── GameIdRequest.java         # { gameId }  — helper genérico
+│   │   ├── GuessFeedbackRequest.java  # { gameId, correct } — substitui /deny e /confirm
 │   │   ├── LoginRequest.java          # { email, password }
 │   │   ├── RegisterRequest.java       # { firstName, lastName, email, password }
 │   │   └── RevealRequest.java         # { gameId, countryId }
 │   └── 📁 response/
-│       ├── AuthResponse.java          # { token, userId, firstName, ... }
+│       ├── AuthResponse.java          # { token, userId, firstName, email, totalScore }
 │       ├── CountryResponse.java       # { id, name, isoCode, imageUrl }
 │       ├── ErrorResponse.java         # { status, message, timestamp }
-│       ├── GameResponse.java          # Resposta principal do jogo
+│       ├── GameResponse.java          # Resposta unificada do jogo (com ISO codes dos candidatos)
 │       ├── LocationResponse.java      # { latitude, longitude }
-│       ├── QuestionResponse.java      # { id, text, category, helperImageUrl }
+│       ├── QuestionResponse.java      # { id, text, category, helperImageUrl, mapHints }
 │       └── ValidationErrorResponse.java  # Erros de Bean Validation
 │
 ├── 📁 entity/                          # Entidades JPA (Domínio)
 │   ├── Country.java                   # País do jogo
 │   ├── CountryFeature.java            # Base de conhecimento (País × Pergunta → Bool)
 │   ├── GameAttempt.java               # Log de cada resposta do usuário
-│   ├── GameSession.java               # Sessão de inferência individual
+│   ├── GameSession.java               # Sessão de inferência com @Version (Optimistic Lock)
 │   ├── GameStatus.java                # Enum de status da sessão
 │   ├── Question.java                  # Atributo/pergunta do jogo
 │   └── User.java                      # Jogador (implementa UserDetails)
@@ -64,9 +66,13 @@ backend/src/main/java/atlas4me/
 └── 📁 service/                         # Camada de Aplicação (Lógica de Negócio)
     ├── CountryService.java            # Consulta e listagem de países
     ├── CustomUserDetailsService.java  # Integração Spring Security ↔ UserRepository
-    ├── GameService.java               # MOTOR DE INFERÊNCIA: entropia + ciclo da sessão
+    ├── GameService.java               # Orquestra o ciclo da sessão; usa InferenceEngine + KnowledgeBaseCache
     ├── LoginService.java              # Autenticação e geração de JWT
-    └── RegisterService.java           # Cadastro de novo usuário
+    ├── RegisterService.java           # Cadastro de novo usuário
+    └── 📁 inference/                  # Submódulo do Motor de Inferência
+        ├── GameState.java             # Record imutável (currentCandidates, askedQuestions)
+        ├── InferenceEngine.java       # Motor stateless: selectBestQuestion + filterCandidates
+        └── KnowledgeBaseCache.java    # Cache em memória da tabela country_features
 ```
 
 ---
@@ -99,17 +105,26 @@ resources/
 | Controller | Base Path | Operações |
 |---|---|---|
 | `AuthController` | `/api/auth` | register, login |
-| `GameController` | `/api/games` | start, answer, history, deny, confirm, reveal |
+| `GameController` | `/api/games` | start, answer, guess-feedback, deny *(compat)*, confirm *(compat)*, reveal, history |
 | `CountryController` | `/api/countries` | listar todos |
+
+> **Nota `GameController`:** O endpoint `POST /api/games/guess-feedback` unifica `/deny` e `/confirm` com o campo `correct: boolean`. Os endpoints `/deny` e `/confirm` ainda existem como _wrappers_ para retrocompatibilidade com o frontend atual. Um `@ExceptionHandler` de `ObjectOptimisticLockingFailureException` retorna `409 Conflict` ao detectar requests simultâneas sobre a mesma sessão.
 
 ### Camada de Serviço (`service/`)
 | Serviço | Responsabilidade Principal |
 |---|---|
-| `GameService` | **Motor de inferência**: seleciona perguntas por entropia, filtra candidatos, gerencia o ciclo completo da sessão |
+| `GameService` | Orquestra o ciclo completo da sessão: inicia, processa respostas via `InferenceEngine`, gerencia palpites e revela resultado |
 | `LoginService` | Autentica credenciais via `AuthenticationManager`, gera JWT |
 | `RegisterService` | Cria usuário novo com senha BCrypt |
 | `CountryService` | Busca e filtra países do banco |
 | `CustomUserDetailsService` | Integra `UserRepository` com Spring Security |
+
+### Submódulo de Inferência (`service/inference/`)
+| Classe | Tipo | Responsabilidade |
+|---|---|---|
+| `KnowledgeBaseCache` | `@Component` | Carrega toda a tabela `country_features` em memória na inicialização (`@PostConstruct`). Expõe índices invertidos (`getTrueCountries`, `getFalseCountries`), mapa de prioridades de categoria e a matriz completa `país → pergunta → boolean`. |
+| `InferenceEngine` | `@Service` | Motor **stateless** e puro. `selectBestQuestion(GameState)` escolhe a pergunta com maior Ganho de Informação (IG = H − entropia esperada); `filterCandidates(candidates, questionId, answer)` retorna novo subconjunto compatível. Nunca acessa o banco — opera só sobre o `KnowledgeBaseCache`. |
+| `GameState` | `record` (Java 21) | Value object imutável que encapsula `currentCandidates: Set<Long>` e `askedQuestions: Set<Long>`. Passado como entrada ao `InferenceEngine`. |
 
 ### Camada de Dados (`repository/` + `entity/`)
 
@@ -121,7 +136,7 @@ resources/
 | `Country` | `countries` | País com nome, ISO code, bandeira, lat/lon |
 | `Question` | `questions` | Atributo com texto, categoria e imagem auxiliar |
 | `CountryFeature` | `country_features` | Base de conhecimento: País × Pergunta × Resposta booleana |
-| `GameSession` | `game_sessions` | Sessão de inferência do início ao fim |
+| `GameSession` | `game_sessions` | Sessão de inferência; campo `@Version` para Optimistic Locking |
 | `GameAttempt` | `game_attempts` | Log de cada resposta do usuário |
 | `GameStatus` | (enum) | `IN_PROGRESS`, `GUESSING`, `WAITING_FOR_REVEAL`, `ROBOT_WON`, `HUMAN_WON`, `GAVE_UP`, `FINISHED_REVEALED` |
 
@@ -145,19 +160,21 @@ JwtAuthenticationFilter  ← extrai/valida token JWT
 SecurityConfig           ← verifica se rota exige autenticação
     │
     ▼
-Controller               ← recebe DTO de Request, delega ao Service
+GameController           ← recebe DTO de Request, delega ao GameService
     │
     ▼
-GameService              ← MOTOR DE INFERÊNCIA: filtra candidatos, calcula entropia
+GameService              ← orquestra: cria GameState, chama InferenceEngine
+    │
+    ├──► InferenceEngine.selectBestQuestion(GameState)
+    │         └─ KnowledgeBaseCache  ← índices em memória (sem SQL)
+    │
+    ├──► InferenceEngine.filterCandidates(...)
+    │         └─ KnowledgeBaseCache
+    │
+    └──► Repository  ← persiste GameSession / GameAttempt (MySQL)
     │
     ▼
-Repository               ← acessa banco via Spring Data JPA
-    │
-    ▼
-Database (MySQL) — country_features (base de conhecimento)
-    │
-    ▼
-DTO de Response          ← montado pelo Service
+DTO de Response (GameResponse)
     │
     ▼
 HTTP Response (JSON)
@@ -171,15 +188,21 @@ HTTP Response (JSON)
 Separação clara entre Presentation → Application → Domain → Infrastructure. Nenhuma camada "pula" outra.
 
 ### 2. DTO Pattern
-Entities JPA nunca saem diretamente na resposta HTTP. Conversão sempre via DTOs (`*Request` / `*Response`).
+Entities JPA nunca saem diretamente na resposta HTTP. Conversão sempre via DTOs (`*Request` / `*Response`). DTOs de request recentes usam **Java Records** (`GuessFeedbackRequest`, `GameState`).
 
 ### 3. Repository Pattern
 Toda consulta ao banco passa por interfaces que estendem `JpaRepository`. Nenhum SQL manual nos serviços.
 
-### 4. Global Exception Handler
+### 4. In-Memory Cache (KnowledgeBaseCache)
+A `country_features` inteira é carregada via `@PostConstruct` em estruturas de dados otimizadas (índices invertidos + matriz completa). O `InferenceEngine` opera 100% em memória — sem SQL a cada pergunta.
+
+### 5. Optimistic Locking
+`GameSession` usa `@Version` (JPA). Requests simultâneas sobre a mesma sessão lançam `ObjectOptimisticLockingFailureException`, tratada pelo `GameController` com resposta `409 Conflict`.
+
+### 6. Global Exception Handler
 `GlobalExceptionHandler` com `@RestControllerAdvice` centraliza todos os erros e formata respostas padronizadas.
 
-### 5. Stateless JWT
+### 7. Stateless JWT
 Backend é 100% stateless — sem sessão HTTP. Autenticação via token JWT em cada request.
 
 ---
@@ -189,10 +212,11 @@ Backend é 100% stateless — sem sessão HTTP. Autenticação via token JWT em 
 | Sufixo | Tipo | Exemplo |
 |---|---|---|
 | `*Controller` | REST Controller | `GameController` |
-| `*Service` | Serviço de negócio | `GameService` |
+| `*Service` | Serviço de negócio | `GameService`, `InferenceEngine` |
 | `*Repository` | Interface JPA | `UserRepository` |
-| `*Request` | DTO de entrada | `LoginRequest` |
-| `*Response` | DTO de saída | `AuthResponse` |
+| `*Request` | DTO de entrada | `LoginRequest`, `GuessFeedbackRequest` |
+| `*Response` | DTO de saída | `AuthResponse`, `GameResponse` |
+| `*Cache` | Cache em memória | `KnowledgeBaseCache` |
 | `*Exception` | Exceção customizada | `BusinessException` |
 
 ---

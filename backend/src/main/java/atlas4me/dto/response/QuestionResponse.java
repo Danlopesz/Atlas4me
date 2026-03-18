@@ -1,21 +1,13 @@
 package atlas4me.dto.response;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import java.util.List;
 
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class QuestionResponse {
-    
-    private Long id;
-    private String text;
-    private String category;
-    private String helperImageUrl;
-    private List<LocationResponse> mapLocations;
-   
-}
+public record QuestionResponse(
+        Long id,
+        String text,
+        String category,
+        String helperImageUrl,
+        
+        // --- ADIÇÃO PARA A UI 3D ---
+        List<String> mapHints // ISO Codes dos países que respondem SIM para esta pergunta
+) {}

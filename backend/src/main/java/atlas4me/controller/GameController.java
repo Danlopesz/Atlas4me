@@ -1,16 +1,16 @@
 package atlas4me.controller;
 
-import org.springframework.http.ResponseEntity;
-import atlas4me.dto.response.GameResponse;
-import atlas4me.entity.User;
 import atlas4me.dto.request.GameAnswerRequest;
+import atlas4me.dto.request.GuessFeedbackRequest;
 import atlas4me.dto.request.RevealRequest;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import atlas4me.dto.response.GameResponse;
 import atlas4me.service.GameService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -21,80 +21,116 @@ public class GameController {
 
     private final GameService gameService;
 
+    // -------------------------------------------------------------------------
+    // Endpoints legados (mantidos para compatibilidade com frontend atual)
+    // -------------------------------------------------------------------------
+
     @PostMapping("/start")
     public ResponseEntity<GameResponse> startGame(
             @RequestParam(required = false, defaultValue = "SOUTH_AMERICA") String continent,
             Authentication authentication) {
 
-        String userEmail = (authentication != null && authentication.isAuthenticated())
-                ? authentication.getName()
-                : "guest"; // visitante jogar sem login
-
-        // Passamos o continente para o GameService (você terá que adicionar esse parâmetro lá)
-        GameResponse response = gameService.startNewGame(userEmail, continent);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(
+                gameService.startNewGame(resolveEmail(authentication), continent));
     }
 
-    @PostMapping("/answer")
-    public ResponseEntity<GameResponse> submitAnswer(
-            @Valid @RequestBody GameAnswerRequest request,
-            Authentication authentication) {
-            
-        String userEmail = (authentication != null && authentication.isAuthenticated()) 
-                           ? authentication.getName() 
-                           : "guest";
-
-        GameResponse response = gameService.submitAnswer(userEmail, request);
-        return ResponseEntity.ok(response);
-    }
     @GetMapping("/history")
-  public ResponseEntity<List<GameResponse>> getGameHistory(Authentication authentication) {
+    public ResponseEntity<List<GameResponse>> getGameHistory(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
-            return ResponseEntity.ok(List.of()); // Visitante não tem histórico
+            return ResponseEntity.ok(List.of());
         }
-        String userEmail = authentication.getName();
-        return ResponseEntity.ok(gameService.getUserGameHistory(userEmail));
-    }
-
-    @PostMapping("/deny")
-    public ResponseEntity<GameResponse> denyGuess(
-            @RequestBody GameAnswerRequest request, // <--- Agora recebemos o JSON com o gameId
-            Authentication authentication) {
-        
-        // Verifica se é visitante ou usuário logado
-        String userEmail = (authentication != null && authentication.isAuthenticated()) 
-                           ? authentication.getName() 
-                           : "guest";
-
-        // Passa o ID do jogo para o serviço
-        GameResponse response = gameService.denyRobotGuess(userEmail, request.getGameId());
-        return ResponseEntity.ok(response);
-    }
-
-   @PostMapping("/confirm")
-    public ResponseEntity<GameResponse> confirmGuess(
-            @RequestBody GameAnswerRequest request, // <--- Precisamos do gameId aqui também
-            Authentication authentication) {
-        
-        String userEmail = (authentication != null && authentication.isAuthenticated()) 
-                           ? authentication.getName() 
-                           : "guest";
-
-        return ResponseEntity.ok(gameService.confirmRobotGuess(userEmail, request.getGameId()));
+        return ResponseEntity.ok(gameService.getUserGameHistory(authentication.getName()));
     }
 
     @PostMapping("/reveal")
     public ResponseEntity<GameResponse> revealAnswer(
-            @RequestBody RevealRequest request, // <--- O RevealRequest precisa ter o gameId agora
+            @RequestBody RevealRequest request,
             Authentication authentication) {
-        
-        String userEmail = (authentication != null && authentication.isAuthenticated()) 
-                           ? authentication.getName() 
-                           : "guest";
 
-        // Passamos também o ID do jogo para o serviço saber qual jogo atualizar
-        GameResponse response = gameService.revealAnswer(userEmail, request.getCountryId(), request.getGameId());
+        return ResponseEntity.ok(
+                gameService.revealAnswer(
+                        resolveEmail(authentication),
+                        request.getCountryId(),
+                        request.getGameId()));
+    }
 
-        return ResponseEntity.ok(response);
+    // -------------------------------------------------------------------------
+    // Endpoints novos (GameResponse com ISO Codes)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Processa a resposta do usuário à pergunta atual.answerQuestion
+     * Retorna GameResponse com ISO Codes dos candidatos restantes.
+     */
+    @PostMapping("/answer")
+    public ResponseEntity<GameResponse> answerQuestion(
+            @RequestBody GameAnswerRequest request,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(
+                gameService.submitAnswer(resolveEmail(authentication), request));
+    }
+
+    /**
+     * Feedback unificado sobre o palpite do robô.
+     * Substitui os endpoints /deny e /confirm.
+     *
+     * Body: { "gameId": 42, "correct": true }   → Robô acertou → ROBOT_WON
+     * Body: { "gameId": 42, "correct": false }  → Robô errou  → próximo candidato
+     */
+    @PostMapping("/guess-feedback")
+    public ResponseEntity<GameResponse> provideGuessFeedback(
+            @RequestBody GuessFeedbackRequest request,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(
+                gameService.processGuessFeedback(resolveEmail(authentication), request));
+    }
+
+    // -------------------------------------------------------------------------
+    // Compatibilidade: /deny e /confirm ainda funcionam via guess-feedback
+    // -------------------------------------------------------------------------
+
+    @PostMapping("/deny")
+    public ResponseEntity<GameResponse> denyGuess(
+            @RequestBody GameAnswerRequest request,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(
+                gameService.processGuessFeedback(
+                        resolveEmail(authentication),
+                        new GuessFeedbackRequest(request.getGameId(), false)));
+    }
+
+    @PostMapping("/confirm")
+    public ResponseEntity<GameResponse> confirmGuess(
+            @RequestBody GameAnswerRequest request,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(
+                gameService.processGuessFeedback(
+                        resolveEmail(authentication),
+                        new GuessFeedbackRequest(request.getGameId(), true)));
+    }
+
+    // -------------------------------------------------------------------------
+    // Tratamento de Optimistic Locking (clique duplo / requests simultâneos)
+    // -------------------------------------------------------------------------
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<String> handleOptimisticLockingFailure() {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body("Ação rejeitada: o estado do jogo foi modificado por outra requisição simultânea.");
+    }
+
+    // -------------------------------------------------------------------------
+    // Helper
+    // -------------------------------------------------------------------------
+
+    private String resolveEmail(Authentication authentication) {
+        return (authentication != null && authentication.isAuthenticated())
+                ? authentication.getName()
+                : "guest";
     }
 }

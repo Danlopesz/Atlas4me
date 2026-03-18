@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
@@ -22,6 +21,14 @@ public class GameSession {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    /**
+     * Controle de Concorrência Otimista (Optimistic Locking).
+     * Se dois requests tentarem modificar a mesma sessão simultaneamente,
+     * o segundo lançará ObjectOptimisticLockingFailureException → HTTP 409.
+     */
+    @Version
+    private Long version;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = true)
@@ -48,7 +55,11 @@ public class GameSession {
     private List<GameAttempt> gameAttempts = new ArrayList<>();
 
     @ManyToMany
-    @JoinTable(name = "game_session_rejected", joinColumns = @JoinColumn(name = "session_id"), inverseJoinColumns = @JoinColumn(name = "country_id"))
+    @JoinTable(
+        name = "game_session_rejected",
+        joinColumns = @JoinColumn(name = "session_id"),
+        inverseJoinColumns = @JoinColumn(name = "country_id")
+    )
     private Set<Country> rejectedCountries = new HashSet<>();
 
     @Enumerated(EnumType.STRING)
@@ -63,20 +74,17 @@ public class GameSession {
         }
     }
 
-    // Removido o campo 'won' do banco de dados, pois o status já diz quem ganhou.
-    // Mas mantemos o getWon() abaixo para o Java não reclamar.
-    // Retorna true se o HUMANO ganhou
+    /** Retorna true se o HUMANO ganhou — mantido para compatibilidade com GameResponse legado. */
     public Boolean getWon() {
         return this.status == GameStatus.HUMAN_WON;
     }
 
-    // Retorna true se o jogo foi finalizado (qualquer status diferente de
-    // IN_PROGRESS)
+    /** Retorna true se o jogo foi finalizado (qualquer status diferente de IN_PROGRESS). */
     public Boolean isFinished() {
         return this.status != GameStatus.IN_PROGRESS;
     }
 
-    // Método helper para finalizar o jogo
+    /** Finaliza a sessão com o status dado e registra o timestamp. */
     public void finish(GameStatus finalStatus) {
         if (finalStatus == GameStatus.IN_PROGRESS) {
             throw new IllegalArgumentException("Cannot finish game with IN_PROGRESS status");
@@ -85,7 +93,6 @@ public class GameSession {
         this.finishedAt = LocalDateTime.now();
     }
 
-    // Helper para adicionar fácil
     public void addRejectedCountry(Country country) {
         this.rejectedCountries.add(country);
     }

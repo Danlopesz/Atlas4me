@@ -84,10 +84,21 @@ Atlas4Me/
 ├── backend/              # API REST — Java 21 + Spring Boot 3.2
 │   ├── config/           # JWT + Security + Swagger
 │   ├── controller/       # AuthController, GameController, CountryController
-│   ├── service/          # GameService (motor de inferência) + demais serviços
-│   ├── entity/           # User, Country, GameSession, GameAttempt, Question...
+│   ├── service/
+│   │   ├── GameService.java          # Orquestra o ciclo da sessão
+│   │   ├── LoginService.java
+│   │   ├── RegisterService.java
+│   │   ├── CountryService.java
+│   │   ├── CustomUserDetailsService.java
+│   │   └── inference/                # Submódulo do Motor de Inferência
+│   │       ├── GameState.java        # Record imutável (candidatos + perguntas feitas)
+│   │       ├── InferenceEngine.java  # Motor stateless: Shannon + filtro de candidatos
+│   │       └── KnowledgeBaseCache.java  # Cache em memória da base de conhecimento
+│   ├── entity/           # User, Country, GameSession (Optimistic Lock), GameAttempt, Question...
 │   ├── repository/       # Spring Data JPA
-│   ├── dto/              # Request/Response DTOs
+│   ├── dto/
+│   │   ├── request/      # GameAnswerRequest, GuessFeedbackRequest, RevealRequest...
+│   │   └── response/     # GameResponse, QuestionResponse, AuthResponse...
 │   └── exception/        # GlobalExceptionHandler
 │
 ├── frontend/             # SPA — React 19 + Vite 7
@@ -182,12 +193,13 @@ POST /api/auth/login     →  Login + geração de JWT
 
 ### Jogo (Público — suporta visitante)
 ```
-POST /api/games/start    →  Iniciar nova sessão de inferência
-POST /api/games/answer   →  Enviar resposta binária
-POST /api/games/deny     →  Negar palpite do sistema
-POST /api/games/confirm  →  Confirmar palpite do sistema
-POST /api/games/reveal   →  Revelar país pensado (quando sistema desiste)
-GET  /api/games/history  →  Histórico de partidas
+POST /api/games/start           →  Iniciar nova sessão de inferência
+POST /api/games/answer          →  Enviar resposta binária
+POST /api/games/guess-feedback  →  Feedback unificado sobre palpite { gameId, correct }
+POST /api/games/deny            →  Negar palpite (compat. legado → guess-feedback false)
+POST /api/games/confirm         →  Confirmar palpite (compat. legado → guess-feedback true)
+POST /api/games/reveal          →  Revelar país pensado (quando sistema desiste)
+GET  /api/games/history         →  Histórico de partidas
 ```
 
 ### Países (Público)

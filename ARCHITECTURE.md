@@ -9,14 +9,15 @@
 1. [Visão Geral do Sistema](#-visão-geral-do-sistema)
 2. [Stack Completo](#-stack-completo)
 3. [Arquitetura Full Stack](#-arquitetura-full-stack)
-4. [Modelo de Dados Detalhado](#-modelo-de-dados-detalhado)
-5. [Motor de Inferência: Entropia de Shannon](#-motor-de-inferência-entropia-de-shannon)
-6. [Fluxo Completo da Sessão de Inferência](#-fluxo-completo-da-sessão-de-inferência)
-7. [Sistema de Autenticação JWT](#-sistema-de-autenticação-jwt)
-8. [Modo Visitante](#-modo-visitante)
-9. [Componentes Visuais Especiais](#-componentes-visuais-especiais)
-10. [Análise de Decisões Técnicas](#-análise-de-decisões-técnicas)
-11. [Infraestrutura e Deploy](#-infraestrutura-e-deploy)
+4. [Pacote `service.inference`](#-pacote-serviceinference)
+5. [Modelo de Dados Detalhado](#-modelo-de-dados-detalhado)
+6. [Motor de Inferência: Entropia de Shannon](#-motor-de-inferência-entropia-de-shannon)
+7. [Fluxo Completo da Sessão de Inferência](#-fluxo-completo-da-sessão-de-inferência)
+8. [Sistema de Autenticação JWT](#-sistema-de-autenticação-jwt)
+9. [Modo Visitante](#-modo-visitante)
+10. [Componentes Visuais Especiais](#-componentes-visuais-especiais)
+11. [Análise de Decisões Técnicas](#-análise-de-decisões-técnicas)
+12. [Infraestrutura e Deploy](#-infraestrutura-e-deploy)
 
 ---
 
@@ -34,13 +35,13 @@ O sistema opera como um **motor de inferência determinístico** baseado em **Te
 
 ```
 1. USUÁRIO   →  pensa em um país (não revela)
-2. SISTEMA   →  calcula entropia do conjunto atual de candidatos
-3. SISTEMA   →  seleciona a pergunta com maior ganho de informação
+2. SISTEMA   →  KnowledgeBaseCache carrega matriz país×pergunta da RAM
+3. SISTEMA   →  InferenceEngine calcula entropia e seleciona pergunta com maior IG
 4. USUÁRIO   →  responde SIM ou NÃO
-5. SISTEMA   →  elimina países incompatíveis com a resposta
-6. SISTEMA   →  repete até |candidatos| ≤ 1 → propõe palpite
+5. SISTEMA   →  InferenceEngine.filterCandidates() — interseção de HashSets em O(n)
+6. SISTEMA   →  repete até |candidatos| ≤ 1 → status = GUESSING
 7. USUÁRIO   →  confirma ou nega; ao final revela o país
-8. SISTEMA   →  calcula pontuação e registra no histórico
+8. SISTEMA   →  GameService calcula pontuação e registra no histórico
 ```
 
 ---
@@ -60,6 +61,7 @@ O sistema opera como um **motor de inferência determinístico** baseado em **Te
 | Flyway | 10.x | Migrations versionadas (4 versões) |
 | Springdoc OpenAPI | — | Swagger UI (habilitável por env var) |
 | Lombok | — | Redução de boilerplate |
+| JUnit 5 + Mockito | — | Testes unitários do motor de inferência |
 | Maven | 3.8+ | Build e dependências |
 
 ### Frontend
@@ -118,9 +120,15 @@ O sistema opera como um **motor de inferência determinístico** baseado em **Te
 │                         │                                    │
 │  ┌──────────────────────▼──────────────────────────────────┐ │
 │  │  APPLICATION LAYER (Services)                           │ │
-│  │  LoginService • RegisterService                        │ │
-│  │  GameService ← MOTOR DE INFERÊNCIA (entropia + ciclo)  │ │
-│  │  CountryService • CustomUserDetailsService             │ │
+│  │  LoginService • RegisterService • CountryService        │ │
+│  │  GameService ← ORQUESTRADOR (ciclo da sessão)           │ │
+│  │                                                         │ │
+│  │  ┌─────────────────────────────────────────────────┐   │ │
+│  │  │  service.inference  ← MOTOR DE INFERÊNCIA       │   │ │
+│  │  │  KnowledgeBaseCache (RAM: país×pergunta)        │   │ │
+│  │  │  InferenceEngine    (stateless: IG + filtro)    │   │ │
+│  │  │  GameState          (record imutável)           │   │ │
+│  │  └─────────────────────────────────────────────────┘   │ │
 │  └──────────────────────┬──────────────────────────────────┘ │
 │                         │                                    │
 │  ┌──────────────────────▼──────────────────────────────────┐ │
@@ -135,6 +143,7 @@ O sistema opera como um **motor de inferência determinístico** baseado em **Te
 │  └──────────────────────┬──────────────────────────────────┘ │
 └─────────────────────────┼────────────────────────────────────┘
                           │ JDBC + Flyway Migrations
+                          │ @PostConstruct → carrega RAM na startup
                           ▼
           ┌───────────────────────────────────────┐
           │         DATABASE (MySQL 8.0)           │
@@ -142,6 +151,132 @@ O sistema opera como um **motor de inferência determinístico** baseado em **Te
           │  6 tabelas + 1 join table              │
           │  4 migrations Flyway versionadas       │
           └───────────────────────────────────────┘
+```
+
+---
+
+## 🧩 Pacote `service.inference`
+
+O ponto central da refatoração. A lógica do motor foi extraída do `GameService` para um pacote dedicado com três componentes, cada um com responsabilidade única.
+
+```
+atlas4me.service.inference/
+├── GameState.java          ← Record imutável (estado da rodada)
+├── KnowledgeBaseCache.java ← Cache em RAM da base de conhecimento
+└── InferenceEngine.java    ← Motor stateless (funções puras)
+```
+
+### `GameState` — Record Imutável
+
+```java
+public record GameState(
+        Set<Long> currentCandidates,  // IDs dos países ainda possíveis
+        Set<Long> askedQuestions      // IDs das perguntas já respondidas
+) {}
+```
+
+**Por que record?** Records no Java 21 garantem **imutabilidade por contrato de linguagem** — não há setters, os campos são finais. Isso torna `GameState` uma estrutura segura para passar entre threads e ideal para funções puras no `InferenceEngine`.
+
+---
+
+### `KnowledgeBaseCache` — Cache em RAM
+
+Carregado uma única vez no `@PostConstruct`, transforma a tabela `country_features` do banco em **três estruturas de acesso rápido**:
+
+```
+country_features (banco)                  KnowledgeBaseCache (RAM)
+────────────────────────    @PostConstruct   ────────────────────────────────────
+country_id | question_id | is_true  ──────►  questionToTrueCountries:  Map<Long, Set<Long>>
+                                             questionToFalseCountries: Map<Long, Set<Long>>
+                                             countryQuestionMatrix:    Map<Long, Map<Long, Boolean>>
+                                             questionPriorities:       Map<Long, Integer>
+```
+
+**Índices invertidos** — chave do design:
+
+```
+questionToTrueCountries.get(1L)  → {2L, 5L, 8L}   // países que falam Espanhol
+questionToFalseCountries.get(1L) → {1L, 3L, ...}   // países que não falam Espanhol
+```
+
+Isso permite que o `InferenceEngine` faça **interseção de conjuntos** (`HashSet.retainAll`) em vez de consultas individuais ao mapa por país — a operação mais frequente de toda a aplicação.
+
+**Prioridade de categoria** (pré-calculada no `@PostConstruct`):
+
+```java
+private int calculateCategoryPriority(String category) {
+    return switch (category.toUpperCase()) {
+        case "GEOGRAFIA" -> 50;
+        case "CULTURA"   -> 40;
+        case "BANDEIRA"  -> 30;
+        case "POPULACAO" -> 20;
+        case "ECONOMIA"  -> 10;
+        default          -> 0;
+    };
+}
+```
+
+Usado como desempate quando duas perguntas têm idêntico Ganho de Informação — o motor prefere perguntas mais amplas (cultura/geografia) antes das específicas (economia).
+
+---
+
+### `InferenceEngine` — Motor Stateless
+
+100% puro: sem estado, sem `@Autowired` além do cache. Dado o mesmo `GameState`, sempre retorna o mesmo resultado.
+
+**`selectBestQuestion(GameState state)`** — núcleo do motor:
+
+```
+Para cada pergunta ainda não feita:
+  1. Cria cópia do Set de candidatos
+  2. retainAll(cache.getTrueCountries(questionId))  → O(n) interseção
+  3. Calcula IG = H(state) − [p(sim)·H(sim) + p(não)·H(não)]
+  4. Se IG > maxIG: novo melhor candidato
+  5. Empate em IG: vence a categoria de maior prioridade
+Retorna null se candidatos ≤ 1 (condição de parada)
+```
+
+**`filterCandidates(candidates, questionId, answer)`** — eliminação por resposta:
+
+```java
+// Resposta = SIM: intersecta com países que responderiam SIM
+// Resposta = NÃO: intersecta com países que responderiam NÃO
+Set<Long> result = new HashSet<>(candidates);
+result.retainAll(answer ? cache.getTrueCountries(q) : cache.getFalseCountries(q));
+return result;
+```
+
+**Por que operar em `Set<Long>` e não em `List<Country>`?**
+
+| Operação | List\<Country\> (antes) | Set\<Long\> (depois) |
+|---|---|---|
+| Filtrar 1 resposta | O(n × m) lookups em mapa | O(n) retainAll de HashSet |
+| Filtrar k respostas | O(k × n × m) | O(k × n) |
+| Com 195 países | cresce linearmente | mantém milissegundos |
+| Conversão | a cada iteração | uma vez, no passo 5 |
+
+---
+
+### Como `GameService` orquestra o motor
+
+```
+GameService.submitAnswer()
+    │
+    ├─ 1. processAttempt()           → persiste GameAttempt (banco)
+    │
+    ├─ 2. getRemainingCountries()    → filtragem em RAM:
+    │      ├─ busca List<Country> do banco (1 query)
+    │      ├─ extrai Set<Long> de IDs
+    │      ├─ for attempt: inferenceEngine.filterCandidates(ids, qId, ans)
+    │      ├─ remove rejectedIds
+    │      └─ reconverte Set<Long> → List<Country> (1 passagem final)
+    │
+    ├─ 3. selectNextQuestion()       → constrói GameState + delega ao motor:
+    │      ├─ new GameState(candidateIds, askedIds)
+    │      ├─ inferenceEngine.selectBestQuestion(state)  → Long bestId
+    │      └─ monta QuestionResponse com mapLocations
+    │
+    └─ 4. buildGameResponse()        → monta DTO de resposta
 ```
 
 ---
@@ -176,7 +311,7 @@ O sistema opera como um **motor de inferência determinístico** baseado em **Te
 │ FK: target_country_id  │◄─── País que o SISTEMA sorteia (oculto)
 │     status (enum)      │◄─── IN_PROGRESS | GUESSING | WAITING_FOR_REVEAL
 │                        │      | ROBOT_WON | HUMAN_WON | GAVE_UP | FINISHED_REVEALED
-│     score              │◄─── Inicia em 100, -10 por palpite errado
+│     score              │◄─── Inicia em 100, -2 por pergunta, -10 por palpite errado
 │     attempts           │◄─── Contador de perguntas respondidas
 │     started_at         │
 │     finished_at        │◄─── NULL enquanto em andamento
@@ -190,7 +325,7 @@ O sistema opera como um **motor de inferência determinístico** baseado em **Te
 │ FK: session_id         │
 │ FK: question_id        │◄─── Qual atributo foi consultado
 │     user_answer (BOOL) │◄─── SIM (true) ou NÃO (false)
-│     is_correct  (BOOL) │◄─── Preenchido no reveal — se a resposta estava correta
+│     is_correct  (BOOL) │◄─── Preenchido no reveal
 │     attempted_at       │
 └────────────────────────┘
 
@@ -200,7 +335,7 @@ O sistema opera como um **motor de inferência determinístico** baseado em **Te
 │ PK: id                 │          │ PK: id                   │          ├────────────────────────┤
 │ UK: name               │          │ FK: country_id           │          │ PK: id                 │
 │     iso_code           │          │ FK: question_id          │          │     text               │
-│     image_url          │          │     is_true (BOOL)       │◄─ gabarito    category        │
+│     image_url          │          │     is_true (BOOL)       │◄─ gabarito│    category            │
 │     latitude           │          │     iso_code             │          │     helper_image_url   │
 │     longitude          │          └─────────────────────────┘          └────────────────────────┘
 └────────────────────────┘
@@ -212,7 +347,8 @@ game_session_rejected (N:N join table)
 ### Explicação das Entidades
 
 #### `CountryFeature` — A Base de Conhecimento
-**O núcleo do sistema.** Matriz `País × Pergunta → Resposta booleana`. Esta é a base de conhecimento sobre a qual o motor de inferência opera.
+**O núcleo do sistema.** Matriz `País × Pergunta → Resposta booleana`. Esta é a base de conhecimento sobre a qual o motor de inferência opera. O `KnowledgeBaseCache` transforma essa tabela em índices invertidos na RAM na startup.
+
 ```
 Brasil    + "Fala Espanhol?" = FALSE
 Argentina + "Fala Espanhol?" = TRUE
@@ -230,7 +366,7 @@ Log imutável de cada resposta do usuário. `is_correct` é calculado apenas no 
 Autenticação + estatísticas globais. Implementa `UserDetails` do Spring Security usando `email` como username. `totalScore` e `gamesPlayed` são campos de cache (evitam JOINs pesados no ranking).
 
 #### `Question`
-Atributos configuráveis sem mudança de código. Categorias: `GEOGRAFIA`, `CULTURA`, `BANDEIRA`, `ECONOMIA`, `POPULACAO`.
+Atributos configuráveis sem mudança de código. Categorias com peso de prioridade: `GEOGRAFIA(50)`, `CULTURA(40)`, `BANDEIRA(30)`, `POPULACAO(20)`, `ECONOMIA(10)`.
 
 ---
 
@@ -240,14 +376,13 @@ Atributos configuráveis sem mudança de código. Categorias: `GEOGRAFIA`, `CULT
 
 O sistema utiliza a **Entropia de Shannon** para mensurar a incerteza sobre qual país o usuário está pensando. O objetivo é sempre selecionar a pergunta que maximiza a **redução de entropia** (máximo Ganho de Informação).
 
-**Fórmula da Entropia:**
+**Fórmula da Entropia (distribuição uniforme):**
 ```
-H(S) = -∑ p(i) × log₂(p(i))
+H(S) = log₂(|S|)
 
 Onde:
   S = conjunto atual de países candidatos
-  p(i) = probabilidade do país i ser o alvo
-         (assumida uniforme: p(i) = 1/|S|)
+  Assume-se distribuição uniforme: p(i) = 1/|S| para todo país i
 ```
 
 **Ganho de Informação de uma pergunta Q:**
@@ -261,48 +396,59 @@ Onde:
   P(não) = |S_não| / |S|
 ```
 
-> A pergunta com maior `IG` divide o conjunto de candidatos de forma mais equilibrada, convergindo para a identificação do país com o menor número possível de perguntas.
+> A pergunta com maior `IG` divide o conjunto de candidatos de forma mais equilibrada (idealmente 50/50), convergindo para a identificação do país com o menor número possível de perguntas.
 
-### Pseudocódigo do Motor
-
-```python
-def select_next_question(candidates, available_questions):
-    H_current = entropy(candidates)     # Entropia do estado atual
-    best_question = None
-    best_ig = -1
-
-    for question in available_questions:
-        sim_group = [c for c in candidates if feature(c, question) == True]
-        nao_group = [c for c in candidates if feature(c, question) == False]
-
-        p_sim = len(sim_group) / len(candidates)
-        p_nao = len(nao_group) / len(candidates)
-
-        ig = H_current - (p_sim * entropy(sim_group) + p_nao * entropy(nao_group))
-
-        if ig > best_ig:
-            best_ig = ig
-            best_question = question
-
-    return best_question
-
-def entropy(group):
-    n = len(group)
-    if n <= 1: return 0
-    p = 1 / n
-    return -n * (p * log2(p))   # uniforme: -log₂(1/n) = log₂(n)
+**Desempate por prioridade de categoria:**
+```
+Se IG(Q1) == IG(Q2):
+  vence a pergunta com maior peso de categoria
+  (GEOGRAFIA > CULTURA > BANDEIRA > POPULACAO > ECONOMIA)
 ```
 
-### Filtragem dos Candidatos
+### Implementação Java — `InferenceEngine`
 
-Após cada resposta, o sistema aplica a filtragem:
+```java
+public Long selectBestQuestion(GameState state) {
+    double currentEntropy = Math.log(candidates.size()) / Math.log(2);
 
-```python
-def filter_candidates(candidates, question, user_answer):
-    return [
-        c for c in candidates
-        if CountryFeature(c.id, question.id).is_true == user_answer
-    ]
+    for (Long questionId : cache.getAllQuestionIds()) {
+        if (state.askedQuestions().contains(questionId)) continue;
+
+        // Interseção de HashSets — O(n), sem query ao banco
+        Set<Long> yesGroup = new HashSet<>(candidates);
+        yesGroup.retainAll(cache.getTrueCountries(questionId));
+
+        int countYes = yesGroup.size();
+        int countNo  = total - countYes;
+        if (countYes == 0 || countNo == 0) continue; // IG = 0, pula
+
+        double expectedEntropy =
+            (countYes / total) * log2(countYes) +
+            (countNo  / total) * log2(countNo);
+
+        double ig       = currentEntropy - expectedEntropy;
+        int    priority = cache.getQuestionPriority(questionId);
+
+        if (ig > maxIG || (ig == maxIG && priority > bestPriority)) {
+            maxIG = ig; bestPriority = priority; bestQuestionId = questionId;
+        }
+    }
+    return bestQuestionId; // null se candidatos ≤ 1
+}
+```
+
+### Filtragem dos Candidatos — `filterCandidates`
+
+```java
+public Set<Long> filterCandidates(Set<Long> candidates, Long questionId, boolean answer) {
+    Set<Long> compatible = answer
+            ? cache.getTrueCountries(questionId)   // SIM → índice de países true
+            : cache.getFalseCountries(questionId); // NÃO → índice de países false
+
+    Set<Long> result = new HashSet<>(candidates);
+    result.retainAll(compatible); // interseção em O(n)
+    return result;
+}
 ```
 
 ### Exemplo Prático — Usuário Pensa em Brasil
@@ -311,35 +457,20 @@ def filter_candidates(candidates, question, user_answer):
 Estado inicial: 13 países (H = log₂(13) ≈ 3.7 bits)
 
 Pergunta 1 (maior IG): "A língua principal é o Espanhol?" → NÃO (false)
-  Restam: Brasil, Guiana, Suriname, Guiana Francesa  (4 países)
-  H ≈ 2.0 bits
+  filterCandidates(): retainAll(getFalseCountries(q1))
+  Restam: Brasil, Guiana, Suriname, Guiana Francesa  (4 países, H ≈ 2.0 bits)
 
-Pergunta 2: "O país tem saída para o mar?" → SIM (true)
-  Restam: Brasil, Guiana, Suriname, Guiana Francesa  (todos têm litoral)
-  Próxima pergunta busca novo IG máximo...
+Pergunta 2: "O país usa o Euro como moeda?" → NÃO (false)
+  Restam: Brasil, Guiana, Suriname  (3 países)
 
-Pergunta 3: "O país usa o Euro como moeda?" → NÃO (false)
-  Restam: Brasil, Guiana, Suriname  (3 países — excluiu G. Francesa)
+Pergunta 3: "A língua principal é o Inglês?" → NÃO (false)
+  Restam: Brasil, Suriname  (2 países)
 
-Pergunta 4: "A língua principal é o Inglês?" → NÃO (false)
-  Restam: Brasil, Suriname  (2 países — excluiu Guiana)
-
-Pergunta 5: "A língua principal é o Holandês?" → NÃO (false)
-  Restam: Brasil  (1 país! H = 0 bits)  →  status = GUESSING
+Pergunta 4: "A língua principal é o Holandês?" → NÃO (false)
+  filterCandidates(): retainAll({Suriname}) → {} intersecado com {Brasil, Suriname}\{Suriname}
+  Restam: Brasil  (1 país! H = 0 bits) → status = GUESSING
 
 Sistema propõe: "Você pensou no Brasil?" → Usuário confirma → ROBOT_WON 🎉
-```
-
-### Implementação SQL da Filtragem
-
-```sql
--- Filtra países compatíveis com a resposta do usuário
-SELECT DISTINCT c.*
-FROM countries c
-JOIN country_features cf ON c.id = cf.country_id
-WHERE cf.question_id = :questionId
-  AND cf.is_true = :userAnswer
-  AND c.id IN (:currentCandidateIds)
 ```
 
 ---
@@ -353,22 +484,13 @@ POST /api/games/start
 Header: Authorization: Bearer <token>  (ou sem header se visitante)
 
 GameService.startNewGame():
-  1. Verifica se usuário já tem sessão IN_PROGRESS → BusinessException se sim
-  2. Sorteia país alvo aleatoriamente (oculto)
-  3. Cria GameSession (score=100, attempts=0, status=IN_PROGRESS)
-  4. Calcula primeira pergunta por Ganho de Informação
-  5. Retorna GameResponse com todos os 13 países + primeira pergunta
-
-Response:
-{
-  "gameId": 42,
-  "score": 100,
-  "attempts": 0,
-  "status": "IN_PROGRESS",
-  "remainingCountries": ["Brasil", "Argentina", ...],  // 13 países
-  "nextQuestion": { "id": 1, "text": "A língua principal é o Espanhol?", ... },
-  "completed": false
-}
+  1. Verifica sessão IN_PROGRESS existente → encerra a anterior
+  2. Cria GameSession (score=100, attempts=0, status=IN_PROGRESS)
+  3. selectNextQuestion():
+     ├─ getRemainingCountries() → todos os 13 (sem tentativas ainda)
+     ├─ new GameState(allIds, emptySet)
+     └─ inferenceEngine.selectBestQuestion(state) → 1ª pergunta por IG máximo
+  4. Retorna GameResponse com todos 13 países + primeira pergunta
 ```
 
 ### Fase 2 — Loop de Inferência
@@ -378,24 +500,15 @@ POST /api/games/answer
 Body: { "gameId": 42, "questionId": 1, "answer": false }
 
 GameService.submitAnswer():
-  1. Busca GameSession ativa do usuário
-  2. Registra GameAttempt (session=42, question=1, userAnswer=false, isCorrect=null)
-  3. Incrementa attempts
-  4. Filtra candidatos incompatíveis com a resposta
-  5. Seleciona próxima pergunta por maior Ganho de Informação
-  6. Se |remainingCountries| ≤ 1 → muda status para GUESSING
-  7. Retorna países restantes + próxima pergunta
-
-Response:
-{
-  "gameId": 42,
-  "score": 100,
-  "attempts": 1,
-  "status": "IN_PROGRESS",
-  "remainingCountries": ["Brasil", "Guiana", "Suriname", "Guiana Francesa"],
-  "nextQuestion": { "id": 3, "text": "O país tem saída para o mar?" },
-  "completed": false
-}
+  1. processAttempt()    → salva GameAttempt no banco
+  2. getRemainingCountries():
+     ├─ busca List<Country> do banco (1 query)
+     ├─ extrai Set<Long> de IDs
+     ├─ for each attempt: filterCandidates(ids, qId, ans)  ← RAM pura
+     └─ reconverte IDs restantes → List<Country>
+  3. if empty           → HUMAN_WON (contradição nas respostas)
+     if size == 1       → GUESSING (convergiu!)
+     else               → selectNextQuestion() + updateScore(-2)
 ```
 
 ### Fase 3 — Palpite (GUESSING)
@@ -405,48 +518,28 @@ Sistema propõe: "Você pensou no Brasil?"
 
 Se usuário nega:
   POST /api/games/deny   →  { gameId: 42 }
-  GameService.denyRobotGuess():
-    - Adiciona país tentado em game_session_rejected
-    - Tenta próximo candidato
-    - Se esgotou candidatos → status = WAITING_FOR_REVEAL
+  - Adiciona país em game_session_rejected
+  - getRemainingCountries() sem o país rejeitado
+  - Se esgotou candidatos → WAITING_FOR_REVEAL
+  - Se ainda há candidatos → IN_PROGRESS + próxima pergunta
 
 Se usuário confirma:
   POST /api/games/confirm   →  { gameId: 42 }
-  GameService.confirmRobotGuess():
-    - status = ROBOT_WON
-    - Atualiza totalScore e gamesPlayed do usuário
-    - Retorna GameResponse com completed=true
+  - status = ROBOT_WON, score += 20
 ```
 
 ### Fase 4 — Reveal (WAITING_FOR_REVEAL)
 
 ```
-Sistema desistiu — pede ao usuário que revele o país
-
 POST /api/games/reveal
-Body: { "gameId": 42, "countryId": 1 }   // countryId = Brasil
+Body: { "gameId": 42, "countryId": 1 }
 
 GameService.revealAnswer():
-  1. Atualiza target_country_id na sessão
-  2. Para cada GameAttempt da sessão:
-     - Compara userAnswer com CountryFeature(countryId, questionId).isTrue
-     - Preenche isCorrect
-  3. Se sistema teria acertado com o país revelado → ROBOT_WON
-  4. Caso contrário → HUMAN_WON
-  5. Atualiza totalScore e gamesPlayed
-  6. status = FINISHED_REVEALED
-
-Response:
-{
-  "completed": true,
-  "status": "HUMAN_WON",
-  "score": 100,
-  "targetCountry": { "id": 12, "name": "Suriname", ... },
-  "feedback": [
-    { "question": "Fala Espanhol?", "yourAnswer": false, "correct": true },
-    ...
-  ]
-}
+  Para cada GameAttempt:
+    - Compara userAnswer com CountryFeature(country, question).isTrue
+    - Preenche attempt.isCorrect
+  - status = FINISHED_REVEALED
+  - Retorna feedback com inconsistências encontradas
 ```
 
 ---
@@ -460,7 +553,6 @@ Response:
    POST /api/auth/register
    ├─ Email duplicado? → DuplicateEmailException (409)
    ├─ Senha criptografada com BCrypt
-   ├─ User salvo com role=USER
    └─ JWT gerado e retornado
 
 2. LOGIN
@@ -474,7 +566,6 @@ Response:
    ├─ JwtAuthenticationFilter intercepta
    ├─ Extrai email do payload JWT
    ├─ CustomUserDetailsService.loadUserByUsername(email)
-   ├─ Injeta Authentication no SecurityContextHolder
    └─ Controller acessa via authentication.getName()
 
 4. TOKEN EXPIRADO (24h)
@@ -500,8 +591,7 @@ Response:
 PÚBLICO:   POST /api/auth/**
 PÚBLICO:   GET  /api/countries
 PÚBLICO:   POST /api/games/start, answer, deny, confirm, reveal
-PROTEGIDO: GET  /api/games/history  (vazio para visitante)
-PROTEGIDO: qualquer outra rota
+PROTEGIDO: GET  /api/games/history
 ```
 
 ---
@@ -511,7 +601,6 @@ PROTEGIDO: qualquer outra rota
 Todos os endpoints de jogo aceitam requests sem autenticação JWT.
 
 ```java
-// Padrão em todos os controllers de jogo
 String userEmail = (authentication != null && authentication.isAuthenticated())
     ? authentication.getName()
     : "guest";
@@ -519,7 +608,7 @@ String userEmail = (authentication != null && authentication.isAuthenticated())
 
 Comportamento para visitante:
 - `GameSession.user_id = NULL`
-- Jogo e motor de inferência funcionam normalmente
+- Motor de inferência funciona normalmente
 - Histórico retorna lista vazia (`GET /api/games/history`)
 - Pontuação **não** é persistida no perfil
 
@@ -538,59 +627,90 @@ Comportamento para visitante:
 
 ## 🔍 Análise de Decisões Técnicas
 
-### 1. ✅ `CountryFeature` — Base de Conhecimento Normalizada
+### 1. ✅ Pacote `service.inference` separado do `GameService`
+
+**Antes:** `GameService` tinha 512 linhas com `@PostConstruct`, cache `HashMap`, cálculo de entropia e filtragem misturados à lógica de ciclo de vida da sessão.
+
+**Depois:**
+- `KnowledgeBaseCache` — responsabilidade única: cache em RAM
+- `InferenceEngine` — responsabilidade única: matemática pura (testável sem Spring)
+- `GameService` — responsabilidade única: orquestrador de persistência e sessão
+
+**Benefício:** `InferenceEngine` pode ser testado com JUnit 5 + Mockito **sem subir Spring**, banco ou Flyway.
+
+---
+
+### 2. ✅ `Set<Long>` em vez de `List<Country>` na filtragem
+
+**Antes:** Cada iteração de filtro percorria a lista e fazia lookup no `HashMap` por país.
+
+**Depois:** Extrai IDs uma vez, itera com `HashSet.retainAll` (O(n)) para cada resposta, reconverte no final.
+
+**Benefício:** Escalável para 195 países sem degradação de performance.
+
+---
+
+### 3. ✅ Índices invertidos no `KnowledgeBaseCache`
+
+**Antes:** Cache `Map<countryId, Map<questionId, Boolean>>` — para filtrar por pergunta, era necessário iterar todos os países.
+
+**Depois:** `Map<questionId, Set<countryId>>` separado para SIM e NÃO — acesso direto em O(1).
+
+---
+
+### 4. ✅ `putIfAbsent` no `@PostConstruct`
+
+```java
+questionPriorities.putIfAbsent(questionId, calculateCategoryPriority(category));
+```
+
+A mesma pergunta aparece N vezes em `country_features` (uma por país). O `putIfAbsent` garante que a prioridade é calculada **uma única vez** por `questionId`, evitando recálculos redundantes.
+
+---
+
+### 5. ✅ `CountryFeature` — Base de Conhecimento Normalizada
 
 **Alternativa rejeitada:** 20+ campos booleanos em `Country` (`hasBeach`, `speaksSpanish`, etc.)
-
-**Problema:** Adicionar nova pergunta exigiria `ALTER TABLE country ADD COLUMN`.
 
 **Decisão:** Tabela separada `country_features (country_id, question_id, is_true)`.
 - Adicionar atributo = `INSERT INTO questions` + `INSERT INTO country_features × 13`
 - Nenhuma alteração de schema (princípio Open/Closed)
-- Permite que o motor de inferência itere dinamicamente sobre todos os atributos
 
 ---
 
-### 2. ✅ `GameStatus` enum — Múltiplos Estados
+### 6. ✅ `GameStatus` enum — Múltiplos Estados
 
 **Alternativa rejeitada:** Campos `completed (boolean)` + `won (boolean)`.
 
-**Problema:** 2 booleanos = 4 combinações, mas 3+ estados reais. Possível estado inválido (`completed=false, won=true`).
-
-**Decisão:** Enum com 7 estados claros e extensíveis.
+**Decisão:** Enum com 7 estados claros: `IN_PROGRESS`, `GUESSING`, `WAITING_FOR_REVEAL`, `ROBOT_WON`, `HUMAN_WON`, `GAVE_UP`, `FINISHED_REVEALED`.
 
 ---
 
-### 3. ✅ `user_id NULL` para visitante
+### 7. ✅ Stateless Backend (JWT sem sessão HTTP)
 
-**Alternativa rejeitada:** Criar um User "guest" compartilhado.
-
-**Problema:** Múltiplos visitantes simultâneos com sessões conflitantes.
-
-**Decisão:** `user_id` nullable. Visitante tem sessão isolada sem vínculo a usuário.
+Sem `HttpSession`, sem estado no servidor. Escala horizontalmente sem sticky sessions.
 
 ---
 
-### 4. ✅ `totalScore` e `gamesPlayed` como cache
+## 🧪 Testes Unitários
 
-**Aparente redundância:** poderiam ser calculados com `SUM(score)` e `COUNT(*)` sobre `game_sessions`.
+### `InferenceEngineTest`
 
-**Motivo para manter:**
-- Queries de ranking executam em milliseconds sem JOIN pesado
-- Cached Value Pattern — troca 4 bytes de espaço por latência reduzida
+Suite de 5 testes unitários cobrindo o motor de inferência com Mockito:
 
----
+| Teste | O que prova |
+|---|---|
+| `shouldReturnNullWhenCandidatesAreOneOrZero` | Condição de parada correta (≤1 candidato) |
+| `shouldSelectQuestionWithHighestInformationGainAndTieBreak` | IG máximo + desempate por categoria |
+| `shouldIgnoreAskedQuestionsAndSelectNextBest` | Pergunta já feita é ignorada |
+| `shouldIgnoreZeroGainQuestions` | Perguntas que não dividem o grupo são puladas |
+| `shouldFilterCandidatesCorrectly` | `filterCandidates` retorna interseção correta |
 
-### 5. ✅ `GameAttempt.is_correct` calculado no reveal
-
-**Por que não calcular na hora da resposta?**
-O sistema não conhece o país do usuário durante o jogo — essa é a premissa fundamental. O `is_correct` só pode ser calculado quando o usuário revela o país ao final, comparando cada `userAnswer` com o `CountryFeature` do país revelado.
-
----
-
-### 6. ✅ Stateless Backend (JWT sem sessão HTTP)
-
-Sem `HttpSession`, sem estado no servidor. Escala horizontalmente sem sticky sessions. Token carrega identidade completa.
+```bash
+# Rodar com Java 21 (requerido pelo Lombok)
+$env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-21.0.9.10-hotspot"
+mvn "-Dtest=InferenceEngineTest" test "-Dmaven.resources.skip=true" --no-transfer-progress
+```
 
 ---
 
@@ -618,7 +738,7 @@ docker-compose up atlas_db -d
 | Serviço | Plataforma | Configuração |
 |---|---|---|
 | Banco | Railway | Variáveis: `MYSQLHOST`, `MYSQLPORT`, `MYSQLDATABASE`, `MYSQLUSER`, `MYSQLPASSWORD` |
-| Backend | Railway | Container Docker; variáveis JWT_SECRET, CORS_ORIGINS |
+| Backend | Railway | Container Docker; variáveis `JWT_SECRET`, `CORS_ORIGINS` |
 | Frontend | Vercel | `vercel.json` com rewrite para SPA |
 
 ### Variáveis de Ambiente Críticas (Produção)
@@ -638,7 +758,6 @@ LOG_LEVEL=INFO
 |---|---|---|
 | V1 | `V1__create_table.sql` | Criação de todas as 7 tabelas |
 | V2 | `V2__insert_initial_data.sql` | 13 países + 16 perguntas + gabarito completo (`country_features`) |
-
 
 ---
 
