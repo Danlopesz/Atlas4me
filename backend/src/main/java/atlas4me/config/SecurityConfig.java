@@ -22,8 +22,6 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
-import java.util.List;
-
 
 @Configuration
 @EnableWebSecurity
@@ -88,16 +86,15 @@ public class SecurityConfig {
         // Usa a propriedade injetada do application.properties
         // Se a propriedade estiver vazia ou nula, usa um fallback seguro
         if (allowedOrigins != null && !allowedOrigins.isEmpty()) {
-             configuration.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
+            configuration.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
         } else {
-             // Fallback hardcoded caso a propriedade falhe
-             configuration.setAllowedOriginPatterns(Arrays.asList(
-                "http://localhost:*",
-                "https://*.vercel.app",
-                "https://*.railway.app",
-                "https://atlas4me.com",
-                "https://www.atlas4me.com"
-            ));
+            // Fallback hardcoded caso a propriedade falhe
+            configuration.setAllowedOriginPatterns(Arrays.asList(
+                    "http://localhost:*",
+                    "https://*.vercel.app",
+                    "https://*.railway.app",
+                    "https://atlas4me.com",
+                    "https://www.atlas4me.com"));
         }
 
         // Libera todos os métodos (GET, POST, OPTIONS, etc)
