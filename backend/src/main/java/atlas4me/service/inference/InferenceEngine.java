@@ -15,9 +15,9 @@ import java.util.Set;
  * o mesmo resultado (sem efeitos colaterais).
  *
  * Fórmula:
- *   H(S)   = log₂(|S|)          (entropia uniforme)
- *   IG(Q)  = H(S) − [p(sim)·H(S_sim) + p(não)·H(S_não)]
- *   Melhor pergunta = argmax IG(Q), desempate por prioridade de categoria
+ * H(S) = log₂(|S|) (entropia uniforme)
+ * IG(Q) = H(S) − [p(sim)·H(S_sim) + p(não)·H(S_não)]
+ * Melhor pergunta = argmax IG(Q), desempate por prioridade de categoria
  */
 @Service
 @RequiredArgsConstructor
@@ -29,8 +29,10 @@ public class InferenceEngine {
      * Seleciona a próxima pergunta com maior Ganho de Informação.
      * Em caso de empate, utiliza a prioridade da categoria (Geografia > Economia).
      *
-     * @param state Estado imutável da rodada atual (candidatos + perguntas já feitas).
-     * @return ID da melhor pergunta, ou {@code null} se não houver mais o que perguntar
+     * @param state Estado imutável da rodada atual (candidatos + perguntas já
+     *              feitas).
+     * @return ID da melhor pergunta, ou {@code null} se não houver mais o que
+     *         perguntar
      *         (candidatos ≤ 1 ou todas as perguntas já foram feitas).
      */
     public Long selectBestQuestion(GameState state) {
@@ -41,9 +43,9 @@ public class InferenceEngine {
             return null; // Condição de parada: pronto para palpite.
         }
 
-        Long   bestQuestionId = null;
-        double maxIG          = -1.0;
-        int    bestPriority   = -1;
+        Long bestQuestionId = null;
+        double maxIG = -1.0;
+        int bestPriority = -1;
 
         double currentEntropy = shannonEntropy(total);
 
@@ -60,7 +62,7 @@ public class InferenceEngine {
             yesGroup.retainAll(cache.getTrueCountries(questionId));
 
             int countYes = yesGroup.size();
-            int countNo  = total - countYes;
+            int countNo = total - countYes;
 
             // Pergunta inútil: não divide o grupo → IG = 0, pula
             if (countYes == 0 || countNo == 0) {
@@ -68,18 +70,23 @@ public class InferenceEngine {
             }
 
             // Entropia esperada após a resposta (média ponderada)
-            double expectedEntropy =
-                    ((double) countYes / total) * shannonEntropy(countYes)
-                    + ((double) countNo  / total) * shannonEntropy(countNo);
+            double expectedEntropy = ((double) countYes / total) * shannonEntropy(countYes)
+                    + ((double) countNo / total) * shannonEntropy(countNo);
 
-            double ig       = currentEntropy - expectedEntropy;
-            int    priority = getCategoryPriority(questionId);
+            double ig = currentEntropy - expectedEntropy;
+            int priority = getCategoryPriority(questionId);
 
             // Elege por maior IG; em empate matemático, vence a categoria prioritária
             if (ig > maxIG || (ig == maxIG && priority > bestPriority)) {
-                maxIG          = ig;
-                bestPriority   = priority;
+                maxIG = ig;
+                bestPriority = priority;
                 bestQuestionId = questionId;
+            }
+            // Se houver empate exato em IG e Prioridade, sorteamos para variar a partida
+            else if (ig == maxIG && priority == bestPriority) {
+                if (Math.random() > 0.5) {
+                    bestQuestionId = questionId;
+                }
             }
         }
 
@@ -92,7 +99,8 @@ public class InferenceEngine {
      * @param candidates Conjunto atual de candidatos.
      * @param questionId ID da pergunta respondida.
      * @param answer     Resposta do usuário (true = SIM, false = NÃO).
-     * @return Novo conjunto — subconjunto de {@code candidates} compatível com a resposta.
+     * @return Novo conjunto — subconjunto de {@code candidates} compatível com a
+     *         resposta.
      */
     public Set<Long> filterCandidates(Set<Long> candidates, Long questionId, boolean answer) {
         Set<Long> compatible = answer
@@ -110,18 +118,21 @@ public class InferenceEngine {
 
     /**
      * Entropia de Shannon para distribuição uniforme de {@code n} elementos.
-     * H(n) = log₂(n).  H(0) = H(1) = 0.
+     * H(n) = log₂(n). H(0) = H(1) = 0.
      */
     private double shannonEntropy(int n) {
-        if (n <= 1) return 0.0;
+        if (n <= 1)
+            return 0.0;
         return Math.log(n) / Math.log(2);
     }
 
     /**
-     * Desempate por categoria quando duas perguntas têm o mesmo Ganho de Informação.
+     * Desempate por categoria quando duas perguntas têm o mesmo Ganho de
+     * Informação.
      * Consulta o valor pré-calculado no cache — sem acesso ao banco de dados.
      *
-     * Ordem: GEOGRAFIA (50) > CULTURA (40) > BANDEIRA (30) > POPULACAO (20) > ECONOMIA (10)
+     * Ordem: GEOGRAFIA (50) > CULTURA (40) > BANDEIRA (30) > POPULACAO (20) >
+     * ECONOMIA (10)
      */
     private int getCategoryPriority(Long questionId) {
         return cache.getQuestionPriority(questionId);

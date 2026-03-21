@@ -24,10 +24,10 @@ import java.util.stream.Collectors;
  * Orquestrador do ciclo de vida de uma sessão de inferência.
  *
  * Responsabilidades:
- *   - Persistência (GameSession, GameAttempt)
- *   - Filtragem de candidatos via KnowledgeBaseCache (100% em RAM)
- *   - Delegação ao InferenceEngine para seleção de perguntas
- *   - Construção dos DTOs de resposta (GameResponse e GameResponse legado)
+ * - Persistência (GameSession, GameAttempt)
+ * - Filtragem de candidatos via KnowledgeBaseCache (100% em RAM)
+ * - Delegação ao InferenceEngine para seleção de perguntas
+ * - Construção dos DTOs de resposta (GameResponse e GameResponse legado)
  */
 @Service
 @RequiredArgsConstructor
@@ -35,16 +35,16 @@ import java.util.stream.Collectors;
 public class GameService {
 
     // --- Repositórios ---
-    private final GameSessionRepository    gameSessionRepository;
-    private final GameAttemptRepository    gameAttemptRepository;
-    private final UserRepository           userRepository;
-    private final QuestionRepository       questionRepository;
-    private final CountryRepository        countryRepository;
+    private final GameSessionRepository gameSessionRepository;
+    private final GameAttemptRepository gameAttemptRepository;
+    private final UserRepository userRepository;
+    private final QuestionRepository questionRepository;
+    private final CountryRepository countryRepository;
     private final CountryFeatureRepository countryFeatureRepository;
 
     // --- Motor de inferência ---
     private final KnowledgeBaseCache knowledgeBaseCache;
-    private final InferenceEngine    inferenceEngine;
+    private final InferenceEngine inferenceEngine;
 
     // =========================================================================
     // INÍCIO DO JOGO (mantém GameResponse legado para compatibilidade)
@@ -65,7 +65,7 @@ public class GameService {
         }
 
         GameSession session = createNewSession(user);
-        List<Country> all = countryRepository.findByContinent("SOUTH_AMERICA");
+        List<Country> all = countryRepository.findAll();
 
         // Seleciona primeira pergunta pelo motor
         QuestionResponse firstQuestion = selectNextQuestion(session, all);
@@ -87,7 +87,8 @@ public class GameService {
         if (remainingCountries.isEmpty()) {
             session.finish(GameStatus.HUMAN_WON);
             gameSessionRepository.save(session);
-            return buildGameResponse(session, remainingCountries, "Ops! Não sobrou nenhum país. Você me enganou!", null);
+            return buildGameResponse(session, remainingCountries, "Ops! Não sobrou nenhum país. Você me enganou!",
+                    null);
         }
 
         if (remainingCountries.size() == 1) {
@@ -145,7 +146,7 @@ public class GameService {
     // HISTÓRICO (mantém GameResponse legado)
     // =========================================================================
 
-   public List<GameResponse> getUserGameHistory(String userEmail) {
+    public List<GameResponse> getUserGameHistory(String userEmail) {
         if (userEmail == null || userEmail.equals("guest") || userEmail.equals("anonymousUser")) {
             return new ArrayList<>();
         }
@@ -179,16 +180,16 @@ public class GameService {
 
         List<String> mistakes = new ArrayList<>();
         for (GameAttempt attempt : session.getGameAttempts()) {
-            Question q          = attempt.getQuestion();
-            boolean  userAnswer = attempt.getUserAnswer();
-            boolean  realFact   = countryFeatureRepository
+            Question q = attempt.getQuestion();
+            boolean userAnswer = attempt.getUserAnswer();
+            boolean realFact = countryFeatureRepository
                     .findByCountryAndQuestion(realCountry, q)
                     .map(CountryFeature::getIsTrue)
                     .orElse(false);
 
             attempt.setIsCorrect(userAnswer == realFact);
             if (userAnswer != realFact) {
-                String truth   = realFact   ? "SIM" : "NÃO";
+                String truth = realFact ? "SIM" : "NÃO";
                 String youSaid = userAnswer ? "SIM" : "NÃO";
                 mistakes.add("Na pergunta '" + q.getText() + "', você respondeu " + youSaid
                         + ", mas para " + realCountry.getName() + " é " + truth + ".");
@@ -223,7 +224,7 @@ public class GameService {
 
         // 2. Interseção progressiva por resposta — O(n) por tentativa
         for (GameAttempt attempt : session.getGameAttempts()) {
-            Long    qId        = attempt.getQuestion().getId();
+            Long qId = attempt.getQuestion().getId();
             boolean userAnswer = attempt.getUserAnswer();
             Set<Long> compatible = userAnswer
                     ? knowledgeBaseCache.getTrueCountries(qId)
@@ -256,7 +257,8 @@ public class GameService {
                 .collect(Collectors.toSet());
 
         Long bestId = inferenceEngine.selectBestQuestion(new GameState(candidateIds, askedIds));
-        if (bestId == null) throw new BusinessException("Sem mais perguntas disponíveis.");
+        if (bestId == null)
+            throw new BusinessException("Sem mais perguntas disponíveis.");
 
         Question bestQ = questionRepository.findById(bestId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pergunta não encontrada: " + bestId));
@@ -268,7 +270,8 @@ public class GameService {
                 .map(Country::getIsoCode)
                 .collect(Collectors.toList());
 
-        return new QuestionResponse(bestQ.getId(), bestQ.getText(), bestQ.getCategory(), bestQ.getHelperImageUrl(), mapHints);
+        return new QuestionResponse(bestQ.getId(), bestQ.getText(), bestQ.getCategory(), bestQ.getHelperImageUrl(),
+                mapHints);
     }
 
     // =========================================================================
@@ -276,7 +279,7 @@ public class GameService {
     // =========================================================================
 
     private GameResponse buildGameResponse(GameSession session, List<Country> remaining,
-                                           String feedback, QuestionResponse nextQ) {
+            String feedback, QuestionResponse nextQ) {
         String robotGuess = session.getTargetCountry() != null
                 ? session.getTargetCountry().getName()
                 : null;
@@ -297,7 +300,7 @@ public class GameService {
                 .remainingCountries(remainingIsos)
                 .nextQuestion(nextQ)
                 .feedback(feedback)
-                .questionText(feedback)  // retrocompatibilidade
+                .questionText(feedback) // retrocompatibilidade
                 .build();
     }
 
@@ -311,7 +314,7 @@ public class GameService {
         if (session.getStatus() != expectedStatus) {
             throw new BusinessException(
                     "Sessão em estado inválido. Esperado: " + expectedStatus
-                    + ", atual: " + session.getStatus());
+                            + ", atual: " + session.getStatus());
         }
         return session;
     }
@@ -332,7 +335,7 @@ public class GameService {
     private GameSession createNewSession(User user) {
         GameSession session = new GameSession();
         session.setUser(user);
-        session.setTargetCountry(countryRepository.findAll().get(0));
+        session.setTargetCountry(countryRepository.findRandomCountry().orElse(null));
         session.setScore(100);
         session.setAttempts(0);
         session.setStatus(GameStatus.IN_PROGRESS);

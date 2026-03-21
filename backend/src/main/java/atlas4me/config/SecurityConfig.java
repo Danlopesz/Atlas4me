@@ -2,9 +2,9 @@ package atlas4me.config;
 
 import atlas4me.service.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -31,36 +31,58 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final CustomUserDetailsService userDetailsService;
 
-    @Value("${cors.allowed-origins}")
-    private String allowedOrigins;
-
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                // 🔴 Desabilita CSRF (API stateless)
                 .csrf(AbstractHttpConfigurer::disable)
+
+                // ✅ Habilita CORS
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+
+                // 🔐 Regras de autorização
                 .authorizeHttpRequests(auth -> auth
+
+                        // 🔥 MUITO IMPORTANTE: liberar preflight
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // Swagger
                         .requestMatchers(
                                 "/v3/api-docs/**",
                                 "/api-docs/**",
                                 "/swagger-ui/**",
-                                "/swagger-ui.html",
-                                "/auth/**",
-                                "/api/auth/**",
+                                "/swagger-ui.html")
+                        .permitAll()
+
+                        // Auth
+                        .requestMatchers("/auth/**", "/api/auth/**").permitAll()
+
+                        // Jogo (inclusive visitante)
+                        .requestMatchers(
                                 "/api/games/**",
                                 "/api/jogar/**",
-                                "/api/countries/**"
+                                "/api/countries/**")
+                        .permitAll()
 
-                        ).permitAll()
+                        // Qualquer outra rota precisa de auth
                         .anyRequest().authenticated())
+
+                // 🔴 Sem sessão (JWT stateless)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+                // 🔐 Provider de autenticação
                 .authenticationProvider(authenticationProvider())
+
+                // 🔐 Filtro JWT
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+
+                // 🔧 H2 console / iframe (opcional)
                 .headers(headers -> headers.frameOptions(frame -> frame.disable()));
 
         return http.build();
     }
 
+    // 🔐 Authentication Provider
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
@@ -69,46 +91,48 @@ public class SecurityConfig {
         return authProvider;
     }
 
+    // 🔐 Authentication Manager
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 
+    // 🔐 Password encoder
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
+    // 🌐 CONFIGURAÇÃO CORS GLOBAL (AQUI ESTÁ A CHAVE 🔥)
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Usa a propriedade injetada do application.properties
-        // Se a propriedade estiver vazia ou nula, usa um fallback seguro
-        if (allowedOrigins != null && !allowedOrigins.isEmpty()) {
-            configuration.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
-        } else {
-            // Fallback hardcoded caso a propriedade falhe
-            configuration.setAllowedOriginPatterns(Arrays.asList(
-                    "http://localhost:*",
-                    "https://*.vercel.app",
-                    "https://*.railway.app",
-                    "https://atlas4me.com",
-                    "https://www.atlas4me.com"));
-        }
+        // ✅ Permite localhost em qualquer porta (5173, 5174, etc)
+        configuration.setAllowedOriginPatterns(Arrays.asList(
+                "http://localhost:*",
+                "https://*.vercel.app",
+                "https://*.railway.app",
+                "https://atlas4me.com",
+                "https://www.atlas4me.com"));
 
-        // Libera todos os métodos (GET, POST, OPTIONS, etc)
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"));
+        // ✅ Métodos permitidos
+        configuration.setAllowedMethods(Arrays.asList(
+                "GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
 
-        // Libera todos os cabeçalhos (Evita erro de preflight)
+        // ✅ Headers permitidos
         configuration.setAllowedHeaders(Arrays.asList("*"));
+
+        // ✅ Permite cookies / auth header
         configuration.setAllowCredentials(true);
 
-        // Expõe headers se necessário
-        configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Type"));
+        // ✅ Headers expostos
+        configuration.setExposedHeaders(Arrays.asList(
+                "Authorization", "Content-Type"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
+
         return source;
     }
 }
