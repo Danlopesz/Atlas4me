@@ -1,2 +1,0 @@
-ALTER TABLE game_sessions
-ADD COLUMN version BIGINT NOT NULL DEFAULT 0;

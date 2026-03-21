@@ -5,10 +5,7 @@
 
 -- =======================================================
 -- 3. CARGA DE DADOS (Seus Inserts Originais)
--- =======================================================
-
--- Países
-INSERT IGNORE INTO countries (id, name, iso_code, image_url, latitude, longitude, continent) VALUES 
+INSERT IGNORE INTO countries (id, name, iso_code, image_url, latitude, longitude, continent) VALUES
 (1, 'Brasil', 'BR', '/images/countries/br.png', -14.2350, -51.9253, 'SOUTH_AMERICA'),
 (2, 'Argentina', 'AR', '/images/countries/ar.png', -38.4161, -63.6167, 'SOUTH_AMERICA'),
 (3, 'Uruguai', 'UY', '/images/countries/uy.png', -32.5228, -55.7658, 'SOUTH_AMERICA'),

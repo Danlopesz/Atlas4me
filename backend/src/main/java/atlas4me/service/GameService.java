@@ -263,15 +263,15 @@ public class GameService {
         Question bestQ = questionRepository.findById(bestId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pergunta não encontrada: " + bestId));
 
-        // mapHints: ISO Codes dos candidatos restantes que responderiam SIM
+        // validIsoCodes: ISO Codes dos candidatos restantes que responderiam SIM
         Set<Long> trueIds = knowledgeBaseCache.getTrueCountries(bestId);
-        List<String> mapHints = remainingCountries.stream()
+        List<String> validIsoCodes = remainingCountries.stream()
                 .filter(c -> trueIds.contains(c.getId()))
                 .map(Country::getIsoCode)
                 .collect(Collectors.toList());
 
         return new QuestionResponse(bestQ.getId(), bestQ.getText(), bestQ.getCategory(), bestQ.getHelperImageUrl(),
-                mapHints);
+                validIsoCodes);
     }
 
     // =========================================================================

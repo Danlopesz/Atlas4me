@@ -13,7 +13,7 @@ function Jogar() {
     const [message, setMessage] = useState('Clique em Iniciar para desafiar o Atlas!');
 
     // Estado para o mapa (recebe do backend)
-    const [mapLocations, setMapLocations] = useState([]);
+    const [highlightedIsos, setHighlightedIsos] = useState([]);
 
     // Estados para o fluxo de revelação
     const [countries, setCountries] = useState([]);
@@ -56,8 +56,8 @@ function Jogar() {
             setMessage(data.nextQuestion.text);
 
             // O Java agora manda uma lista de objetos: [{isoCode: 'br', lat: -14, lon: -51}, ...]
-            const locations = data.nextQuestion.mapLocations || [];
-            setMapLocations(locations);
+            const isos = data.nextQuestion.validIsoCodes || [];
+            setHighlightedIsos(isos);
         }
         else if (data.status === 'WAITING_FOR_REVEAL' || data.status === 'HUMAN_WON') {
             setGameStatus('WAITING_FOR_REVEAL');
@@ -142,7 +142,7 @@ function Jogar() {
         setQuestion(null);
         setTargetCountry(null);
         setGameId(null);
-        setMapLocations([]);
+        setHighlightedIsos([]);
         setSelectedCountryId("");
         setTimeout(() => setMessage('Clique em Iniciar para desafiar o Atlas!'), 0);
     };
@@ -263,7 +263,7 @@ function Jogar() {
 
                     {/* O Mapa com tamanho controlado */}
                     <div style={{ width: '100%', maxWidth: '700px', height: '80%', maxHeight: '800px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                        <GameGlobe markers={mapLocations} />
+                        <GameGlobe validIsoCodes={highlightedIsos} />
                     </div>
                 </div>
 

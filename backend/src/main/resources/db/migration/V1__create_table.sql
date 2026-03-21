@@ -70,7 +70,8 @@ CREATE TABLE IF NOT EXISTS game_sessions (
     started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     finished_at TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (target_country_id) REFERENCES countries(id)
+    FOREIGN KEY (target_country_id) REFERENCES countries(id),
+    version BIGINT DEFAULT 0
 );
 
 -- Tabela de Histórico de Tentativas (Log)

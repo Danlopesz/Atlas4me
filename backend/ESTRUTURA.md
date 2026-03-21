@@ -1,6 +1,6 @@
 # 📁 Estrutura do Projeto Atlas4Me — Backend
 
-> Organização do backend Spring Boot (Março 2026), refletindo a estrutura real de pacotes e arquivos.
+> Organização do backend Spring Boot (Março 2026), refletindo a estrutura real de pacotes e arquivos após a expansão para **36 países globais** e **60 perguntas**.
 
 ---
 
@@ -27,7 +27,7 @@ backend/src/main/java/atlas4me/
 │   ├── 📁 request/
 │   │   ├── GameAnswerRequest.java     # { gameId, questionId, answer }
 │   │   ├── GameIdRequest.java         # { gameId }  — helper genérico
-│   │   ├── GuessFeedbackRequest.java  # { gameId, correct } — substitui /deny e /confirm
+│   │   ├── GuessFeedbackRequest.java  # { gameId, correct } — unifica /deny e /confirm
 │   │   ├── LoginRequest.java          # { email, password }
 │   │   ├── RegisterRequest.java       # { firstName, lastName, email, password }
 │   │   └── RevealRequest.java         # { gameId, countryId }
@@ -35,13 +35,13 @@ backend/src/main/java/atlas4me/
 │       ├── AuthResponse.java          # { token, userId, firstName, email, totalScore }
 │       ├── CountryResponse.java       # { id, name, isoCode, imageUrl }
 │       ├── ErrorResponse.java         # { status, message, timestamp }
-│       ├── GameResponse.java          # Resposta unificada do jogo (com ISO codes dos candidatos)
+│       ├── GameResponse.java          # Resposta unificada do jogo
 │       ├── LocationResponse.java      # { latitude, longitude }
-│       ├── QuestionResponse.java      # { id, text, category, helperImageUrl, mapHints }
+│       ├── QuestionResponse.java      # { id, text, category, helperImageUrl, validIsoCodes }
 │       └── ValidationErrorResponse.java  # Erros de Bean Validation
 │
 ├── 📁 entity/                          # Entidades JPA (Domínio)
-│   ├── Country.java                   # País do jogo
+│   ├── Country.java                   # País (name, isoCode, lat, lon, continent)
 │   ├── CountryFeature.java            # Base de conhecimento (País × Pergunta → Bool)
 │   ├── GameAttempt.java               # Log de cada resposta do usuário
 │   ├── GameSession.java               # Sessão de inferência com @Version (Optimistic Lock)
@@ -57,16 +57,16 @@ backend/src/main/java/atlas4me/
 │
 ├── 📁 repository/                      # Repositórios Spring Data JPA
 │   ├── CountryFeatureRepository.java
-│   ├── CountryRepository.java
+│   ├── CountryRepository.java         # + findRandomCountry()
 │   ├── GameAttemptRepository.java
-│   ├── GameSessionRepository.java
+│   ├── GameSessionRepository.java     # + findByUserAndStatus()
 │   ├── QuestionRepository.java
-│   └── UserRepository.java
+│   └── UserRepository.java            # + findByEmailAndActiveTrue()
 │
 └── 📁 service/                         # Camada de Aplicação (Lógica de Negócio)
     ├── CountryService.java            # Consulta e listagem de países
     ├── CustomUserDetailsService.java  # Integração Spring Security ↔ UserRepository
-    ├── GameService.java               # Orquestra o ciclo da sessão; usa InferenceEngine + KnowledgeBaseCache
+    ├── GameService.java               # Orquestra o ciclo da sessão; usa InferenceEngine + Cache
     ├── LoginService.java              # Autenticação e geração de JWT
     ├── RegisterService.java           # Cadastro de novo usuário
     └── 📁 inference/                  # Submódulo do Motor de Inferência
@@ -81,12 +81,12 @@ backend/src/main/java/atlas4me/
 
 ```
 resources/
-├── application.properties             # Configurações da aplicação
+├── application.properties             # Configurações da aplicação (${VAR:default})
 └── db/migration/                      # Migrations Flyway (versionadas)
-    ├── V1__create_table.sql           # Criação de todas as 7 tabelas
-    ├── V2__insert_initial_data.sql    # 13 países + 16 perguntas + gabarito
-    ├── V3__Add_Lat_Lon_To_Countries.sql          # latitude e longitude
-    └── V4__Add_IsoCode_To_CountryFeatures.sql    # iso_code nas features
+    ├── V1__create_table.sql           # Criação das 7 tabelas (com campo continent)
+    ├── V2__insert_initial_data.sql    # Dados iniciais
+    ├── V3__insert_world_countries.sql # 36 países do mundo + lat/lon
+    └── V4__insert_more_questions.sql  # 60 perguntas + gabarito country_features completo
 ```
 
 ---
@@ -97,7 +97,7 @@ resources/
 | Arquivo | Responsabilidade |
 |---|---|
 | `SecurityConfig` | Define quais rotas são públicas ou protegidas, configura CORS |
-| `JwtTokenProvider` | Gera, assina e valida tokens JWT (HS256) |
+| `JwtTokenProvider` | Gera, assina e valida tokens JWT (HS256, 24h) |
 | `JwtAuthenticationFilter` | Intercepta requests, extrai token do header, injeta no `SecurityContext` |
 | `SwaggerConfig` | Configura SpringDoc / OpenAPI (habilitado por env var `SWAGGER_ENABLED`) |
 
@@ -106,9 +106,9 @@ resources/
 |---|---|---|
 | `AuthController` | `/api/auth` | register, login |
 | `GameController` | `/api/games` | start, answer, guess-feedback, deny *(compat)*, confirm *(compat)*, reveal, history |
-| `CountryController` | `/api/countries` | listar todos |
+| `CountryController` | `/api/countries` | listar todos (36 países) |
 
-> **Nota `GameController`:** O endpoint `POST /api/games/guess-feedback` unifica `/deny` e `/confirm` com o campo `correct: boolean`. Os endpoints `/deny` e `/confirm` ainda existem como _wrappers_ para retrocompatibilidade com o frontend atual. Um `@ExceptionHandler` de `ObjectOptimisticLockingFailureException` retorna `409 Conflict` ao detectar requests simultâneas sobre a mesma sessão.
+> **Nota `GameController`:** O endpoint `POST /api/games/guess-feedback` unifica `/deny` e `/confirm` com o campo `correct: boolean`. Os endpoints `/deny` e `/confirm` ainda existem como _wrappers_ para retrocompatibilidade. Um `@ExceptionHandler` de `ObjectOptimisticLockingFailureException` retorna `409 Conflict` ao detectar requests simultâneas sobre a mesma sessão.
 
 ### Camada de Serviço (`service/`)
 | Serviço | Responsabilidade Principal |
@@ -122,9 +122,23 @@ resources/
 ### Submódulo de Inferência (`service/inference/`)
 | Classe | Tipo | Responsabilidade |
 |---|---|---|
-| `KnowledgeBaseCache` | `@Component` | Carrega toda a tabela `country_features` em memória na inicialização (`@PostConstruct`). Expõe índices invertidos (`getTrueCountries`, `getFalseCountries`), mapa de prioridades de categoria e a matriz completa `país → pergunta → boolean`. |
-| `InferenceEngine` | `@Service` | Motor **stateless** e puro. `selectBestQuestion(GameState)` escolhe a pergunta com maior Ganho de Informação (IG = H − entropia esperada); `filterCandidates(candidates, questionId, answer)` retorna novo subconjunto compatível. Nunca acessa o banco — opera só sobre o `KnowledgeBaseCache`. |
-| `GameState` | `record` (Java 21) | Value object imutável que encapsula `currentCandidates: Set<Long>` e `askedQuestions: Set<Long>`. Passado como entrada ao `InferenceEngine`. |
+| `KnowledgeBaseCache` | `@Component` | Carrega a tabela `country_features` inteira em memória na inicialização (`@PostConstruct`). Expõe índices invertidos (`getTrueCountries`, `getFalseCountries`), mapa de prioridades de categoria e a matriz completa `país → pergunta → boolean`. |
+| `InferenceEngine` | `@Service` | Motor **stateless** e puro. `selectBestQuestion(GameState)` retorna ID da pergunta com maior Ganho de Informação (IG = H − entropia esperada); `filterCandidates(candidates, questionId, answer)` retorna novo subconjunto compatível via `HashSet.retainAll`. Nunca acessa o banco. |
+| `GameState` | `record` (Java 21) | Value object imutável com `currentCandidates: Set<Long>` e `askedQuestions: Set<Long>`. Passado como entrada ao `InferenceEngine`. |
+
+### DTOs notáveis
+
+**`QuestionResponse`** — contém o novo campo `validIsoCodes`:
+```json
+{
+  "id": 7,
+  "text": "O país tem saída para o Oceano Atlântico?",
+  "category": "GEOGRAFIA",
+  "helperImageUrl": null,
+  "validIsoCodes": ["BR", "AR", "NG", "ZA"]
+}
+```
+Este array é calculado pelo `GameService` (não pelo `InferenceEngine`) e representa os países candidatos restantes que responderiam **SIM** à pergunta. O `GameGlobe` no frontend usa este dado para atualizar os marcadores do globo 3D.
 
 ### Camada de Dados (`repository/` + `entity/`)
 
@@ -133,7 +147,7 @@ resources/
 | Entidade | Tabela | Descrição |
 |---|---|---|
 | `User` | `users` | Jogador; implementa `UserDetails` |
-| `Country` | `countries` | País com nome, ISO code, bandeira, lat/lon |
+| `Country` | `countries` | País com name, ISO code, bandeira, lat/lon, **continent** |
 | `Question` | `questions` | Atributo com texto, categoria e imagem auxiliar |
 | `CountryFeature` | `country_features` | Base de conhecimento: País × Pergunta × Resposta booleana |
 | `GameSession` | `game_sessions` | Sessão de inferência; campo `@Version` para Optimistic Locking |
@@ -148,36 +162,44 @@ resources/
 
 ---
 
-## 🔄 Fluxo de uma Requisição
+## 🔄 Fluxo de uma Requisição de Jogo
 
 ```
-HTTP Request
+HTTP Request (POST /api/games/answer)
     │
     ▼
-JwtAuthenticationFilter  ← extrai/valida token JWT
+JwtAuthenticationFilter  ← extrai/valida token JWT (ou passa como guest)
     │
     ▼
-SecurityConfig           ← verifica se rota exige autenticação
+SecurityConfig           ← rota pública → sem bloqueio
     │
     ▼
-GameController           ← recebe DTO de Request, delega ao GameService
+GameController           ← recebe GameAnswerRequest, delega ao GameService
     │
     ▼
-GameService              ← orquestra: cria GameState, chama InferenceEngine
+GameService              ← orquestra:
     │
-    ├──► InferenceEngine.selectBestQuestion(GameState)
-    │         └─ KnowledgeBaseCache  ← índices em memória (sem SQL)
+    ├──► processAttempt()          → salva GameAttempt (MySQL)
     │
-    ├──► InferenceEngine.filterCandidates(...)
-    │         └─ KnowledgeBaseCache
+    ├──► getRemainingCountries()   ← FILTRAGEM 100% EM RAM
+    │         ├─ candidateIds = cache.getCountryQuestionMatrix().keySet()
+    │         ├─ for each attempt: retainAll(índice invertido)
+    │         ├─ removeAll(rejectedIds)
+    │         └─ countryRepository.findAllById(ids)  ← 1 única query SQL
     │
-    └──► Repository  ← persiste GameSession / GameAttempt (MySQL)
+    ├──► selectNextQuestion()
+    │         ├─ new GameState(candidateIds, askedIds)
+    │         ├─ inferenceEngine.selectBestQuestion(state)   ← IG puro
+    │         │       └─ KnowledgeBaseCache  (sem SQL)
+    │         └─ calcula validIsoCodes dos candidatos SIM
+    │
+    └──► buildGameResponse()       → monta GameResponse (DTO)
     │
     ▼
-DTO de Response (GameResponse)
+HTTP Response (JSON com nextQuestion.validIsoCodes)
     │
     ▼
-HTTP Response (JSON)
+Frontend: GameGlobe atualiza marcadores do globo 3D
 ```
 
 ---
@@ -188,22 +210,22 @@ HTTP Response (JSON)
 Separação clara entre Presentation → Application → Domain → Infrastructure. Nenhuma camada "pula" outra.
 
 ### 2. DTO Pattern
-Entities JPA nunca saem diretamente na resposta HTTP. Conversão sempre via DTOs (`*Request` / `*Response`). DTOs de request recentes usam **Java Records** (`GuessFeedbackRequest`, `GameState`).
+Entities JPA nunca saem diretamente na resposta HTTP. `*Request` / `*Response` sempre. DTOs de request recentes usam **Java Records** (`GuessFeedbackRequest`, `GameState`).
 
 ### 3. Repository Pattern
-Toda consulta ao banco passa por interfaces que estendem `JpaRepository`. Nenhum SQL manual nos serviços.
+Toda consulta ao banco passa por interfaces `JpaRepository`. Nenhum SQL manual nos serviços.
 
-### 4. In-Memory Cache (KnowledgeBaseCache)
-A `country_features` inteira é carregada via `@PostConstruct` em estruturas de dados otimizadas (índices invertidos + matriz completa). O `InferenceEngine` opera 100% em memória — sem SQL a cada pergunta.
+### 4. In-Memory Cache (`KnowledgeBaseCache`)
+A `country_features` inteira é carregada via `@PostConstruct` em estruturas de dados otimizadas (índices invertidos). O `InferenceEngine` opera 100% em memória — **zero SQL** a cada pergunta.
 
 ### 5. Optimistic Locking
-`GameSession` usa `@Version` (JPA). Requests simultâneas sobre a mesma sessão lançam `ObjectOptimisticLockingFailureException`, tratada pelo `GameController` com resposta `409 Conflict`.
+`GameSession` usa `@Version` (JPA). Requests simultâneas sobre a mesma sessão lançam `ObjectOptimisticLockingFailureException`, tratada pelo `GameController` com `409 Conflict`.
 
 ### 6. Global Exception Handler
 `GlobalExceptionHandler` com `@RestControllerAdvice` centraliza todos os erros e formata respostas padronizadas.
 
 ### 7. Stateless JWT
-Backend é 100% stateless — sem sessão HTTP. Autenticação via token JWT em cada request.
+Backend 100% stateless — sem `HttpSession`. Autenticação via token JWT em cada request.
 
 ---
 
@@ -215,7 +237,7 @@ Backend é 100% stateless — sem sessão HTTP. Autenticação via token JWT em 
 | `*Service` | Serviço de negócio | `GameService`, `InferenceEngine` |
 | `*Repository` | Interface JPA | `UserRepository` |
 | `*Request` | DTO de entrada | `LoginRequest`, `GuessFeedbackRequest` |
-| `*Response` | DTO de saída | `AuthResponse`, `GameResponse` |
+| `*Response` | DTO de saída | `AuthResponse`, `GameResponse`, `QuestionResponse` |
 | `*Cache` | Cache em memória | `KnowledgeBaseCache` |
 | `*Exception` | Exceção customizada | `BusinessException` |
 
@@ -230,8 +252,11 @@ mvn clean compile
 # Executar localmente
 mvn spring-boot:run
 
-# Executar testes
+# Executar testes (InferenceEngineTest)
 mvn test
+
+# Executar teste específico
+mvn "-Dtest=InferenceEngineTest" test "-Dmaven.resources.skip=true" --no-transfer-progress
 
 # Gerar JAR de produção
 mvn clean package -DskipTests

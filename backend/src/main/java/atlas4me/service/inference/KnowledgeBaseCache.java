@@ -38,6 +38,9 @@ public class KnowledgeBaseCache {
     // Conjunto de todas as perguntas indexadas
     private final Set<Long> allQuestionIds = new HashSet<>();
 
+    //Índice otimizado para a UI
+    private final Map<Long, List<String>> questionToTrueIsoCodes = new HashMap<>();
+
     @PostConstruct
     public void initCache() {
         log.info("Iniciando carregamento da Base de Conhecimento em memória...");
@@ -48,6 +51,7 @@ public class KnowledgeBaseCache {
             Long    countryId  = feature.getCountry().getId();
             boolean isTrue     = feature.getIsTrue();
             String  category   = feature.getQuestion().getCategory();
+            String isoCode = feature.getCountry().getIsoCode();
 
             allQuestionIds.add(questionId);
 
@@ -59,6 +63,11 @@ public class KnowledgeBaseCache {
                 questionToTrueCountries
                         .computeIfAbsent(questionId, k -> new HashSet<>())
                         .add(countryId);
+
+                // Popula o índice de ISO codes para o frontend
+                questionToTrueIsoCodes
+                        .computeIfAbsent(questionId, k -> new ArrayList<>())
+                        .add(isoCode);
             } else {
                 questionToFalseCountries
                         .computeIfAbsent(questionId, k -> new HashSet<>())
@@ -92,7 +101,15 @@ public class KnowledgeBaseCache {
         };
     }
 
+    // --- API de Cache para a UI ---
+
+    /** Retorna a lista de ISO Codes dos países que respondem SIM à pergunta em tempo O(1). */
+    public List<String> getIsoCodesForTrueAnswers(Long questionId) {
+        return questionToTrueIsoCodes.getOrDefault(questionId, Collections.emptyList());
+    }
+
     // --- API para o InferenceEngine ---
+
 
     /** IDs dos países que respondem SIM à pergunta. */
     public Set<Long> getTrueCountries(Long questionId) {

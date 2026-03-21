@@ -1,22 +1,26 @@
 # 🌍 Atlas4Me — Jogo Interativo de Dedução Geográfica
 
-> Um jogo de adivinhação de países da América do Sul sustentado por um **motor de inferência baseado em Entropia de Shannon**. O sistema identifica o país pensado pelo usuário através de perguntas binárias selecionadas dinamicamente por ganho de informação.
+> Um jogo de adivinhação de países do **mundo inteiro (atualmente apenas 36 países)** sustentado por um **motor de inferência baseado em Entropia de Shannon**. O sistema identifica o país pensado pelo usuário através de perguntas binárias selecionadas dinamicamente por ganho de informação — e exibe os candidatos restantes em tempo real num **globo 3D interativo**.
 
 [![Java](https://img.shields.io/badge/Java-21-orange.svg)](https://www.oracle.com/java/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.x-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![React](https://img.shields.io/badge/React-19.x-blue.svg)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-7.x-purple.svg)](https://vitejs.dev/)
+[![MySQL](https://img.shields.io/badge/MySQL-8.0-blue.svg)](https://www.mysql.com/)
+[![Flyway](https://img.shields.io/badge/Flyway-V4-red.svg)](https://flywaydb.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
 ## 📖 Sobre o Projeto
 
-**Atlas4Me** é um jogo interativo de dedução geográfica focado nos **13 países da América do Sul**. O jogador pensa em um país e o sistema tenta identificá-lo através de perguntas de resposta binária (SIM/NÃO).
+**Atlas4Me** é um jogo interativo de dedução geográfica com escopo de 36 países: o jogador pensa em qualquer um dos **paises: {1. Brasil, 2. Argentina, 3. Chile, 4. Colômbia, 5. Peru, 6. Venezuela, 7. Equador, 8. Bolívia, 9. Paraguai, 10. Uruguai, 11. Guiana, 12. Suriname, 13. Guiana Francesa, 14. Canadá, 15. Estados Unidos, 16. México, 17. Cuba, 18. Haiti, 19. República Dominicana, 20. Panamá, 21. Costa Rica, 22. Nicarágua, 23. Honduras, 24. El Salvador, 25. Guatemala, 26. Belize, 27. Jamaica, 28. Espanha, 29. Portugal, 30. França, 31. Itália, 32. Alemanha, 33. Reino Unido, 34. China, 35. Índia, 36. Japão}** e o sistema tenta identificá-lo através de perguntas de resposta binária (SIM/NÃO).
 
-Internamente, o Atlas4Me não adivinha por força bruta — ele opera como um **sistema de inferência determinístico**: cada pergunta é selecionada com base no cálculo de **Entropia de Shannon**, priorizando a pergunta que maximiza o ganho de informação e divide o espaço de hipóteses da forma mais eficiente possível.
+Internamente, o Atlas4Me não adivinha por força bruta — ele opera como um **sistema de inferência determinístico**: cada pergunta é selecionada com base na **Entropia de Shannon**, priorizando a pergunta que maximiza o ganho de informação e divide o espaço de hipóteses da forma mais eficiente possível.
 
-> A experiência do usuário é a de um jogo estilo Akinator. O mecanismo por trás é inspirado em **árvores de decisão** e **teoria da informação**.
+A grande vitrine do projeto é o componente **`GameGlobe`** — um globo 3D interativo (`react-globe.gl`) que, a cada resposta do usuário, atualiza seus marcadores mostrando em tempo real **apenas os países que ainda são candidatos possíveis**.
+
+> A experiência do usuário é a de um jogo estilo Akinator de Geografia. O mecanismo por trás é inspirado em **árvores de decisão** e **teoria da informação**.
 
 ---
 
@@ -24,39 +28,43 @@ Internamente, o Atlas4Me não adivinha por força bruta — ele opera como um **
 
 ### Visão do Usuário
 
-1. **Pense** em um dos 13 países da América do Sul — sem revelar!
-2. **Sistema faz perguntas** com respostas SIM ou NÃO ("Fala Espanhol?", "Tem litoral?")
-3. **Responda** honestamente sobre o país que está pensando
-4. **Observe** os candidatos sendo eliminados progressivamente
-5. **Confirme ou negue** quando o sistema propõe um palpite
-6. Se o sistema desistir, **revele** o país — e veja se você o enganou
+1. **Pense** em qualquer um dos 36 países — sem revelar!
+2. **Sistema faz perguntas** com respostas SIM ou NÃO ("Fala Espanhol?", "É um país insular?")
+3. **Observe o globo 3D** — os marcadores se atualizam a cada resposta, mostrando os candidatos restantes
+4. **Confirme ou negue** quando o sistema propõe um palpite
+5. Se o sistema desistir, **revele** o país — e veja se você o enganou
 
 ### Motor de Inferência (por dentro)
 
 ```
-Estado inicial: conjunto de 13 países candidatos + 16 perguntas
+Estado inicial: conjunto de 36 países candidatos + 60 perguntas
 
 Para cada rodada:
-  1. Calcular Entropia de Shannon do conjunto atual de candidatos
+  1. Calcular Entropia de Shannon do conjunto atual de candidatos:
+       H(S) = log₂(|S|)
   2. Para cada pergunta disponível:
-       - Calcular ganho de informação (IG = H(antes) − H(depois|resposta))
-  3. Selecionar a pergunta com maior IG
-  4. Receber resposta binária do usuário
-  5. Filtrar candidatos incompatíveis com a resposta
-  6. Se |candidatos| ≤ 1 → passar para fase de palpite (GUESSING)
-  7. Repetir até identificação ou desistência
+       S_sim = candidatos que responderiam SIM (índice invertido em RAM)
+       IG(Q) = H(S) − [p(sim)·H(S_sim) + p(não)·H(S_não)]
+  3. Selecionar a pergunta com maior IG (desempate por categoria)
+  4. Backend retorna: pergunta + validIsoCodes (ISOs dos candidatos restantes)
+  5. Globo 3D atualiza marcadores com os validIsoCodes
+  6. Receber resposta binária do usuário
+  7. filterCandidates(): interseção de HashSets em O(n) — 100% em RAM
+  8. Se |candidatos| ≤ 1 → status = GUESSING
+  9. Repetir até identificação ou desistência
 ```
 
-A tabela `country_features` (País × Pergunta → Booleano) é a **base de conhecimento** do sistema. O `GameService` é o **motor de inferência** que opera sobre ela.
+A tabela `country_features` (País × Pergunta → Booleano) é a **base de conhecimento** do sistema, carregada na startup pelo `KnowledgeBaseCache` e operada sem nenhuma query SQL durante o jogo.
 
 ### Sistema de Pontuação
 
 | Evento | Pontuação |
 |---|---|
 | Início da partida | 100 pts |
+| Cada pergunta respondida | −2 pts |
 | Cada palpite errado do sistema | −10 pts |
-| Sistema adivinhou (`ROBOT_WON`) | Score acumulado conforme erros |
-| Jogador venceu (`HUMAN_WON`) | 100 pts |
+| Sistema adivinhou (`ROBOT_WON`) | +20 pts (bônus) |
+| Jogador venceu (`HUMAN_WON`) | Score acumulado conforme respostas |
 
 ---
 
@@ -65,15 +73,18 @@ A tabela `country_features` (País × Pergunta → Booleano) é a **base de conh
 | Feature | Status |
 |---|---|
 | Motor de inferência por Entropia de Shannon | ✅ |
-| Seleção dinâmica de perguntas por ganho de informação | ✅ |
-| 13 países da América do Sul | ✅ |
-| 16 perguntas estratégicas (geo, cultura, bandeira, economia) | ✅ |
+| Seleção dinâmica de perguntas por ganho de informação (IG) | ✅ |
+| **36 países do mundo inteiro** (múltiplos continentes) | ✅ |
+| **60 perguntas** estratégicas (Geografia, História, Cultura, Bandeiras, Economia) | ✅ |
+| **Globo 3D interativo** (`react-globe.gl`) com candidatos em tempo real | ✅ |
+| `validIsoCodes` retornado pelo backend por pergunta | ✅ |
 | Autenticação JWT (Login / Cadastro) | ✅ |
 | Modo Visitante (jogar sem conta) | ✅ |
 | Perfil do jogador com histórico de partidas | ✅ |
-| Tema espacial com estrelas animadas e componentes 3D | ✅ |
+| Tema espacial com estrelas animadas | ✅ |
 | Design responsivo (desktop e mobile) | ✅ |
-| Deploy Railway (backend) + Vercel (frontend) | ✅ |
+| Backend stateless — escala horizontalmente | ✅ |
+| Flyway Migrations versionadas (V1–V4) | ✅ |
 
 ---
 
@@ -81,40 +92,51 @@ A tabela `country_features` (País × Pergunta → Booleano) é a **base de conh
 
 ```
 Atlas4Me/
-├── backend/              # API REST — Java 21 + Spring Boot 3.2
-│   ├── config/           # JWT + Security + Swagger
-│   ├── controller/       # AuthController, GameController, CountryController
-│   ├── service/
-│   │   ├── GameService.java          # Orquestra o ciclo da sessão
-│   │   ├── LoginService.java
-│   │   ├── RegisterService.java
-│   │   ├── CountryService.java
-│   │   ├── CustomUserDetailsService.java
-│   │   └── inference/                # Submódulo do Motor de Inferência
-│   │       ├── GameState.java        # Record imutável (candidatos + perguntas feitas)
-│   │       ├── InferenceEngine.java  # Motor stateless: Shannon + filtro de candidatos
-│   │       └── KnowledgeBaseCache.java  # Cache em memória da base de conhecimento
-│   ├── entity/           # User, Country, GameSession (Optimistic Lock), GameAttempt, Question...
-│   ├── repository/       # Spring Data JPA
-│   ├── dto/
-│   │   ├── request/      # GameAnswerRequest, GuessFeedbackRequest, RevealRequest...
-│   │   └── response/     # GameResponse, QuestionResponse, AuthResponse...
-│   └── exception/        # GlobalExceptionHandler
+├── backend/                      # API REST — Java 21 + Spring Boot 3.2
+│   ├── src/main/java/atlas4me/
+│   │   ├── config/               # JWT + Security + Swagger
+│   │   ├── controller/           # AuthController, GameController, CountryController
+│   │   ├── service/
+│   │   │   ├── GameService.java              # Orquestra o ciclo da sessão
+│   │   │   ├── LoginService.java
+│   │   │   ├── RegisterService.java
+│   │   │   ├── CountryService.java
+│   │   │   ├── CustomUserDetailsService.java
+│   │   │   └── inference/                    # Motor de Inferência
+│   │   │       ├── GameState.java            # Record imutável (candidatos + perguntas feitas)
+│   │   │       ├── InferenceEngine.java      # Motor stateless: Shannon + filtro de candidatos
+│   │   │       └── KnowledgeBaseCache.java   # Cache RAM da base de conhecimento
+│   │   ├── entity/               # User, Country, GameSession (@Version), GameAttempt, Question...
+│   │   ├── repository/           # Spring Data JPA
+│   │   ├── dto/
+│   │   │   ├── request/          # GameAnswerRequest, GuessFeedbackRequest, RevealRequest...
+│   │   │   └── response/         # GameResponse, QuestionResponse (com validIsoCodes), AuthResponse...
+│   │   └── exception/            # GlobalExceptionHandler
+│   └── src/main/resources/
+│       ├── application.properties
+│       └── db/migration/
+│           ├── V1__create_table.sql              # 7 tabelas
+│           ├── V2__insert_initial_data.sql       # Dados iniciais
+│           ├── V3__insert_world_countries.sql    # 36 países do mundo
+│           └── V4__insert_more_questions.sql     # Base de 60 perguntas
 │
-├── frontend/             # SPA — React 19 + Vite 7
-│   ├── pages/            # Home, Login, Cadastro, ComoJogar, Jogar, Perfil
-│   ├── components/       # Navbar, GameGlobe, Planet3D, SouthAmericaHologram
-│   ├── services/         # api.js (Axios + interceptors JWT)
-│   └── assets/           # CSS (glassmorphism, Stars, tema espacial)
+├── frontend/                     # SPA — React 19 + Vite 7
+│   ├── src/
+│   │   ├── pages/                # Home, Login, Cadastro, ComoJogar, Jogar, Perfil
+│   │   ├── components/           # Navbar, GameGlobe (react-globe.gl), Planet3D
+│   │   ├── services/             # api.js (Axios + interceptors JWT)
+│   │   ├── utils/                # constants.js (COUNTRY_COORDS)
+│   │   └── assets/               # CSS (glassmorphism, Stars, tema espacial)
+│   └── Dockerfile
 │
-└── docker-compose.yml    # MySQL + Backend + Frontend
+└── docker-compose.yml            # MySQL + Backend + Frontend
 ```
 
-### Tecnologias
+### 💻 Stack Tecnológica
 
-**Backend:** Java 21 · Spring Boot 3.2 · Spring Security · JWT · Spring Data JPA · Hibernate · MySQL 8.0 · Flyway · Lombok · Springdoc OpenAPI · Maven
+**Backend:** Java 21 · Spring Boot 3.2 · Spring Security · JWT (HS256) · Spring Data JPA · Hibernate · MySQL 8.0 · Flyway · Lombok · Springdoc OpenAPI · Maven
 
-**Frontend:** React 19 · Vite 7 · React Router DOM 7 · Axios · CSS3 Puro
+**Frontend:** React 19 · Vite 7 · React Router DOM 7 · Axios · `react-globe.gl` · CSS3 Puro
 
 ---
 
@@ -134,50 +156,46 @@ git clone https://github.com/Danlopesz/Atlas4me-React.git
 cd Atlas4me-React
 ```
 
-### 2️⃣ Suba o Banco de Dados
+### 2️⃣ Opção A — Docker Compose Completo (recomendado)
 
 ```bash
-# Inicia apenas o MySQL (porta 3307)
-docker-compose up atlas_db -d
-```
-
-Ou suba tudo com Docker:
-
-```bash
+# Sobe banco + backend + frontend de uma vez
 docker-compose up --build
 ```
 
-### 3️⃣ Execute o Backend
+| Serviço | URL |
+|---|---|
+| Frontend | http://localhost:5173 |
+| Backend API | http://localhost:5202 |
+| MySQL | localhost:3307 |
+
+### 2️⃣ Opção B — Execução Local (desenvolvimento)
 
 ```bash
-cd backend
-mvn spring-boot:run
-
-# Backend disponível em: http://localhost:5202
+# Sobe apenas o banco de dados
+docker-compose up atlas_db -d
 ```
 
-**Verificar:**
 ```bash
-curl http://localhost:5202/api/countries
-# Deve retornar JSON com os 13 países
+# Terminal 1 — Backend
+cd backend
+mvn spring-boot:run
+# Disponível em: http://localhost:5202
+```
+
+```bash
+# Terminal 2 — Frontend
+cd frontend
+npm install
+npm run dev
+# Disponível em: http://localhost:5173
 ```
 
 **Credenciais do banco local:**
 - Host: `localhost:3307` · Database: `atlas4me`
 - Username: `atlas_user` · Password: `atlas_password`
 
-### 4️⃣ Execute o Frontend
-
-```bash
-# Em outro terminal
-cd frontend
-npm install
-npm run dev
-
-# Frontend disponível em: http://localhost:5173
-```
-
-### 5️⃣ Acesse a Aplicação
+### 3️⃣ Acesse a Aplicação
 
 Abra: **http://localhost:5173**
 
@@ -194,34 +212,36 @@ POST /api/auth/login     →  Login + geração de JWT
 ### Jogo (Público — suporta visitante)
 ```
 POST /api/games/start           →  Iniciar nova sessão de inferência
-POST /api/games/answer          →  Enviar resposta binária
+POST /api/games/answer          →  Enviar resposta binária (SIM/NÃO)
 POST /api/games/guess-feedback  →  Feedback unificado sobre palpite { gameId, correct }
 POST /api/games/deny            →  Negar palpite (compat. legado → guess-feedback false)
 POST /api/games/confirm         →  Confirmar palpite (compat. legado → guess-feedback true)
 POST /api/games/reveal          →  Revelar país pensado (quando sistema desiste)
-GET  /api/games/history         →  Histórico de partidas
+GET  /api/games/history         →  Histórico de partidas (requer autenticação)
 ```
 
 ### Países (Público)
 ```
-GET  /api/countries      →  Listar todos os países (base de conhecimento)
+GET  /api/countries      →  Listar todos os 36 países (base de conhecimento)
 ```
+
+> A resposta de `/api/games/answer` inclui o campo `nextQuestion.validIsoCodes` — array de ISO codes dos países que ainda são candidatos válidos, consumido pelo `GameGlobe` para atualizar os marcadores no globo 3D.
 
 ---
 
 ## 📊 Modelo de Dados (Visão Geral)
 
-| Tabela | Função |
-|---|---|
-| `users` | Jogadores cadastrados |
-| `countries` | 13 países da América do Sul (com lat/lon) |
-| `questions` | 16 atributos (perguntas) utilizados na inferência |
-| `country_features` | Base de conhecimento: País × Pergunta × Resposta |
-| `game_sessions` | Sessões de inferência individuais |
-| `game_attempts` | Log de cada resposta durante a sessão |
-| `game_session_rejected` | Países descartados após palpite negado |
+| Tabela | Função | Registros |
+|---|---|---|
+| `users` | Jogadores cadastrados | — |
+| `countries` | Base de países (com lat/lon e continent) | **36** |
+| `questions` | Atributos usados na inferência | **60** |
+| `country_features` | Base de conhecimento: País × Pergunta × Resposta | 36 × 60 |
+| `game_sessions` | Sessões de inferência individuais (@Version) | — |
+| `game_attempts` | Log de cada resposta durante a sessão | — |
+| `game_session_rejected` | Países descartados após palpite negado | — |
 
-> Detalhes completos do modelo e diagrama ER em [ARCHITECTURE.md](ARCHITECTURE.md).
+> Detalhes completos do modelo ER e diagrama em [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ---
 
@@ -231,6 +251,7 @@ GET  /api/countries      →  Listar todos os países (base de conhecimento)
 - **Senhas:** Criptografadas com BCrypt
 - **CORS:** Configurado para frontend local e produção
 - **Stateless:** Backend sem sessão HTTP — escala horizontalmente
+- **Optimistic Locking:** `GameSession` usa `@Version` (JPA) — requests simultâneas na mesma sessão retornam `409 Conflict`
 
 ---
 
@@ -252,7 +273,7 @@ npm run build
 npm run preview   # Testar localmente → http://localhost:4173
 ```
 
-### Deploy Completo
+### Deploy
 
 - **Backend:** Railway (via Dockerfile em `./backend`)
 - **Frontend:** Vercel (via `vercel.json` na raiz)
@@ -264,9 +285,9 @@ npm run preview   # Testar localmente → http://localhost:4173
 | Documento | Conteúdo |
 |---|---|
 | [**ARCHITECTURE.md**](ARCHITECTURE.md) | Arquitetura detalhada, motor de inferência, modelo de dados, decisões técnicas |
-| [**backend/README.md**](backend/README.md) | API REST, endpoints, motor de inferência, configurações |
+| [**backend/READMEBACk.md**](backend/READMEBACk.md) | Guia do desenvolvedor Java: fluxo GameService, endpoints, inferência, configuração |
 | [**backend/ESTRUTURA.md**](backend/ESTRUTURA.md) | Estrutura de pacotes e arquivos do backend |
-| [**frontend/README.md**](frontend/README.md) | Páginas, componentes, estilos e fluxo de navegação |
+| [**frontend/READMEFront.md**](frontend/READMEFront.md) | Guia do desenvolvedor React: páginas, GameGlobe, estado do jogo, comunicação com API |
 
 ---
 
@@ -274,12 +295,14 @@ npm run preview   # Testar localmente → http://localhost:4173
 
 ### Versão Atual ✅
 
-- [x] Motor de inferência por Entropia de Shannon
+- [x] Motor de inferência por Entropia de Shannon (100% determinístico em RAM)
+- [x] 36 países do mundo inteiro, 60 perguntas estratégicas
+- [x] Globo 3D interativo com candidatos em tempo real (`react-globe.gl`)
+- [x] `validIsoCodes` retornado pelo backend a cada pergunta
 - [x] Autenticação JWT + modo visitante
-- [x] 13 países, 16 perguntas (atributos)
+- [x] Flyway Migrations V1–V4
 - [x] Ciclo completo: start → answer → deny/confirm → reveal
 - [x] Perfil com histórico de partidas
-- [x] Tema espacial com estrelas + componentes 3D
 - [x] Deploy Railway + Vercel
 
 ### Próximas Versões 🔄
@@ -289,8 +312,7 @@ npm run preview   # Testar localmente → http://localhost:4173
 - [ ] Substituir `alert()` por **toast notifications**
 - [ ] Testes unitários (Vitest + JUnit)
 - [ ] **PWA** (Progressive Web App)
-- [ ] Novos conjuntos de países (Europa, Ásia, África)
-- [ ] Visualização do processo de eliminação em tempo real
+- [ ] Visualização animada do processo de eliminação
 
 ---
 

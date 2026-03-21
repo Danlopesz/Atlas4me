@@ -1,18 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import '../assets/Navbar.css';
 
 const Navbar = () => {
-    const [userName, setUserName] = useState(null);
-
-    useEffect(() => {
-        const storedName = localStorage.getItem('userName');
+    // Lemos o localStorage UMA ÚNICA VEZ durante a montagem do componente
+    const [userName, setUserName] = useState(() => {
+        const storedName = localStorage.getItem('userName'); // No seu Login.jsx estava salvando como 'firstName' ou 'userName'? Certifique-se do nome da chave!
         const token = localStorage.getItem('token');
 
         if (storedName && token) {
-            setUserName(storedName);
+            return storedName;
         }
-    }, []);
+        return null;
+    });
 
     const handleLogout = () => {
         localStorage.removeItem('token');
@@ -48,7 +48,6 @@ const Navbar = () => {
             </nav>
         </nav>
     );
-
 };
 
 export default Navbar;
