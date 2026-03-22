@@ -14,7 +14,7 @@
 
 ## 📖 Sobre o Projeto
 
-**Atlas4Me** é um jogo interativo de dedução geográfica com escopo de 36 países: o jogador pensa em qualquer um dos **paises: {1. Brasil, 2. Argentina, 3. Chile, 4. Colômbia, 5. Peru, 6. Venezuela, 7. Equador, 8. Bolívia, 9. Paraguai, 10. Uruguai, 11. Guiana, 12. Suriname, 13. Guiana Francesa, 14. Canadá, 15. Estados Unidos, 16. México, 17. Cuba, 18. Haiti, 19. República Dominicana, 20. Panamá, 21. Costa Rica, 22. Nicarágua, 23. Honduras, 24. El Salvador, 25. Guatemala, 26. Belize, 27. Jamaica, 28. Espanha, 29. Portugal, 30. França, 31. Itália, 32. Alemanha, 33. Reino Unido, 34. China, 35. Índia, 36. Japão}** e o sistema tenta identificá-lo através de perguntas de resposta binária (SIM/NÃO).
+**Atlas4Me** é um jogo interativo de dedução geográfica com escopo de 36 países: o jogador pensa em qualquer um dos **paises: {1.Brasil, 2.Argentina, 3.Uruguai, 4.Paraguai, 5.Bolívia, 6.Chile, 7.Peru, 8.Equador, 9.Colômbia, 10.Venezuela, 11.Guiana, 12.Suriname, 13.Guiana Francesa, 14.Estados Unidos, 15.Canadá, 16.México, 17.Alemanha, 18.França, 19.Espanha, 20.Suíça, 21.Itália, 22.Reino Unido, 23.Rússia, 24.China, 25.Índia, 26.Japão, 27.Coreia do Sul, 28.Tailândia, 29.Indonésia, 30.Nova Zelândia, 31.Egito, 32.África do Sul, 33.Turquia, 34.Austrália, 35.Nigéria, 36.Arabia Saudita}** e o sistema tenta identificá-lo através de perguntas de resposta binária (SIM/NÃO).
 
 Internamente, o Atlas4Me não adivinha por força bruta — ele opera como um **sistema de inferência determinístico**: cada pergunta é selecionada com base na **Entropia de Shannon**, priorizando a pergunta que maximiza o ganho de informação e divide o espaço de hipóteses da forma mais eficiente possível.
 
