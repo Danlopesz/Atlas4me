@@ -2,23 +2,23 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Globe from 'react-globe.gl';
 import { COUNTRY_COORDS } from '../utils/constants';
 
-// Importação estática do GeoJSON higienizado localmente
+// Importação estática do GeoJSON
 import geoJsonData from '../assets/world.geo.json';
 
-// --- 1. CONFIGURAÇÕES VISUAIS (Strict Design System - Day Style) ---
+// --- 1. DESIGN SYSTEM: HOLOFOTE SOBRE SATÉLITE ---
 const COLORS = {
-    primary: '#18ff7e',                     // Verde Neon Claro para o dia
-    activeCap: 'rgba(24, 255, 126, 0.4)',   // Translúcido
-    activeStroke: '#18ff7e',                // Brilho intenso
-    eliminatedCap: 'rgba(200, 200, 200, 0.05)', // Quase invisível de dia
-    eliminatedStroke: 'rgba(100, 100, 100, 0.1)',
-    ahaCap: 'rgba(57, 255, 20, 0.9)',       // Verde Limão Intenso (Fase 4)
-    ahaStroke: '#ffffff',
-    atmosphereNormal: 'rgba(255, 255, 255, 0.6)', // Atmosfera Diurna Branca
-    atmosphereAha: '#000a14'                // Escurecido na Fase 4 para dar foco
+    // Destaque da Pergunta
+    spotlightFill: 'rgba(0, 229, 255, 0.4)', // Ciano Neon Translúcido
+    transparentFill: 'rgba(0, 0, 0, 0)',     // 100% Transparente
+
+    // Elementos Geográficos Fixos
+    countryBorder: 'rgba(255, 255, 255, 0.4)', // Linha de fronteira fina e branca
+    labelText: '#FFFFFF',                      // Nomes sempre em branco
+
+    atmosphere: 'rgba(255, 255, 255, 0.2)'     // Atmosfera sutil
 };
 
-// --- 2. MOTOR MATEMÁTICO DE CLUSTERS (O(1)) ---
+// --- 2. MOTOR MATEMÁTICO DE CÂMERA ---
 const calculateCluster = (isos) => {
     let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
     let validCount = 0;
@@ -34,17 +34,11 @@ const calculateCluster = (isos) => {
         }
     });
 
-    if (validCount === 0) return { lat: 0, lng: 0, isDominant: false };
+    if (validCount === 0) return { lat: -15, lng: -60, isDominant: false }; // Foco padrão América do Sul
 
     const centerLat = (minLat + maxLat) / 2;
     const centerLng = (minLng + maxLng) / 2;
-    const latSpread = maxLat - minLat;
-    const lngSpread = maxLng - minLng;
-
-    // Cluster dominante: caixa delimitadora < 60 graus
-    const isDominant = latSpread < 60 && lngSpread < 60;
-
-    return { lat: centerLat, lng: centerLng, isDominant };
+    return { lat: centerLat, lng: centerLng };
 };
 
 // --- 3. COMPONENTE PRINCIPAL ---
@@ -52,16 +46,7 @@ const GameGlobe = ({ validIsoCodes = [] }) => {
     const globeRef = useRef();
     const [dimensions, setDimensions] = useState({ width: 800, height: 800 });
 
-    // Estados Orquestrados Visualmente
-    const [visualStates, setVisualStates] = useState({});
-    const [atmosphere, setAtmosphere] = useState(COLORS.atmosphereNormal);
-
-    // Refs de Controle Interno
-    const prevIsosRef = useRef([]);
-    const isFirstRender = useRef(true);
-    const timeoutIds = useRef([]);
-
-    // Responsividade do Canvas
+    // Responsividade
     useEffect(() => {
         const updateSize = () => {
             const parent = document.querySelector('.map-zone');
@@ -72,186 +57,80 @@ const GameGlobe = ({ validIsoCodes = [] }) => {
         return () => window.removeEventListener('resize', updateSize);
     }, []);
 
-    // --- 4. ENGINE DE COREOGRAFIA DE CÂMERA (Controle Estrito) ---
-    const executeCameraPhase = useCallback((activeIsos) => {
-        const count = activeIsos.length;
-        if (count === 0 || !globeRef.current) return;
-
-        const controls = globeRef.current.controls();
-        const cluster = calculateCluster(activeIsos);
-
-        // Destrava controles preventivamente
-        controls.enableZoom = true;
-        controls.enablePan = true;
-
-        // Rotação suave entre perguntas, SÓ quando o globo for global (>10)
-        controls.autoRotate = count > 10;
-        if (controls.autoRotate) controls.autoRotateSpeed = 0.5;
-
-        // Fases da Câmera: Controle Estrito de Zoom e Atmosfera
-        if (count === 1) {
-            // Fase 4: Aha - Zoom Rápido, Atmosfera Escurecida, Rotação Parada, Controles Bloqueados
-            controls.enableZoom = false;
-            controls.enablePan = false;
-            setAtmosphere(COLORS.atmosphereAha);
-            globeRef.current.pointOfView({ lat: cluster.lat, lng: cluster.lng, alt: 0.7 }, 1500);
-
-        } else if (count >= 2 && count <= 3) {
-            // Fase 3: Foco Regional - Zoom Agressivo
-            setAtmosphere(COLORS.atmosphereNormal);
-            globeRef.current.pointOfView({ lat: cluster.lat, lng: cluster.lng, alt: 1.1 }, 1200);
-
-        } else if (count >= 4 && count <= 10) {
-            // Fase 2: Convergência
-            setAtmosphere(COLORS.atmosphereNormal);
-            if (cluster.isDominant) {
-                globeRef.current.pointOfView({ lat: cluster.lat, lng: cluster.lng, alt: 1.8 }, 1200);
-            } else {
-                globeRef.current.pointOfView({ lat: cluster.lat, lng: cluster.lng, alt: 2.5 }, 1200);
-            }
-
-        } else {
-            // Fase 1: Exploração Global
-            setAtmosphere(COLORS.atmosphereNormal);
-            globeRef.current.pointOfView({ lat: cluster.lat, lng: cluster.lng, alt: 2.5 }, 1000);
-        }
-    }, []);
-
-    // --- 5. ORQUESTRAÇÃO DE EVENTOS BLINDADA NO USEEFFECT ---
+    // Coreografia de Câmera (Foca onde o Holofote está)
     useEffect(() => {
-        // PROTEÇÃO: Impede que o globo quebre com arrays nulos/vazios
-        if (!validIsoCodes || validIsoCodes.length === 0) {
-            setVisualStates({}); // Reinicia visualmente para um globo vazio
-            executeCameraPhase([]);
-            isFirstRender.current = true; // Prepara para nova partida
-            return;
-        }
+        if (!globeRef.current || validIsoCodes.length === 0) return;
 
-        const currentIsos = validIsoCodes.map(i => i.toUpperCase());
+        const cluster = calculateCluster(validIsoCodes);
+        const altitude = validIsoCodes.length <= 3 ? 1.0 : 2.0; // Zoom in se houver poucos alvos
 
-        timeoutIds.current.forEach(clearTimeout);
-        timeoutIds.current = [];
+        globeRef.current.pointOfView({ lat: cluster.lat, lng: cluster.lng, alt: altitude }, 1000);
+    }, [validIsoCodes]);
 
-        if (isFirstRender.current) {
-            // PRIMEIRA RENDERIZAÇÃO
-            const initialStates = {};
-            currentIsos.forEach(iso => initialStates[iso] = 'ACTIVE');
-
-            // setTimeout 0ms tira a execução do tempo síncrono, calando o ESLint
-            const idInit = setTimeout(() => {
-                setVisualStates(initialStates);
-                executeCameraPhase(currentIsos);
-            }, 0);
-            timeoutIds.current.push(idInit);
-
-            prevIsosRef.current = currentIsos;
-            isFirstRender.current = false;
-        } else {
-            // RENDERIZAÇÕES SUBSEQUENTES
-            const previousIsos = prevIsosRef.current;
-            const eliminatedIsos = previousIsos.filter(iso => !currentIsos.includes(iso));
-            const isReset = currentIsos.length > previousIsos.length;
-
-            if (isReset) {
-                const resetStates = {};
-                currentIsos.forEach(iso => resetStates[iso] = 'ACTIVE');
-                setVisualStates(resetStates);
-                executeCameraPhase(currentIsos);
-            } else if (eliminatedIsos.length > 0) {
-                // PRIORIDADE 1: Eliminação Visual com Batched Staggering (de 4 em 4)
-                const CHUNK_SIZE = 4;
-                const DELAY_PER_CHUNK = 100;
-
-                for (let i = 0; i < eliminatedIsos.length; i += CHUNK_SIZE) {
-                    const chunk = eliminatedIsos.slice(i, i + CHUNK_SIZE);
-
-                    const id = setTimeout(() => {
-                        setVisualStates(prev => {
-                            const nextState = { ...prev };
-                            chunk.forEach(iso => nextState[iso] = 'ELIMINATED');
-                            return nextState;
-                        });
-                    }, (i / CHUNK_SIZE) * DELAY_PER_CHUNK);
-
-                    timeoutIds.current.push(id);
-                }
-
-                // PRIORIDADE 2: Delay de Compreensão + Câmera
-                const totalBatches = Math.ceil(eliminatedIsos.length / CHUNK_SIZE);
-                const comprehensionDelay = (totalBatches * DELAY_PER_CHUNK) + 400;
-
-                const idCam = setTimeout(() => {
-                    executeCameraPhase(currentIsos);
-                }, comprehensionDelay);
-
-                timeoutIds.current.push(idCam);
-            }
-
-            prevIsosRef.current = currentIsos;
-        }
-
-        return () => timeoutIds.current.forEach(clearTimeout);
-    }, [validIsoCodes, executeCameraPhase]);
-
-    // Acessor de O(1) para o estado do polígono
-    const getPolyState = (feat) => visualStates[feat.properties.ISO_A2] || 'ELIMINATED';
+    // Função auxiliar O(1) para verificar se o país é alvo do Holofote atual
+    const isHighlighted = useCallback((feat) => {
+        const iso = feat.properties.ISO_A2 || feat.properties.ADM0_A3;
+        if (!iso) return false;
+        return validIsoCodes.some(code => code.toUpperCase() === iso.toUpperCase());
+    }, [validIsoCodes]);
 
     return (
-        <div className="globe-wrapper" style={{ width: '100%', height: '100%', cursor: 'crosshair' }}>
+        <div className="globe-wrapper" style={{ width: '100%', height: '100%', cursor: 'grab' }}>
             <Globe
                 ref={globeRef}
                 width={dimensions.width}
                 height={dimensions.height}
-                backgroundColor="rgba(255,255,255,0)" // Fundo Claro/Transparente
 
-                // MAPA ESTILO DIA (Google Earth)
+                // --- VISUAL DE SATÉLITE ---
                 globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
                 bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
-
+                backgroundColor="rgba(255,255,255,0)" // Fundo transparente para o componente pai
                 showAtmosphere={true}
-                atmosphereColor={atmosphere}
+                atmosphereColor={COLORS.atmosphere}
                 atmosphereAltitude={0.15}
 
+                // --- POLÍGONOS E HOLOFOTE ---
                 polygonsData={geoJsonData.features}
 
-                polygonAltitude={(feat) => {
-                    const state = getPolyState(feat);
-                    if (state === 'AHA') return 0.05;
-                    if (state === 'ACTIVE') return 0.02;
-                    return 0.001; // Colado no chão
-                }}
-                polygonCapColor={(feat) => {
-                    const state = getPolyState(feat);
-                    if (state === 'AHA') return COLORS.ahaCap;
-                    if (state === 'ACTIVE') return COLORS.activeCap;
-                    return COLORS.eliminatedCap;
-                }}
-                polygonSideColor={() => 'rgba(0, 0, 0, 0)'}
-                polygonStrokeColor={(feat) => {
-                    const state = getPolyState(feat);
-                    if (state === 'AHA') return COLORS.ahaStroke;
-                    if (state === 'ACTIVE') return COLORS.activeStroke;
-                    return COLORS.eliminatedStroke;
-                }}
-                polygonsTransitionDuration={400}
+                // Preenchimento: Ilumina apenas os ISOs da pergunta. O resto é vidro transparente.
+                polygonCapColor={feat => isHighlighted(feat) ? COLORS.spotlightFill : COLORS.transparentFill}
 
-                // --- ENGINE DE LABELS DINÂMICOS E LEGÍVEIS (O(1)) ---
-                labelsData={geoJsonData.features}
-                labelLat={feat => COUNTRY_COORDS[feat.properties.ISO_A2]?.lat || 0} // Busca no dicionário local
-                labelLng={feat => COUNTRY_COORDS[feat.properties.ISO_A2]?.lng || 0}
-                labelText={feat => COUNTRY_COORDS[feat.properties.ISO_A2]?.name || feat.properties.ISO_A2} // Prefere o nome, cai pro ISO
-                labelSize={1.5}
-                labelColor={feat => {
-                    const state = getPolyState(feat);
-                    if (state === 'ACTIVE' || state === 'AHA') return COLORS.activeStroke; // Verde Neon
-                    return 'rgba(0,0,0,0)'; // Oculta países mortos
-                }}
-                labelResolution={3}     // Alta nitidez
-                labelIncludeDot={false} // Remove o ponto feio centralizado
+                // Borda: Desenha o mapa múndi permanente
+                polygonStrokeColor={() => COLORS.countryBorder}
+
+                polygonSideColor={() => 'rgba(0, 0, 0, 0)'}
+                polygonAltitude={feat => isHighlighted(feat) ? 0.02 : 0.001}
+                polygonsTransitionDuration={300}
+
+                // --- LABELS PERMANENTES ---
+                // Filtramos para renderizar label APENAS se o país estiver mapeado no constants.js
+                // Isso evita labels vazias com undefined ou zeros no oceano
+                labelsData={geoJsonData.features.filter(feat => {
+                    // Função inline para normalizar o ISO Code ou Nome
+                    const props = feat.properties;
+                    let code = props.ISO_A2 || props.ADM0_A3;
+                    if (props.NAME === 'French Guiana' || props.ADMIN === 'French Guiana') code = 'GF';
+
+                    feat.normalizedCode = code; // Salva para uso rápido abaixo
+                    return COUNTRY_COORDS[code] !== undefined;
+                })}
+
+                labelLat={feat => COUNTRY_COORDS[feat.normalizedCode].lat}
+                labelLng={feat => COUNTRY_COORDS[feat.normalizedCode].lng}
+                labelText={feat => COUNTRY_COORDS[feat.normalizedCode].name}
+
+                labelColor={() => COLORS.labelText}
+
+                // Ajuste de UI: Tamanho base menor (0.9) para caber nas guianas, destaque sutil (1.2) se iluminado
+                labelSize={feat => isHighlighted(feat) ? 1.2 : 0.9}
+                labelResolution={3}
+                labelIncludeDot={false}
 
                 onGlobeReady={() => {
                     if (globeRef.current) {
                         globeRef.current.controls().enableZoom = true;
+                        globeRef.current.controls().autoRotate = true;
+                        globeRef.current.controls().autoRotateSpeed = 0.3;
                     }
                 }}
             />

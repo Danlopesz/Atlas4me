@@ -1,8 +1,7 @@
 export const COUNTRY_COORDS = {
     // --- AMÉRICA DO SUL (Base Inicial) ---
     'BR': { lat: -14.235, lng: -51.9253, name: 'Brasil' },
-    'AR': { lat: -38.4161, lng: -63.6167, name: 'Argentina' },
-    'UY': { lat: -32.5228, lng: -55.7658, name: 'Uruguai' },
+    'AR': { lat: -35.000, lng: -65.000, name: 'Argentina' }, // Puxado para o centro do continente    'UY': { lat: -32.5228, lng: -55.7658, name: 'Uruguai' },
     'PY': { lat: -23.4425, lng: -58.4438, name: 'Paraguai' },
     'BO': { lat: -16.2902, lng: -63.5887, name: 'Bolívia' },
     'CL': { lat: -35.6751, lng: -71.543, name: 'Chile' },

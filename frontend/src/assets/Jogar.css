@@ -62,18 +62,18 @@
     pointer-events: none;
 }
 
-/* --- BOTÕES DO JOGO (Estilo Neon) --- */
 .btn-game {
     padding: 15px 30px;
     font-size: 1.2rem;
     font-weight: bold;
     border: none;
-    border-radius: 50px;
+    border-radius: 50px !important; /* Estilo Pílula */
     cursor: pointer;
-    color: white;
-    transition: transform 0.2s, filter 0.2s;
+    color: #FFFFFF !important;
     text-transform: uppercase;
     letter-spacing: 1px;
+    transition: transform 0.2s, background-color 0.2s;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
 .btn-game:hover {
@@ -81,24 +81,45 @@
     filter: brightness(1.2);
 }
 
+.btn-sim {
+    background-color: #10B981 !important; /* Verde Esmeralda */
+}
+.btn-sim:hover {
+    background-color: #059669 !important;
+    transform: translateY(-2px);
+}
+
+.btn-nao {
+    background-color: #EF4444 !important; /* Coral/Salmão */
+}
+.btn-nao:hover {
+    background-color: #DC2626 !important;
+    transform: translateY(-2px);
+}
+
 /* --- RESPONSIVIDADE (CELULAR E TABLET) --- */
 @media (max-width: 900px) {
     .game-container {
-        flex-direction: column;
-        /* Muda para um em cima do outro */
-        height: auto;
-        /* Altura automática para caber o scroll */
-        min-height: 100vh;
-        overflow-y: auto;
-        /* Permite rolar a tela no celular */
+        display: flex;
+        gap: 10px;
+        width: 100%;
+        height: 100vh;
+        padding-top: 70px;
+        overflow: hidden;
+        position: relative;
+        /* Novo background diurno: Gradiente suave off-white para azul celeste */
+        background: radial-gradient(circle at center, #F8FAFC 0%, #E2E8F0 100%) !important;
     }
 
     .map-zone {
-        height: 400px;
-        /* Altura fixa pro mapa no celular */
-        width: 100%;
-        order: 1;
-        /* 1º: Mostra o Mapa em cima */
+        flex: 1;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        /* Removido o brilho radial neon escuro */
+        background: none;
     }
 
     .question-zone {
@@ -108,5 +129,22 @@
         /* 2º: Mostra a Pergunta embaixo */
         flex: none;
         /* Remove a trava de 40% */
+    }
+    .question-card {
+        width: 100%;
+        max-width: 500px;
+        /* Novo Glassmorphism Claro */
+        background: rgba(255, 255, 255, 0.6) !important;
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.4) !important;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08) !important;
+    }
+
+    /* ADICIONE estas regras para garantir a leitura no fundo claro */
+    .question-card h1,
+    .question-card h2,
+    .question-card p {
+        color: #1E293B !important;
     }
 }

@@ -55,7 +55,8 @@ function Jogar() {
             setGameStatus('PLAYING');
             setMessage(data.nextQuestion.text);
 
-            // O Java agora manda uma lista de objetos: [{isoCode: 'br', lat: -14, lon: -51}, ...]
+            // REGRA DO HOLOFOTE:
+            // O mapa ilumina ESTRITAMENTE os países que respondem SIM a esta pergunta específica
             const isos = data.nextQuestion.validIsoCodes || [];
             setHighlightedIsos(isos);
         }
@@ -192,10 +193,10 @@ function Jogar() {
                                     {message}
                                 </p>
                                 <div style={{ display: 'flex', gap: '20px', justifyContent: 'center' }}>
-                                    <button className="btn-game" style={{ background: '#2ecc71', flex: 1 }} onClick={() => handleAnswer(true)}>
+                                    <button className="btn-game btn-sim" style={{ flex: 1 }} onClick={() => handleAnswer(true)}>
                                         SIM
                                     </button>
-                                    <button className="btn-game" style={{ background: '#e74c3c', flex: 1 }} onClick={() => handleAnswer(false)}>
+                                    <button className="btn-game btn-nao" style={{ flex: 1 }} onClick={() => handleAnswer(false)}>
                                         NÃO
                                     </button>
                                 </div>
