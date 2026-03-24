@@ -1,0 +1,188 @@
+/* =============================================
+   ATLAS4ME — GLOBAL LAYOUT (FASE 1 — v2)
+   Estratégia de pointer-events:
+     - Os overlays são pointer-events: none por padrão
+       (clique vazio roda o globo)
+     - Apenas os elementos interativos internos recebem
+       pointer-events: auto
+============================================= */
+
+/* --- NAVBAR GLOBAL: fixa no topo, nunca espremida --- */
+.navbar {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 100% !important;
+    z-index: 500 !important;
+    pointer-events: auto !important;
+    /* Garante que eventos de clique nos links da navbar funcionem */
+}
+
+/* --- BASE DO OVERLAY PANEL ---
+   pointer-events: none → clique no vazio passa para o globo atrás */
+.overlay-panel {
+    position: fixed;
+    z-index: 10;
+    pointer-events: none; /* <-- CHAVE: vazio do overlay não bloqueia globo */
+    transition:
+        opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+        transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.overlay-panel.is-hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(20px);
+}
+
+.overlay-panel.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+    /* pointer-events permanece none — apenas os filhos são clicáveis */
+}
+
+/* Todos os elementos interativos dentro de qualquer overlay:
+   recebem pointer-events individualmente */
+.overlay-panel button,
+.overlay-panel a,
+.overlay-panel input,
+.overlay-panel select,
+.overlay-panel textarea,
+.overlay-panel .glass-card,
+.overlay-panel nav,
+.overlay-panel .navbar {
+    pointer-events: auto;
+}
+
+/* --- HOME OVERLAY: cobre tela inteira, hero à esquerda --- */
+.home-overlay {
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    /* fundo completamente transparente: globo visível atrás */
+    background: transparent;
+}
+
+/* --- GAME OVERLAY: card flutuante glassmorphism à esquerda ---
+   Centralizado verticalmente no espaço ABAIXO da navbar. */
+.game-overlay {
+    /* Começa logo abaixo da navbar (altura ~72px) */
+    top: 72px;
+    left: 4%;
+    /* Ocupa o restante da altura da tela */
+    height: calc(100vh - 72px);
+    width: 420px;
+    max-width: 90vw;
+
+    /* Centraliza o conteúdo verticalmente no espaço disponível */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+
+    /* Glassmorphism */
+    background: transparent;   /* o próprio container é transparente */
+    padding: 0 0 0 0;
+}
+
+/* O card glassmorphism dentro do overlay */
+.game-overlay .glass-card,
+.game-overlay .question-card {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    /* Glassmorphism aplicado aqui, no card — não no container */
+    background: rgba(5, 7, 22, 0.80) !important;
+    backdrop-filter: blur(18px) !important;
+    -webkit-backdrop-filter: blur(18px) !important;
+    border: 1px solid rgba(0, 229, 255, 0.15) !important;
+    box-shadow: 0 8px 48px rgba(0, 0, 0, 0.55) !important;
+    overflow-y: auto;
+    max-height: calc(100vh - 160px); /* nunca ultrapassa a tela */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 229, 255, 0.3) transparent;
+}
+
+/* Dentro do card: apenas elementos interativos têm pointer-events */
+.game-overlay button,
+.game-overlay a,
+.game-overlay input,
+.game-overlay select,
+.game-overlay textarea,
+.game-overlay .glass-card,
+.game-overlay .question-card,
+.game-overlay .game-header {
+    pointer-events: auto;
+}
+
+/* Cabeçalho da sidebar (link ← INÍCIO + label) */
+.game-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    pointer-events: auto;
+}
+
+.game-header-link {
+    color: rgba(255, 255, 255, 0.45);
+    text-decoration: none;
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+    transition: color 0.2s;
+    pointer-events: auto;
+}
+.game-header-link:hover { color: #00e5ff; }
+
+.game-header-sep {
+    color: rgba(255, 255, 255, 0.2);
+    font-size: 0.8rem;
+}
+
+.game-header-label {
+    color: #00e5ff;
+    font-size: 0.8rem;
+    letter-spacing: 2px;
+    font-weight: 700;
+}
+
+/* Rodapé da sidebar */
+.game-footer-text {
+    color: rgba(255, 255, 255, 0.2);
+    font-size: 0.65rem;
+    text-align: center;
+    letter-spacing: 1px;
+    margin-top: 16px;
+    pointer-events: none;
+}
+
+/* --- OUTRAS ROTAS (login, cadastro, perfil, como-jogar):
+   têm fundo próprio e cobrem o globo --- */
+.route-page-overlay {
+    position: relative;
+    z-index: 20;
+    min-height: 100vh;
+    pointer-events: auto;
+    background: linear-gradient(to bottom, #050505 0%, #0a0a0f 50%, #050505 100%);
+}
+
+/* --- RESPONSIVIDADE --- */
+@media (max-width: 768px) {
+    .game-overlay {
+        top: auto;
+        left: 50%;
+        bottom: 0;
+        transform: translateX(-50%);
+        width: 96vw;
+        max-height: 60vh;
+        border-radius: 20px 20px 0 0;
+        border-bottom: none;
+        padding: 20px 18px 24px;
+    }
+}
+
+@media (max-width: 480px) {
+    .game-overlay {
+        max-height: 65vh;
+        padding: 16px 14px 20px;
+    }
+}

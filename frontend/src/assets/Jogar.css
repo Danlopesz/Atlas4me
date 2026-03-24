@@ -67,7 +67,8 @@
     font-size: 1.2rem;
     font-weight: bold;
     border: none;
-    border-radius: 50px !important; /* Estilo Pílula */
+    border-radius: 50px !important;
+    /* Estilo Pílula */
     cursor: pointer;
     color: #FFFFFF !important;
     text-transform: uppercase;
@@ -82,16 +83,20 @@
 }
 
 .btn-sim {
-    background-color: #10B981 !important; /* Verde Esmeralda */
+    background-color: #10B981 !important;
+    /* Verde Esmeralda */
 }
+
 .btn-sim:hover {
     background-color: #059669 !important;
     transform: translateY(-2px);
 }
 
 .btn-nao {
-    background-color: #EF4444 !important; /* Coral/Salmão */
+    background-color: #EF4444 !important;
+    /* Coral/Salmão */
 }
+
 .btn-nao:hover {
     background-color: #DC2626 !important;
     transform: translateY(-2px);
@@ -130,6 +135,7 @@
         flex: none;
         /* Remove a trava de 40% */
     }
+
     .question-card {
         width: 100%;
         max-width: 500px;
