@@ -8,6 +8,7 @@ import ComoJogar from "./pages/ComoJogar";
 import Perfil from './pages/Perfil';
 import UnifiedGlobe from "./components/UnifiedGlobe";
 import './assets/GlobalLayout.css';
+import './assets/Stars.css'; /* <-- IMPORTANTE: Trazendo o universo pra cá! */
 
 const GLOBE_OFFSET_PX = 420;
 
@@ -22,7 +23,13 @@ function AppContent() {
 
     return (
         <>
-            {/* O Globo agora encapsula tudo: o fundo escuro, as estrelas e a Terra */}
+            {/* O UNIVERSO VIVO VOLTOU AQUI! */}
+            <div className="nebula-bg"></div>
+            <div className="stars"></div>
+            <div className="stars2"></div>
+            <div className="stars3"></div>
+
+            {/* O Globo fica por cima das estrelas e as rotas por cima do Globo */}
             <UnifiedGlobe
                 validIsoCodes={highlightedIsos}
                 globeOffsetX={isGameRoute ? GLOBE_OFFSET_PX : 0}

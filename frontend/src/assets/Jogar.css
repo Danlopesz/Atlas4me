@@ -12,7 +12,7 @@
     overflow: hidden;
     /* Evita barras de rolagem na tela inteira */
     position: relative;
-    background-color: #050505;
+    background-color: transparent !important;
     /* Fundo escuro de segurança */
 }
 
@@ -102,55 +102,58 @@
     transform: translateY(-2px);
 }
 
-/* --- RESPONSIVIDADE (CELULAR E TABLET) --- */
 @media (max-width: 900px) {
     .game-container {
-        display: flex;
-        gap: 10px;
+        display: block;
+        /* Desliga o flexbox que dividia a tela em dois */
         width: 100%;
         height: 100vh;
-        padding-top: 70px;
-        overflow: hidden;
-        position: relative;
-        /* Novo background diurno: Gradiente suave off-white para azul celeste */
-        background: radial-gradient(circle at center, #F8FAFC 0%, #E2E8F0 100%) !important;
+        padding: 0;
+        background: transparent !important;
+        /* Deixa o globo brilhar no fundo */
     }
 
     .map-zone {
-        flex: 1;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        position: relative;
-        /* Removido o brilho radial neon escuro */
-        background: none;
+        position: absolute;
+        inset: 0;
+        /* Ocupa a tela toda */
+        pointer-events: none;
+        /* Deixa os cliques passarem para o UnifiedGlobe que já está fixo no fundo */
     }
 
     .question-zone {
+        position: fixed;
+        bottom: 0;
+        left: 0;
         width: 100%;
-        padding: 20px;
-        order: 2;
-        /* 2º: Mostra a Pergunta embaixo */
-        flex: none;
-        /* Remove a trava de 40% */
+        z-index: 100;
+        padding: 0;
+        /* Removemos o order e o flex, pois agora ele flutua na base */
     }
 
     .question-card {
         width: 100%;
-        max-width: 500px;
-        /* Novo Glassmorphism Claro */
-        background: rgba(255, 255, 255, 0.6) !important;
+        max-width: 100%;
+        background: rgba(255, 255, 255, 0.8) !important;
         backdrop-filter: blur(16px);
         -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.4) !important;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08) !important;
+        border: none !important;
+        border-radius: 24px 24px 0 0 !important;
+        /* Arredonda só em cima */
+        padding: 20px 20px 35px !important;
+        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.1) !important;
     }
 
-    /* ADICIONE estas regras para garantir a leitura no fundo claro */
-    .question-card h1,
-    .question-card h2,
-    .question-card p {
-        color: #1E293B !important;
+    .btn-game {
+        padding: 10px 20px !important;
+        /* Botões mais finos (era 15px 30px) */
+        font-size: 1rem !important;
+        /* Fonte do botão um pouco menor */
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .btn-group {
+        gap: 8px !important;
+        /* Menos espaço entre os botões SIM e NÃO */
     }
 }

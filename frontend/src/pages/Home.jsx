@@ -2,7 +2,6 @@ import { Link } from 'react-router-dom';
 import { useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import '../assets/Home.css';
-import '../assets/Stars.css';
 
 // Prop onIsoReset: callback para limpar os ISOs destacados no globo ao voltar para Home
 const Home = ({ onIsoReset }) => {

@@ -10,12 +10,12 @@
     width: 100%;
     height: 100%;
     pointer-events: none;
-    z-index: -1;
     background-repeat: repeat;
 }
 
 /* Camada 1 - Estrelas Pequenas */
 .stars {
+    z-index: 2;
     /* Sintaxe corrigida para Safari: circle at POSICAO, COR INICIO%, COR FIM% */
     background-image:
         radial-gradient(circle at 10% 10%, #fff 0%, transparent 1.5px),
@@ -36,6 +36,7 @@
 
 /* Camada 2 - Estrelas Médias */
 .stars2 {
+    z-index: 3;
     background-image:
         radial-gradient(circle at 15% 15%, #fff 0%, transparent 2px),
         radial-gradient(circle at 35% 85%, #fff 0%, transparent 2px),
@@ -50,6 +51,7 @@
 
 /* Camada 3 - Estrelas Ciano Brilhantes */
 .stars3 {
+    z-index: 4;
     background-image:
         radial-gradient(circle at 25% 75%, #00e5ff 0%, transparent 2.5px),
         radial-gradient(circle at 50% 10%, #00e5ff 0%, transparent 2.5px),
@@ -105,6 +107,34 @@
     }
 
     50% {
+        opacity: 1;
+    }
+}
+
+/* ===== FUNDO DE NEBULOSA ===== */
+.nebula-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background:
+        radial-gradient(ellipse 800px 600px at 20% 30%, rgba(0, 229, 255, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse 700px 500px at 80% 70%, rgba(138, 43, 226, 0.08) 0%, transparent 50%);
+    animation: nebulaFloat 60s ease-in-out infinite alternate;
+    pointer-events: none;
+    z-index: 1;
+    /* Fica no fundo, mas NA FRENTE da tela preta! */
+}
+
+@keyframes nebulaFloat {
+    0% {
+        transform: scale(1);
+        opacity: 0.8;
+    }
+
+    100% {
+        transform: scale(1.1);
         opacity: 1;
     }
 }
