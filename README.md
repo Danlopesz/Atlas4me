@@ -5,6 +5,7 @@
 [![Java](https://img.shields.io/badge/Java-21-orange.svg)](https://www.oracle.com/java/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.x-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![React](https://img.shields.io/badge/React-19.x-blue.svg)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-7.x-purple.svg)](https://vitejs.dev/)
 [![MySQL](https://img.shields.io/badge/MySQL-8.0-blue.svg)](https://www.mysql.com/)
 [![Flyway](https://img.shields.io/badge/Flyway-V4-red.svg)](https://flywaydb.org/)
@@ -120,13 +121,14 @@ Atlas4Me/
 │           ├── V3__insert_world_countries.sql    # 36 países do mundo
 │           └── V4__insert_more_questions.sql     # Base de 60 perguntas
 │
-├── frontend/                     # SPA — React 19 + Vite 7
+├── frontend/                     # SPA — React 19 + TypeScript + R3F
 │   ├── src/
-│   │   ├── pages/                # Home, Login, Cadastro, ComoJogar, Jogar, Perfil
-│   │   ├── components/           # Navbar, GameGlobe (react-globe.gl), Planet3D
-│   │   ├── services/             # api.js (Axios + interceptors JWT)
-│   │   ├── utils/                # constants.js (COUNTRY_COORDS)
-│   │   └── assets/               # CSS (glassmorphism, Stars, tema espacial)
+│   │   ├── pages/                # home/, jogar/, auth/ (.tsx)
+│   │   ├── components/           # Navbar.tsx, globe/ (Modular 3D)
+│   │   ├── services/             # api.ts (Axios + TypeScript)
+│   │   ├── utils/                # constants.ts, geoMath.ts
+│   │   ├── types/                # Definições de tipos globais
+│   │   └── styles/               # index.css, Stars.css, GlobalLayout.css
 │   └── Dockerfile
 │
 └── docker-compose.yml            # MySQL + Backend + Frontend
@@ -297,7 +299,8 @@ npm run preview   # Testar localmente → http://localhost:4173
 
 - [x] Motor de inferência por Entropia de Shannon (100% determinístico em RAM)
 - [x] 36 países do mundo inteiro, 60 perguntas estratégicas
-- [x] Globo 3D interativo com candidatos em tempo real (`react-globe.gl`)
+- [x] **Frontend 100% TypeScript** (Tipagem Estrita)
+- [x] **Globo 3D High-End** com React Three Fiber e texturas 4K
 - [x] `validIsoCodes` retornado pelo backend a cada pergunta
 - [x] Autenticação JWT + modo visitante
 - [x] Flyway Migrations V1–V4
@@ -307,12 +310,11 @@ npm run preview   # Testar localmente → http://localhost:4173
 
 ### Próximas Versões 🔄
 
-- [ ] Migrar frontend para **TypeScript**
 - [ ] **Ranking global** de jogadores
 - [ ] Substituir `alert()` por **toast notifications**
 - [ ] Testes unitários (Vitest + JUnit)
 - [ ] **PWA** (Progressive Web App)
-- [ ] Visualização animada do processo de eliminação
+- [ ] Animação de eliminação de candidatos com Shaders customizados
 
 ---
 

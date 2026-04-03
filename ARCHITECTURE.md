@@ -70,12 +70,14 @@ O sistema opera como um **motor de inferência determinístico** baseado em **Te
 
 | Tecnologia | Versão | Função |
 |---|---|---|
+| TypeScript | 5.x | Linguagem principal (Tipagem Estrita) |
 | React | 19.x | Biblioteca de UI |
 | Vite | 7.x | Build tool + HMR |
+| Three.js | r173 | Engine 3D (WebGL) |
+| React Three Fiber | 9.x | Renderer React para Three.js |
 | React Router DOM | 7.x | SPA routing |
 | Axios | 1.x | HTTP client + interceptors |
-| `react-globe.gl` | — | **Globo 3D interativo** (Three.js) |
-| CSS3 Puro | — | Estilização (glassmorphism + animações) |
+| CSS3 Puro | — | Estilização (Co-location) |
 
 ### Infraestrutura
 
@@ -95,13 +97,13 @@ O sistema opera como um **motor de inferência determinístico** baseado em **Te
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │                        FRONTEND                              │
-│  React 19 + Vite 7 + React Router 7 + Axios                 │
+│  TypeScript + React 19 + Vite 7 + React Three Fiber         │
 │  Port: 5173 (dev)  |  Vercel (prod)                         │
 │                                                              │
 │  Páginas: Home • Login • Cadastro • ComoJogar • Jogar • Perfil │
-│  Componentes:  Navbar • GameGlobe (react-globe.gl) • Planet3D │
+│  Componentes:  Navbar • GameGlobe3D (Modular R3F)           │
 │                                                              │
-│  GameGlobe recebe: validIsoCodes[] → exibe marcadores no globo │
+│  GameGlobe3D recebe: validIsoCodes[] → sincroniza cena 3D    │
 └────────────────────┬─────────────────────────────────────────┘
                      │ HTTP REST / JSON
                      │ Authorization: Bearer <JWT>
@@ -595,32 +597,28 @@ Comportamento para visitante:
 
 | Componente | Tecnologia | Descrição |
 |---|---|---|
-| `Stars.css` (3 layers) | CSS puro | Estrelas animadas em 3 planos de profundidade, presentes em todas as páginas via `App.jsx` |
-| `GameGlobe.jsx` | `react-globe.gl` (Three.js) | **Globo 3D interativo** que exibe marcadores neon nos países candidatos restantes. Recebe `validIsoCodes[]` via prop e auto-centraliza a câmera. |
-| `Planet3D.jsx` | CSS 3D transforms | Planeta decorativo com gradientes e sombras 3D, animação de rotação |
+| `Stars.css` (3 layers) | CSS puro | Estrelas animadas em 3 planos de profundidade, presentes em todas as páginas via `App.tsx` |
+| `GameGlobe3D.tsx` | **React Three Fiber** (Three.js) | **Globo 3D High-End** modular com texturas 4K, LOD dinâmico e oclusão matemática nativa. Sincroniza `validIsoCodes[]` a 60fps. |
+| `Glassmorphism` | CSS3 Variables | Cartões translúcidos com `backdrop-filter: blur(10px)` e bordas neon reativas ao estado do jogo. |
 
-### Como `GameGlobe` Reage ao Backend
+### Arquitetura Modular do Globo 3D
 
-```jsx
-// GameGlobe recebe validIsoCodes[] do backend (via Jogar.jsx)
-const GameGlobe = ({ validIsoCodes = [] }) => {
-    // Mapeia ISOs para coordenadas (COUNTRY_COORDS)
-    const globeData = validIsoCodes
-        .map(iso => COUNTRY_COORDS[iso.toUpperCase()])
-        .filter(Boolean);
+O novo core visual utiliza uma abordagem modular para garantir performance e manutenibilidade:
 
-    // Camera auto-centraliza nos candidatos restantes
-    useEffect(() => {
-        if (globeData.length > 0) {
-            const avgLat = globeData.reduce((s, d) => s + d.lat, 0) / globeData.length;
-            const avgLng = globeData.reduce((s, d) => s + d.lng, 0) / globeData.length;
-            const altitude = globeData.length > 5 ? 2.5 : 1.8;
-            globeRef.current.pointOfView({ lat: avgLat, lng: avgLng, alt: altitude }, 1500);
-        } else {
-            globeRef.current.controls().autoRotate = true; // gira quando inativo
-        }
-    }, [globeData]);
-};
+1.  **`Earth.tsx`**: Renderiza a esfera principal com mapas de Albedo, Specular e Normal (Bump) em 4K.
+2.  **`Atmosphere.tsx`**: Shader customizado para simular o brilho azulado da borda terrestre.
+3.  **`CountryLabels.tsx`**: Gerencia rótulos HTML (CSS2D) com cálculo de oclusão (Dot Product entre a normal da superfície e a posição da câmera).
+4.  **`GlobeCamera.tsx`**: Sistema de navegação inteligente que utiliza interpolação de Quaternions (`slerp`) para transições suaves entre coordenadas geográficas.
+
+### Como o Globo Reage ao Backend
+
+```typescript
+// GameGlobe3D recebe validIsoCodes[] do backend (via Jogar.tsx)
+export function GameGlobe3D({ validIsoCodes }: GameGlobe3DProps) {
+  // O componente monitora a prop validIsoCodes
+  // Ao mudar, o CountriesLayer re-renderiza apenas as geometrias afetadas
+  // e a câmera executa um fly-to para o centro dos candidatos restantes.
+}
 ```
 
 ---
