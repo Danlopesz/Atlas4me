@@ -1,10 +1,10 @@
 /**
  * @module components/globe/GlobeCamera
- * Programmatic camera controller with safe Quaternion.slerp fly-to animation.
+ * Programmatic camera controller with safe spherical position slerping.
  */
 
 import { useFrame, useThree } from "@react-three/fiber";
-import { useRef, useEffect, useMemo } from "react";
+import { useRef, useEffect } from "react";
 import * as THREE from "three";
 import type { GlobeCameraProps } from "../../types/globe";
 import { COUNTRY_COORDS } from "../../utils/constants";
@@ -17,12 +17,9 @@ window.__globeIsFocusing = false;
 export function GlobeCamera({ validIsoCodes }: GlobeCameraProps): null {
   const { camera, scene } = useThree();
   const targetPositionRef = useRef<THREE.Vector3>(new THREE.Vector3(0, 0, 3.9));
-  const currentPositionRef = useRef<THREE.Vector3>(camera.position.clone());
+  const startPositionRef = useRef<THREE.Vector3>(new THREE.Vector3()); // Mais semântico que currentPositionRef
   const isFocusingRef = useRef<boolean>(false);
   const animProgressRef = useRef<number>(0);
-
-  // Um objeto "fantasma" para calcular rotações seguras (evita divisão por zero)
-  const dummy = useMemo(() => new THREE.Object3D(), []);
 
   useEffect(() => {
     if (validIsoCodes.length === 0) return;
@@ -35,7 +32,7 @@ export function GlobeCamera({ validIsoCodes }: GlobeCameraProps): null {
 
     const avgVector = new THREE.Vector3();
 
-    // 1. INTELIGÊNCIA DE FOCO
+    // 1. INTELIGÊNCIA DE FOCO MATEMATICAMENTE SEGURA
     if (validIsoCodes.length > 20) {
       avgVector.copy(camera.position).normalize();
     } else {
@@ -48,10 +45,14 @@ export function GlobeCamera({ validIsoCodes }: GlobeCameraProps): null {
       } else {
         avgVector.normalize();
 
-        // Busca a rotação atualizada do grupo rotativo (sincroniza câmera com o globo)
+        // FIX CRÍTICO 1: Usar o Quaternion Global Absoluto em vez de apenas rotation.y
+        // Isso resolve o bug do "Oceano" caso o globo tenha offsets visuais ou esteja aninhado.
         const spinningGroup = scene.getObjectByName("spinning-globe-group");
-        const currentGlobeRotationY = spinningGroup?.rotation.y || 0;
-        avgVector.applyAxisAngle(new THREE.Vector3(0, 1, 0), currentGlobeRotationY);
+        if (spinningGroup) {
+          const globeWorldRotation = new THREE.Quaternion();
+          spinningGroup.getWorldQuaternion(globeWorldRotation);
+          avgVector.applyQuaternion(globeWorldRotation);
+        }
       }
     }
 
@@ -65,7 +66,7 @@ export function GlobeCamera({ validIsoCodes }: GlobeCameraProps): null {
     avgVector.multiplyScalar(targetDistance);
 
     targetPositionRef.current.copy(avgVector);
-    currentPositionRef.current.copy(camera.position);
+    startPositionRef.current.copy(camera.position);
     isFocusingRef.current = true;
     animProgressRef.current = 0;
     window.__globeIsFocusing = true;
@@ -77,24 +78,28 @@ export function GlobeCamera({ validIsoCodes }: GlobeCameraProps): null {
     animProgressRef.current = Math.min(animProgressRef.current + delta * LERP_SPEED * 60, 1);
     const t = easeInOut(animProgressRef.current);
 
-    // Cálculos seguros de Quaternion usando o Fantasma
-    dummy.position.copy(currentPositionRef.current);
-    dummy.lookAt(0, 0, 0);
-    const startQ = dummy.quaternion.clone();
+    // FIX CRÍTICO 2: Interpolação esférica pela Posição, não pela Rotação.
+    // Usamos o conceito do seu próprio geoMath.ts para traçar um arco perfeito sobre a esfera.
+    const forward = new THREE.Vector3(0, 0, 1);
 
-    dummy.position.copy(targetPositionRef.current);
-    dummy.lookAt(0, 0, 0);
-    const targetQ = dummy.quaternion.clone();
+    // Calcula os quaternions que representam a direção de origem e destino
+    const startQ = new THREE.Quaternion().setFromUnitVectors(forward, startPositionRef.current.clone().normalize());
+    const targetQ = new THREE.Quaternion().setFromUnitVectors(forward, targetPositionRef.current.clone().normalize());
 
-    // Interpola a rotação perfeitamente sem erros de matemática
-    camera.quaternion.slerpQuaternions(startQ, targetQ, t);
+    // Interpola a direção
+    const currentQ = startQ.clone().slerp(targetQ, t);
 
-    // Interpola a distância e recua a câmera a partir da origem
-    const startDist = currentPositionRef.current.length();
-    const endDist = targetPositionRef.current.length();
-    const currentDist = THREE.MathUtils.lerp(startDist, endDist, t);
+    // Interpola a distância suavemente
+    const startDist = startPositionRef.current.length();
+    const targetDist = targetPositionRef.current.length();
+    const currentDist = THREE.MathUtils.lerp(startDist, targetDist, t);
 
-    camera.position.set(0, 0, currentDist).applyQuaternion(camera.quaternion);
+    // Define a posição da câmera na curva exata do arco
+    camera.position.set(0, 0, currentDist).applyQuaternion(currentQ);
+
+    // FIX CRÍTICO 3: Força a câmera a olhar para o centro.
+    // Isso garante que o eixo UP (0,1,0) se mantenha estável, evitando conflitos com o OrbitControls no fim do voo.
+    camera.lookAt(0, 0, 0);
 
     if (animProgressRef.current >= 1) {
       isFocusingRef.current = false;

@@ -2,7 +2,6 @@ package atlas4me.service.inference;
 
 import atlas4me.entity.CountryFeature;
 import atlas4me.repository.CountryFeatureRepository;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -10,7 +9,6 @@ import org.springframework.context.event.EventListener;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import java.util.*;
-
 
 /**
  * Carrega a tabela country_features (País × Pergunta → Booleano) inteira
@@ -32,7 +30,8 @@ public class KnowledgeBaseCache {
     // Índice invertido por pergunta → Set de países que respondem NÃO
     private final Map<Long, Set<Long>> questionToFalseCountries = new HashMap<>();
 
-    // Mapa completo: país → pergunta → booleano (compatível com GameService existente)
+    // Mapa completo: país → pergunta → booleano (compatível com GameService
+    // existente)
     private final Map<Long, Map<Long, Boolean>> countryQuestionMatrix = new HashMap<>();
 
     // Mapa de prioridade das perguntas baseado na categoria (usado para desempate)
@@ -41,7 +40,7 @@ public class KnowledgeBaseCache {
     // Conjunto de todas as perguntas indexadas
     private final Set<Long> allQuestionIds = new HashSet<>();
 
-    //Índice otimizado para a UI
+    // Índice otimizado para a UI
     private final Map<Long, List<String>> questionToTrueIsoCodes = new HashMap<>();
 
     @EventListener(ApplicationReadyEvent.class)
@@ -51,10 +50,10 @@ public class KnowledgeBaseCache {
         List<CountryFeature> allFeatures = countryFeatureRepository.findAll();
 
         for (CountryFeature feature : allFeatures) {
-            Long    questionId = feature.getQuestion().getId();
-            Long    countryId  = feature.getCountry().getId();
-            boolean isTrue     = feature.getIsTrue();
-            String  category   = feature.getQuestion().getCategory();
+            Long questionId = feature.getQuestion().getId();
+            Long countryId = feature.getCountry().getId();
+            boolean isTrue = feature.getIsTrue();
+            String category = feature.getQuestion().getCategory();
             String isoCode = feature.getCountry().getIsoCode();
 
             allQuestionIds.add(questionId);
@@ -93,31 +92,34 @@ public class KnowledgeBaseCache {
      * Utiliza switch expression do Java 21.
      */
     private int calculateCategoryPriority(String category) {
-        if (category == null) return 0;
+        if (category == null)
+            return 0;
 
-            return switch (category.toUpperCase()) {
-            case "GEOGRAFIA"            -> 90;
-            case "DEMOGRAFIA"           -> 80;
+        return switch (category.toUpperCase()) {
+            case "GEOGRAFIA" -> 90;
+            case "DEMOGRAFIA" -> 80;
             case "POLITICA", "POLÍTICA" -> 70;
-            case "ECONOMIA"             -> 60;
-            case "LINGUAGEM"            -> 50;
+            case "ECONOMIA" -> 60;
+            case "LINGUAGEM" -> 50;
             case "RELIGIAO", "RELIGIÃO" -> 40;
-            case "CULTURA"              -> 30;
+            case "CULTURA" -> 30;
             case "HISTORIA", "HISTÓRIA" -> 20;
-            case "BANDEIRA"             -> 10;
-            default                     -> 0;
+            case "BANDEIRA" -> 10;
+            default -> 0;
         };
     }
 
     // --- API de Cache para a UI ---
 
-    /** Retorna a lista de ISO Codes dos países que respondem SIM à pergunta em tempo O(1). */
+    /**
+     * Retorna a lista de ISO Codes dos países que respondem SIM à pergunta em tempo
+     * O(1).
+     */
     public List<String> getIsoCodesForTrueAnswers(Long questionId) {
         return questionToTrueIsoCodes.getOrDefault(questionId, Collections.emptyList());
     }
 
     // --- API para o InferenceEngine ---
-
 
     /** IDs dos países que respondem SIM à pergunta. */
     public Set<Long> getTrueCountries(Long questionId) {
