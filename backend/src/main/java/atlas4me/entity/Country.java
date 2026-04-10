@@ -16,15 +16,17 @@ public class Country {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
-    private String name;
+    @Column(name = "name_en", nullable = false, unique = true)
+    private String nameEn;
 
-    // O @Column(name = "...") ensina o Java a ler a coluna do banco que tem sublinhado (_)
-    @Column(name = "iso_code", nullable = false)
-    private String isoCode; // Ex: "BR", "AR"
+    @Column(name = "name_pt", nullable = false, unique = true)
+    private String namePt;
 
-    @Column(name = "image_url")
-    private String imageUrl; // A URL da bandeira/imagem do país
+    @Column(name = "iso_code", nullable = false, length = 3)
+    private String isoCode; // Ex: "BRA", "ARG"
+
+    @Column(name = "flag_url")
+    private String flagUrl;
 
     // ... outros campos
     @Column(name = "latitude")
@@ -35,4 +37,10 @@ public class Country {
 
     @Column(name = "continent")
     private String continent;
+
+    @Column(name = "subcontinent")
+    private String subContinent;
+
+    @Column(name = "capital")
+    private String capital;
 }

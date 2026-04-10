@@ -1,4 +1,5 @@
 package atlas4me.service;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -13,30 +14,30 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class CountryService {
-    
+
     private final CountryRepository countryRepository;
-    
+
     public List<CountryResponse> getAllCountries() {
         return countryRepository.findAll().stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
     }
-    
+
     public Country getCountryById(Long id) {
         return countryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("País não encontrado: " + id));
     }
-    
+
     public Country getRandomCountry() {
         return countryRepository.findRandomCountry()
                 .orElseThrow(() -> new ResourceNotFoundException("Nenhum país disponível"));
     }
-    
+
     private CountryResponse toDTO(Country country) {
         return CountryResponse.builder()
                 .id(country.getId())
-                .name(country.getName())
-                .code(country.getIsoCode())
+                .namePt(country.getNamePt())
+                .isoCode(country.getIsoCode())
                 .build();
     }
 }

@@ -13,9 +13,15 @@ public interface CountryRepository extends JpaRepository<Country, Long> {
 
     Optional<Country> findByIsoCode(String isoCode);
 
-    Optional<Country> findByName(String name);
+    // Busca pelo nome em inglês
+    Optional<Country> findByNameEn(String nameEn);
+
+    // OU, busca pelo nome em português
+    Optional<Country> findByNamePt(String namePt);
 
     List<Country> findByContinent(String continent);
+
+    List<Country> findBysubContinent(String subContinent);
 
     // Query para pegar aleatório (sem checar active, pois todos são ativos)
     @Query(value = "SELECT * FROM countries ORDER BY RAND() LIMIT 1", nativeQuery = true)

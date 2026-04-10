@@ -6,8 +6,11 @@ import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-
+import org.springframework.context.event.EventListener;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 import java.util.*;
+
 
 /**
  * Carrega a tabela country_features (País × Pergunta → Booleano) inteira
@@ -41,7 +44,8 @@ public class KnowledgeBaseCache {
     //Índice otimizado para a UI
     private final Map<Long, List<String>> questionToTrueIsoCodes = new HashMap<>();
 
-    @PostConstruct
+    @EventListener(ApplicationReadyEvent.class)
+    @Transactional(readOnly = true)
     public void initCache() {
         log.info("Iniciando carregamento da Base de Conhecimento em memória...");
         List<CountryFeature> allFeatures = countryFeatureRepository.findAll();
@@ -91,13 +95,17 @@ public class KnowledgeBaseCache {
     private int calculateCategoryPriority(String category) {
         if (category == null) return 0;
 
-        return switch (category.toUpperCase()) {
-            case "GEOGRAFIA" -> 50;
-            case "CULTURA"   -> 40;
-            case "BANDEIRA"  -> 30;
-            case "POPULACAO" -> 20;
-            case "ECONOMIA"  -> 10;
-            default          -> 0;
+            return switch (category.toUpperCase()) {
+            case "GEOGRAFIA"            -> 90;
+            case "DEMOGRAFIA"           -> 80;
+            case "POLITICA", "POLÍTICA" -> 70;
+            case "ECONOMIA"             -> 60;
+            case "LINGUAGEM"            -> 50;
+            case "RELIGIAO", "RELIGIÃO" -> 40;
+            case "CULTURA"              -> 30;
+            case "HISTORIA", "HISTÓRIA" -> 20;
+            case "BANDEIRA"             -> 10;
+            default                     -> 0;
         };
     }
 

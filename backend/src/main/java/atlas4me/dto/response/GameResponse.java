@@ -18,7 +18,7 @@ public record GameResponse(
         LocalDateTime startedAt,   // Usado no Histórico
         LocalDateTime finishedAt,  // Usado no Histórico
         String targetCountry,      // Nome do país (palpite do robô ou revelação final)
-
+        String targetCountryIso,
         // --- ADIÇÕES PARA A UI 3D (GameGlobe) ---
         List<String> remainingCountries, // ISO Codes dos países que ainda são candidatos
 

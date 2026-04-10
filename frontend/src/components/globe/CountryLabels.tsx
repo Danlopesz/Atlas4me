@@ -38,7 +38,7 @@ export function CountryLabels({
     if (!groupRef.current) return;
 
     const cameraDistance = camera.position.length();
-    let globalOpacity = 1;
+      let globalOpacity = 1;
 
     if (cameraDistance > LABEL_HIDE) {
       globalOpacity = 0;

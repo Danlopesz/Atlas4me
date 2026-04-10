@@ -63,7 +63,7 @@ function SpinningGlobeGroup({ children, isGameActive }: { children: React.ReactN
     }
   });
 
-  return <group ref={groupRef}>{children}</group>;
+  return <group ref={groupRef} name="spinning-globe-group">{children}</group>;
 }
 
 export function GameGlobe3D({ validIsoCodes }: GameGlobe3DProps) {

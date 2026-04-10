@@ -25,9 +25,6 @@ public class CountryFeature {
     private Question question;
 
     @Column(name = "is_true", nullable = false)
-    private Boolean isTrue; // A resposta (Sim/Não) para esse par
+    private Boolean isTrue;
 
-    // O @Column(name = "...") ensina o Java a ler a coluna do banco que tem sublinhado (_)
-    @Column(name = "iso_code", nullable = false)
-    private String isoCode; // Ex: "BR", "AR"
 }
