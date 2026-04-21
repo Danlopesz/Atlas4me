@@ -5,18 +5,19 @@
        (clique vazio roda o globo)
      - Apenas os elementos interativos internos recebem
        pointer-events: auto
+=============================================
+   Z-INDEX STACK
+   z-index:   0  →  body (preto sólido, base)
+   z-index:   1  →  .nebula-bg   (Stars.css)
+   z-index:   2  →  .stars       (Stars.css)
+   z-index:   3  →  .stars2      (Stars.css)
+   z-index:   4  →  .stars3      (Stars.css)
+   z-index:  10  →  .overlay-panel
+   z-index:  20  →  .route-page-overlay
+   z-index: 500  →  .navbar      (Navbar.css)
+   z-index: 1000 →  .mobile-drawer (Tarefa 1.3)
 ============================================= */
 
-/* --- NAVBAR GLOBAL: fixa no topo, nunca espremida --- */
-.navbar {
-    position: fixed !important;
-    top: 0;
-    left: 0;
-    width: 100% !important;
-    z-index: 500 !important;
-    pointer-events: auto !important;
-    /* Garante que eventos de clique nos links da navbar funcionem */
-}
 
 /* --- BASE DO OVERLAY PANEL ---
    pointer-events: none → clique no vazio passa para o globo atrás */
@@ -168,7 +169,7 @@
     z-index: 20;
     min-height: 100vh;
     pointer-events: auto;
-    background: linear-gradient(to bottom, #050505 0%, #0a0a0f 50%, #050505 100%);
+    background: transparent;
 }
 
 /* --- RESPONSIVIDADE (MOBILE ULTRA COMPACTO) --- */

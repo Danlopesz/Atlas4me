@@ -33,17 +33,20 @@ function Perfil() {
     };
 
     // --- CÁLCULOS DAS ESTATÍSTICAS ---
-    const totalGames = history.length;
+    const FINISHED_STATUSES = ['ROBOT_WON', 'HUMAN_WON', 'FINISHED_REVEALED'];
+    const totalGames = history.filter(h => FINISHED_STATUSES.includes(h.status)).length;
     const defeats = history.filter(h => h.status === 'ROBOT_WON').length;
-    const wins = totalGames - defeats;
+    const wins = history.filter(h =>
+        h.status === 'HUMAN_WON' || h.status === 'FINISHED_REVEALED'
+    ).length;
 
     return (
         <>
             <Navbar />
-            <div className="main-content" style={{ flexDirection: 'column', padding: '100px 20px' }}>
+            <div className="main-content" style={{ flexDirection: 'column' }}>
 
                 {/* CABEÇALHO DO PERFIL (STATS) */}
-                <div className="glass-card" style={{ maxWidth: '900px', marginBottom: '30px', textAlign: 'left' }}>
+                <div className="glass-card glass-card--profile" style={{ marginBottom: '30px' }}>
                     <h1 style={{ fontSize: '2rem', color: 'var(--neon-cyan)', textTransform: 'uppercase' }}>{userName}</h1>
 
                     <div style={{ display: 'flex', gap: '40px', marginTop: '20px', flexWrap: 'wrap' }}>
@@ -68,7 +71,7 @@ function Perfil() {
                 </div>
 
                 {/* TABELA DE HISTÓRICO */}
-                <div className="glass-card" style={{ maxWidth: '900px', padding: '20px' }}>
+                <div className="glass-card glass-card--profile" style={{ padding: '20px' }}>
                     <h2 style={{ color: '#b0b0b0', marginBottom: '20px', textAlign: 'left' }}>HISTÓRICO RECENTE</h2>
 
                     {loading ? (

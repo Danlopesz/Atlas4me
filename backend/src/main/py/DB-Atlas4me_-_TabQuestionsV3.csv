@@ -1,0 +1,87 @@
+,,,,
+Id,featureKey,question_pt,question_en,category
+1,isTopOilProducer,Este país está entre os 15 maiores produtores de petróleo do mundo?,Is this country among the 15 largest oil producers in the world?,ECONOMIA
+2,hasTop10GDP,Este país possui um dos 10 maiores PIBs nominais do mundo?,Does this country have one of the 10 largest nominal GDPs in the world?,ECONOMIA
+3,populationOver200M,Este país tem mais de 200 milhões de habitantes?,Does this country have more than 200 million inhabitants?,DEMOGRAFIA
+4,hasNuclearWeapons,Este país possui armas nucleares reconhecidas?,Does this country possess recognized nuclear weapons?,POLITICA
+5,isOecdMember,Este país é membro da OCDE?,Is this country a member of the OECD?,POLITICA
+6,isHighIncomePpp,Este país é classificado como de alta renda pelo Banco Mundial?,Is this country classified as high-income by the World Bank?,ECONOMIA
+7,populationDensityHigh,Este país tem mais de 100 habitantes por km²?,Does this country have more than 100 inhabitants per km²?,DEMOGRAFIA
+8,bordersAtlantic,Este país tem costa no Oceano Atlântico?,Does this country have a coastline on the Atlantic Ocean?,GEOGRAFIA
+9,bordersIndianOcean,Este país tem costa no Oceano Índico?,Does this country have a coastline on the Indian Ocean?,GEOGRAFIA
+10,bordersPacific,Este país tem costa no Oceano Pacífico?,Does this country have a coastline on the Pacific Ocean?,GEOGRAFIA
+11,bordersBaltic,Este país é banhado pelo Mar Baltico,Does this country have a coastline on the Baltic Sea?,GEOGRAFIA
+12,bordersBlackSea,Este país é banhado pelo Mar Negro?,Does this country have a coastline on the Black Sea?,GEOGRAFIA
+13,hasDesert,Este país possui uma região desertica ?,Does this country have a desert region?,GEOGRAFIA
+14,bordersAnotherContinent,Este país faz fronteira terrestre com pelo menos um país de continente diferente?,Does this country share a land border with at least one country from a different continent?,GEOGRAFIA
+15,isAfrica,Este país fica na África?,Is this country in Africa?,GEOGRAFIA
+16,isEurope,Este país fica na Europa?,Is this country in Europe?,GEOGRAFIA
+17,isAsia,Este país fica na Ásia?,Is this country in Asia?,GEOGRAFIA
+18,isAmericas,Este país fica nas Américas?,Is this country in the Americas?,GEOGRAFIA
+19,isOceania,Este país fica na Oceania?,Is this country in Oceania?,GEOGRAFIA
+20,isSubSaharanAfrica,Este país fica na África Subsaariana?,Is this country in Sub-Saharan Africa?,GEOGRAFIA
+21,isWestAfrica,Este país fica na África Ocidental?,Is this country in West Africa?,GEOGRAFIA
+22,isEastAfrica,Este país fica na África Oriental?,Is this country in East Africa?,GEOGRAFIA
+23,isNorthAfrica,Este país fica no Norte de África?,Is this country in North Africa?,GEOGRAFIA
+24,isSouthernAfrica,Este país fica no Sul de África?,Is this country in Southern Africa?,GEOGRAFIA
+25,isCentralAfrica,Este país fica na África Central?,Is this country in Central Africa?,GEOGRAFIA
+26,isCaribbean,Este país fica no Caribe?,Is this country in the Caribbean?,GEOGRAFIA
+27,isMiddleEast,Este país fica na Ásia Ocidental (Oriente Médio)?,Is this country in Western Asia (Middle East)?,GEOGRAFIA
+28,isSoutheastAsia,Este país fica no Sudeste Asiático?,Is this country in Southeast Asia?,GEOGRAFIA
+29,isCentralAsia,Este país fica na Ásia Central?,Is this country in Central Asia?,GEOGRAFIA
+30,isSouthAsia,Este país fica no Sul da Ásia?,Is this country in South Asia?,GEOGRAFIA
+31,isEastAsia,Este país fica no Leste Asiático?,Is this country in East Asia?,GEOGRAFIA
+32,isSouthernEurope,Este país fica no Sul da Europa?,Is this country in Southern Europe?,GEOGRAFIA
+33,isEasternEurope,Este país fica no Leste da Europa?,Is this country in Eastern Europe?,GEOGRAFIA
+34,isNorthernEurope,Este país fica no Norte da Europa?,Is this country in Northern Europe?,GEOGRAFIA
+35,isSouthAmerica,Este país fica na América do Sul?,Is this country in South America?,GEOGRAFIA
+36,isNorthAmerica,Este país fica na América do Norte?,Is this country in North America?,GEOGRAFIA
+37,isCentralAmerica,Este país fica na América Central?,Is this country in Central America?,GEOGRAFIA
+38,isLandlocked,Este país não possui saída para o mar (landlocked)?,Is this country landlocked?,GEOGRAFIA
+39,isIsland,Este país é uma ilha ou nação insular?,Is this country an island nation?,GEOGRAFIA
+40,hasFiveOrMoreBorders,O país faz fronteira terrestre com 5 ou mais países?,Does this country border 5 or more countries?,GEOGRAFIA
+41,bordersRussia,Este país faz fronteira com a Rússia?,Does this country share a border with Russia?,GEOGRAFIA
+42,bordersChina,Este país faz fronteira com a China?,Does this country share a border with China?,GEOGRAFIA
+43,isNorthernHemisphere,Este país fica no hemisfério norte?,Is this country in the Northern Hemisphere?,GEOGRAFIA
+44,isSouthernHemisphere,Este país fica no hemisfério sul ?,Is this country in the Southern Hemisphere?,GEOGRAFIA
+45,isWesternHemisphere,Este país fica no hemisfério ocidental?,Is this country in the Western Hemisphere?,GEOGRAFIA
+46,areaOver100k,A área territorial é maior que 100.000 km²?,"Is this country's area larger than 100,000 km²?",GEOGRAFIA
+47,areaOver500k,A área territorial é maior que 500.000 km²?,"Is this country's area larger than 500,000 km²?",GEOGRAFIA
+48,hasMultipleTimezones,Este país tem mais de 1 fuso horário?,Does this country have more than one time zone?,GEOGRAFIA
+49,populationOver50M,Este país tem mais de 50 milhões de habitantes?,Does this country have more than 50 million inhabitants?,DEMOGRAFIA
+50,populationUnder1M,Este país tem menos de 1 milhão de habitantes?,Does this country have less than 1 million inhabitants?,DEMOGRAFIA
+51,hasSingleOfficialLanguage,O país possui apenas uma língua oficial reconhecida em todo o nível nacional?,Does the country have only one official language recognized at the national level?,LINGUAGEM
+52,officialLanguageEnglish,O idioma oficial principal é o Inglês?,Is English the primary official language?,LINGUAGEM
+53,hasOfficialLanguageArabic,O Árabe é um dos idiomas oficiais?,Is Arabic one of the official languages?,LINGUAGEM
+54,hasOfficialLanguageFrench,O Francês é um dos idiomas oficiais?,Is French one of the official languages?,LINGUAGEM
+55,officialLanguageSpanish,O Espanhol é o idioma oficial?,Is Spanish the official language?,LINGUAGEM
+56,officialLanguagePortuguese,O Português é o idioma oficial?,Is Portuguese the official language?,LINGUAGEM
+57,drivesOnLeft,Neste país a condução é pela esquerda?,Do people drive on the left side of the road?,CULTURA
+58,usesEuroCurrency,Este país usa o Euro como moeda oficial?,Does this country use the Euro?,ECONOMIA
+59,usesUSDCurrency,Este país usa o Dólar americano como moeda oficial?,Does this country use the US Dollar?,ECONOMIA
+60,hasOwnNationalCurrency,O país possui e emite sua própria moeda soberana?,Does the country have and issue its own sovereign currency?,ECONOMIA
+61,isArchipelago,O território deste país é um arquipélago?,Is this country's territory an archipelago?,GEOGRAFIA
+62,crossedByEquator,A Linha do Equador corta este país?,Does the Equator pass through this country?,GEOGRAFIA
+63,bordersMediterranean,Este país é banhado pelo Mar Mediterrâneo?,Is this country bordered by the Mediterranean Sea?,GEOGRAFIA
+64,usesNonLatinScript,O principal sistema de escrita do país utiliza um alfabeto não Latim ?,Does the country's main writing system use a non-Latin alphabet?,LINGUAGEM
+65,predominantReligionIslam,O Islamismo é a maior ou a segunda maior religião deste país?,Is Islam the largest or second-largest religion in this country?,RELIGIÃO
+66,predominantReligionChristianity,O Cristianismo é a maior ou a segunda maior religião deste país?,Is Christianity the largest or second-largest religion in this country?,RELIGIÃO
+67,predominantReligionBuddhism,O Budismo é a maior ou a segunda maior religião deste país?,Is Buddhism the largest or second-largest religion in this country?,RELIGIÃO
+68,predominantReligionHinduism,O Hinduísmo é a maior ou a segunda maior religião deste país?,Is Hinduism the largest or second-largest religion in this country?,RELIGIÃO
+69,hasNoReligionPredominant,A maioria da população não possui afiliação religiosa?,Does the majority of the population have no religious affiliation?,RELIGIÃO
+70,isG20Member,Este país é membro do G20?,Is this country a member of the G20?,POLITICA
+71,isG7Member,Este país é membro do G7?,Is this country a member of the G7?,POLITICA
+72,isBricsMember,Este país faz parte do BRICS?,Is this country a member of BRICS?,POLITICA
+73,isEuMember,Este país é membro da União Europeia?,Is this country a member of the European Union?,POLITICA
+74,isMonarchy,"O país possui uma família real própria ou um monarca residente (rei, rainha, imperador, emir ou sultão)","Does the country have its own royal family or a resident monarch (king, queen, emperor, emir, or sultan)?",POLITICA
+75,wasBritishEmpire,O país foi uma colônia importante ou tem forte herança do Império Britânico (Inglaterra)?,Was the country an important colony or does it have strong British (English) Empire heritage?,HISTORIA
+76,colonizedByIberian,O país foi uma colônia importante ou tem forte herança de Portugal ou Espanha?,Was the country an important colony or does it have strong Portuguese or Spanish heritage?,HISTORIA
+77,wasSovietUnion,Este país fez parte da antiga União Soviética?,Was this country part of the former Soviet Union?,HISTORIA
+78,flagHasGreen,A bandeira tem a cor verde?,Does the flag contain green?,BANDEIRA
+79,flagHasStars,A bandeira possui estrelas?,Does the flag contain stars?,BANDEIRA
+80,flagIsTricolor,A bandeira é tricolor (três faixas)?,Is the flag a tricolor?,BANDEIRA
+81,flagHasEmblem,"A bandeira possui símbolo, emblema ou brasão?",Does the flag contain a symbol or emblem?,BANDEIRA
+82,flagHasYellowOrGolden,A bandeira tem a cor amarela ou dourada?,Does the flag contain yellow or gold?,BANDEIRA
+83,wonMensWorldCup,A seleção masculina de futebol já venceu uma Copa do Mundo?,Has this country's men's national team won a World Cup?,HISTORIA
+84,hostedMegaSportingEvent,O país já sediou uma Olimpíada de Verão ou uma Copa do Mundo FIFA?,Has this country ever hosted a Summer Olympic Games or a FIFA World Cup?,HISTORIA
+85,hasWonderOfTheWorld,Este país possui uma das Maravilhas Mundo?,Has this country one of the Wonders of the World?,GEOGRAFIA

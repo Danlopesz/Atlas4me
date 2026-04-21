@@ -58,7 +58,7 @@ public class GameService {
             user = getUserOrThrow(userEmail);
             gameSessionRepository.findByUserAndStatus(user, GameStatus.IN_PROGRESS)
                     .ifPresent(old -> {
-                        old.setStatus(GameStatus.ROBOT_WON);
+                        old.setStatus(GameStatus.ABANDONED);
                         old.setFinishedAt(LocalDateTime.now());
                         gameSessionRepository.save(old);
                     });
@@ -159,7 +159,7 @@ public class GameService {
                         return new ArrayList<>();
                 }
                 User user = getUserOrThrow(userEmail);
-                return gameSessionRepository.findByUserOrderByStartedAtDesc(user).stream()
+                return gameSessionRepository.findHistoryByUser(user).stream()
                                 .map(game -> GameResponse.builder()
                                                 .gameId(game.getId())
                                                 .status(game.getStatus().name())

@@ -18,7 +18,7 @@ public class CountryService {
     private final CountryRepository countryRepository;
 
     public List<CountryResponse> getAllCountries() {
-        return countryRepository.findAll().stream()
+        return countryRepository.findAllByOrderByNamePtAsc().stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
     }
@@ -38,6 +38,7 @@ public class CountryService {
                 .id(country.getId())
                 .namePt(country.getNamePt())
                 .isoCode(country.getIsoCode())
+                .flagUrl(country.getFlagUrl())
                 .build();
     }
 }

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import api from "../../services/api";
 import Navbar from "../../components/navbar/Navbar";
+import CountryCombobox from "../../components/combobox/CountryCombobox";
 import './Jogar.css';
 import axios from 'axios';
 
@@ -27,9 +28,10 @@ export interface GameQuestion {
 }
 
 export interface Country {
-    id: string | number;
-    name: string;
+    id: number;
+    namePt: string;
     isoCode?: string;
+    flagUrl?: string;
 }
 
 export interface QuestionData {
@@ -69,13 +71,14 @@ function Jogar({ onIsoUpdate, onIsoReset }: JogarProps) {
     const [countries, setCountries] = useState<Country[]>([]);
     const [selectedCountryId, setSelectedCountryId] = useState<string>('');
 
-    // Busca lista de países para o reveal
+    // Busca lista de países uma vez no mount
     useEffect(() => {
-        if (gameStatus !== 'WAITING_FOR_REVEAL') return;
         api.get('/api/countries')
             .then(r => setCountries(r.data))
-            .catch(e => console.error('Erro ao buscar países', e));
-    }, [gameStatus]);
+            .catch(e => {
+                console.error('Erro ao buscar países:', '/api/countries', e.response?.status, e);
+            });
+    }, []);
 
     // Limpa o globo ao desmontar (usuário navega para outra rota)
     useEffect(() => {
@@ -273,18 +276,11 @@ function Jogar({ onIsoUpdate, onIsoReset }: JogarProps) {
                         <div style={{ textAlign: 'center' }}>
                             <h1 style={{ color: '#2ecc71', marginBottom: '10px' }}>VOCÊ VENCEU! 🏆</h1>
                             <p style={{ marginBottom: '18px', color: '#ccc' }}>{message}</p>
-                            <select
-                                style={{
-                                    width: '100%', padding: '10px', marginBottom: '18px',
-                                    borderRadius: '8px', background: 'rgba(255,255,255,0.08)',
-                                    border: '1px solid rgba(0,229,255,0.3)', color: 'white', fontFamily: 'inherit'
-                                }}
+                            <CountryCombobox
+                                countries={countries}
                                 value={selectedCountryId}
-                                onChange={e => setSelectedCountryId(e.target.value)}
-                            >
-                                <option value="">Selecione o país real...</option>
-                                {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                            </select>
+                                onChange={(id) => setSelectedCountryId(String(id))}
+                            />
                             <button className="btn-primary" onClick={handleReveal}>ENVIAR RELATÓRIO</button>
                         </div>
                     )}

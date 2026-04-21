@@ -2,6 +2,7 @@ package atlas4me.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import atlas4me.entity.User;
@@ -14,18 +15,21 @@ import java.util.Optional;
 @Repository
 public interface GameSessionRepository extends JpaRepository<GameSession, Long> {
     
-    // Lista histórico ordenado
-    List<GameSession> findByUserOrderByStartedAtDesc(User user);
-       
+    // Lista histórico ordenado — exclui sessões ABANDONED
+    @Query("SELECT gs FROM GameSession gs WHERE gs.user = :user " +
+           "AND gs.status <> 'ABANDONED' ORDER BY gs.startedAt DESC")
+    List<GameSession> findHistoryByUser(@Param("user") User user);
+
     // Busca uma sessão específica pelo Status (ex: IN_PROGRESS)
     Optional<GameSession> findByUserAndStatus(User user, GameStatus status);
-    
+
     // Verifica se existe (retorna true/false)
     boolean existsByUserAndStatus(User user, GameStatus status);
-    
+
     // --- QUERIES ATUALIZADAS (Adeus 'won' e 'completed') ---
-    
-    @Query("SELECT gs FROM GameSession gs WHERE gs.user = :user ORDER BY gs.score DESC")
+
+    @Query("SELECT gs FROM GameSession gs WHERE gs.user = :user " +
+           "AND gs.status <> 'ABANDONED' ORDER BY gs.score DESC")
     List<GameSession> findTopScoresByUser(User user);
     
     // Agora contamos vitórias olhando o Status 'HUMAN_WON'

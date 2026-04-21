@@ -5,7 +5,7 @@ function ComoJogar() {
         <>
             <Navbar />
             <div className="main-content">
-                <div className="glass-card" style={{ textAlign: 'left' }}>
+                <div className="glass-card glass-card--wide" style={{ textAlign: 'left' }}>
                     <h1 style={{ textAlign: 'center' }}>Como Jogar</h1>
 
                     <ul style={{ listStyle: 'none', padding: 0, marginTop: '20px' }}>

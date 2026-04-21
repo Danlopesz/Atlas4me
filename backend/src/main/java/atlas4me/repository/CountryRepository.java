@@ -27,4 +27,7 @@ public interface CountryRepository extends JpaRepository<Country, Long> {
     @Query(value = "SELECT * FROM countries ORDER BY RAND() LIMIT 1", nativeQuery = true)
     Optional<Country> findRandomCountry();
 
+    // Lista todos os países ordenados por nome em português
+    List<Country> findAllByOrderByNamePtAsc();
+
 }

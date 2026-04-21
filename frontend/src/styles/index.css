@@ -17,23 +17,13 @@
   box-sizing: border-box;
 }
 
-html {
-  background: #000000 !important;
-  background-color: #000000 !important;
-}
-
 body {
   font-family: var(--font-main);
-  /* Fundo espacial escuro limpo (as estrelas virão do Stars.css) */
-  background: linear-gradient(to bottom, #050505 0%, #0a0a0f 50%, #050505 100%) !important;
-  background-attachment: fixed;
-  background-color: #000000 !important;
+  background: #000000;
   color: var(--text-white);
   min-height: 100vh;
   overflow-x: hidden;
   position: relative;
-  -webkit-background-size: cover;
-  background-size: cover;
 }
 
 
@@ -53,21 +43,10 @@ body {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  padding-top: 80px;
-  padding-bottom: 20px;
+  padding: 80px 20px 40px;
 }
 
-/* NAVBAR */
-.navbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem 5%;
-  position: absolute;
-  width: 100%;
-  top: 0;
-  z-index: 1000;
-}
+/* NAVBAR — estilização exclusiva em Navbar.css */
 
 .logo {
   display: flex;
@@ -86,24 +65,6 @@ body {
   display: block;
 }
 
-.navbar nav {
-  display: flex;
-  gap: 2rem;
-}
-
-.navbar a {
-  text-decoration: none;
-  color: var(--text-gray);
-  font-weight: 600;
-  transition: 0.3s;
-  font-size: 0.9rem;
-  text-transform: uppercase;
-}
-
-.navbar a:hover {
-  color: var(--text-white);
-  text-shadow: 0 0 10px var(--neon-cyan);
-}
 
 /* =========================================
    CARTÕES E FORMULÁRIOS (LOGIN / JOGAR)
@@ -130,10 +91,27 @@ body {
 }
 
 /* Títulos dentro do card */
-.glass-card h1,
+.glass-card h1 {
+  color: white;
+  font-size: 1.8rem;
+  margin-bottom: 1.5rem;
+}
+
 .glass-card h2 {
   color: white;
+  font-size: 1.4rem;
   margin-bottom: 1.5rem;
+}
+
+/* Variantes do card */
+.glass-card--wide {
+  max-width: 560px;
+  padding: 36px 40px;
+}
+
+.glass-card--profile {
+  max-width: 900px;
+  text-align: left;
 }
 
 /* Inputs (Campos de texto) */
@@ -363,7 +341,8 @@ button:hover,
   }
 
   .glass-card {
-    padding: 25px;
+    max-width: min(440px, 92vw);
+    padding: 24px 20px;
     width: 95%;
   }
 }
@@ -400,25 +379,10 @@ button:hover,
 
 @media (max-width: 768px) {
 
-  /* 1. Ajuste da Navbar (Cabeçalho) */
-  .navbar {
-    padding: 1rem;
-    /* Reduz espaçamento lateral */
-    flex-direction: column;
-    /* Empilha Logo e Menu se necessário */
-    background: rgba(5, 7, 16, 0.95);
-    /* Fundo mais escuro para leitura */
-  }
-
   .logo {
     font-size: 1.5rem;
     /* Logo menor */
     margin-bottom: 10px;
-  }
-
-  .navbar nav {
-    display: none;
-    /* Esconde menu no celular (pode fazer um menu hambúrguer depois) */
   }
 
   /* 2. Ajuste da Home / Hero */
@@ -450,14 +414,36 @@ button:hover,
     padding: 0 10px;
   }
 
-  /* 3. Ajuste dos Cartões de Vidro e Login */
+  /* 3. Container de páginas internas */
+  .main-content {
+    padding: 100px 16px 40px;
+    align-items: flex-start;
+  }
+
+  /* Ajuste dos Cartões de Vidro */
   .glass-card,
   .auth-container {
     width: 95% !important;
-    /* Ocupa quase toda a largura */
+    max-width: min(440px, 92vw) !important;
     margin: 20px auto;
-    padding: 20px !important;
-    /* Reduz de 40px para 20px */
+    padding: 24px 20px !important;
+  }
+
+  .glass-card--wide {
+    max-width: min(520px, 92vw) !important;
+    padding: 24px 20px !important;
+  }
+
+  .glass-card--profile {
+    max-width: 92vw !important;
+  }
+
+  .glass-card h1 {
+    font-size: 1.4rem;
+  }
+
+  .glass-card h2 {
+    font-size: 1.1rem;
   }
 
   .form-content {
