@@ -73,7 +73,7 @@ public class GameService {
             throw new BusinessException("A base de conhecimento está vazia. O Akinator não tem países para adivinhar!");
         }
 
-        log.info("Iniciando novo jogo com {} países candidatos.", allKnownCountries.size());
+        log.info("Iniciando novo jogo com {} paises candidatos.", allKnownCountries.size());
 
         QuestionResponse firstQuestion = selectNextQuestion(session, allKnownCountries);
         return buildGameResponse(session, allKnownCountries, "Pense em um país... Eu vou adivinhar!", firstQuestion);
@@ -265,10 +265,10 @@ public class GameService {
                 Set<Long> askedIds = session.getGameAttempts().stream()
                                 .map(a -> a.getQuestion().getId())
                                 .collect(Collectors.toSet());
-                log.info("Enviando para a IA: {} países restantes e {} perguntas já feitas.", candidateIds.size(), askedIds.size());
+                log.info("Registro: {} paises restantes e {} perguntas ja feitas.", candidateIds.size(), askedIds.size());
                 Long bestId = inferenceEngine.selectBestQuestion(new GameState(candidateIds, askedIds));
                 if (bestId == null) {
-                    log.error("IA retornou nulo! Provavelmente ocorreu um empate total ou poda lógica excessiva.");
+                    log.error("Atlas retornou nulo! Provavelmente ocorreu um empate total ou poda lógica excessiva.");
                     throw new BusinessException("Sem mais perguntas disponíveis.");
                 }
                 Question bestQ = questionRepository.findById(bestId)

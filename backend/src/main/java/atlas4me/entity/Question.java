@@ -25,7 +25,7 @@ public class Question {
     @Column(name = "question_en", nullable = false, length = 500)
     private String questionEn;
 
-    @Column(name = "featureKey", nullable = false, length = 50)
+    @Column(name = "feature_Key", nullable = false, length = 50)
     private String featureKey;
 
     @Transient

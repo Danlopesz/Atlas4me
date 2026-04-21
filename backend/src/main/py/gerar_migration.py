@@ -5,12 +5,12 @@ import numpy as np
 # CONFIG
 # ==============================
 
-ARQUIVO_PAISES = 'DB-Atlas4me - TabCountryV2.csv'
-ARQUIVO_PERGUNTAS = 'DB-Atlas4me - TabQuestionsV2.csv'
-ARQUIVO_COUNTRYFEATURES = 'DB-Atlas4me - TabCountryFeaturesV2.csv'
+ARQUIVO_PAISES = 'DB-Atlas4me_-_TabCountryV3.csv'
+ARQUIVO_PERGUNTAS = 'DB-Atlas4me_-_TabQuestionsV3.csv'
+ARQUIVO_COUNTRYFEATURES = 'DB-Atlas4me_-_TabCountryFeaturesV3.csv'
 
-ARQUIVO_V5 = 'V5__create_tables.sql'
-ARQUIVO_V6 = 'V6__insert_data.sql'
+ARQUIVO_V5 = 'V1__create_schema.sql'
+ARQUIVO_V6 = 'V2__insert_initial_data.sql'
 
 BATCH_SIZE = 500 # Evita queries gigantes e estouro de buffer do MySQL
 
@@ -152,6 +152,7 @@ def gerar_sql_v5_create():
 
 def gerar_sql_v6_insert():
     with open(ARQUIVO_V6, 'w', encoding='utf-8') as f:
+
         f.write("-- Flyway Migration: V6\n")
         f.write("-- Inserção de dados em countries, questions e country_features\n\n")
 
@@ -175,6 +176,11 @@ def gerar_sql_v6_insert():
         map_questions = {} # Dicionário para uso posterior no cruzamento
         try:
             df_questions = pd.read_csv(ARQUIVO_PERGUNTAS, header=1)
+            print("COLUNAS DO CSV:")
+            print(df_questions.columns)
+
+            print("\nPRIMEIRAS LINHAS:")
+            print(df_questions.head())
             valores_questions = []
 
             for _, row in df_questions.iterrows():
@@ -194,12 +200,16 @@ def gerar_sql_v6_insert():
             f.write("-- ==========================================\n-- QUESTIONS\n-- ==========================================\n\n")
             escrever_insert_em_lote(f, "questions", col_questions, valores_questions)
             print(f"✅ {len(valores_questions)} perguntas processadas.")
+            print(f"\nTotal de perguntas no CSV: {len(map_questions)}")
+            print(f"Perguntas usadas no mapeamento: {len(set(map_questions.values()))}")
         except Exception as e:
             print(f"❌ Erro em questions: {e}")
 
+        faltantes = []
         # 3. COUNTRY FEATURES ===================================
         try:
             df_features = pd.read_csv(ARQUIVO_COUNTRYFEATURES)
+
             valores_features = []
 
             # Agora a primeira coluna da sua planilha é o ISO Code (ex: "BRA")
@@ -215,6 +225,8 @@ def gerar_sql_v6_insert():
                 for q_text_col in perguntas_colunas:
                     q_text = str(q_text_col).strip()
                     q_id = map_questions.get(q_text) # Busca o ID numérico da pergunta (16, 17, etc)
+                    if q_id is None:
+                      faltantes.append(q_text)
 
                     if q_id is not None:
                         val_booleano = str(row[q_text_col]).strip()
@@ -228,6 +240,17 @@ def gerar_sql_v6_insert():
 
             col_features = ["country_id", "question_id", "is_true"]
             escrever_insert_em_lote(f, "country_features", col_features, valores_features)
+            print(f"\nTotal de relações country_features: {len(valores_features)}")
+            total_esperado = len(df_countries) * len(map_questions)
+            total_gerado = len(valores_features)
+
+            print(f"\nEsperado: {total_esperado}")
+            print(f"Gerado: {total_gerado}")
+
+            if total_gerado < total_esperado:
+             print("⚠️ ATENÇÃO: Existem valores faltando no dataset!")
+             print(f"\nPerguntas não encontradas no mapeamento: {len(set(faltantes))}")
+             print(set(faltantes))
 
         except Exception as e:
             print(f"❌ Erro em country_features: {e}")
