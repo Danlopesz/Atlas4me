@@ -60,6 +60,7 @@ const Navbar = () => {
                 <nav className="nav-links">
                     <Link to="/como-jogar">Como Jogar</Link>
                     <Link to="/jogar">Jogar</Link>
+                    <Link to="/ranking">Ranking</Link>
                 </nav>
 
                 {/* Auth à direita — desktop */}
@@ -114,6 +115,9 @@ const Navbar = () => {
                     </Link>
                     <Link to="/jogar" className="drawer-link" onClick={() => setIsMenuOpen(false)}>
                         Jogar
+                    </Link>
+                    <Link to="/ranking" className="drawer-link" onClick={() => setIsMenuOpen(false)}>
+                        Ranking
                     </Link>
 
                     {token ? (

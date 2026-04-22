@@ -61,7 +61,8 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/games/**",
                                 "/api/jogar/**",
-                                "/api/countries/**")
+                                "/api/countries/**",
+                                "/api/ranking/**")
                         .permitAll()
 
                         // Qualquer outra rota precisa de auth

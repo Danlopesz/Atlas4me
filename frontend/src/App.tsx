@@ -6,6 +6,7 @@ import Home from "./pages/home/Home";
 import Jogar from "./pages/jogar/Jogar";
 import ComoJogar from "./pages/home/ComoJogar";
 import Perfil from './pages/auth/Perfil';
+import Ranking from './pages/ranking/Ranking';
 import { GameGlobe3D } from "./components/globe/GameGlobe3D";
 import './styles/GlobalLayout.css';
 
@@ -33,6 +34,7 @@ function AppContent() {
                 <Route path="/cadastro" element={<div className="route-page-overlay"><Cadastro /></div>} />
                 <Route path="/como-jogar" element={<div className="route-page-overlay"><ComoJogar /></div>} />
                 <Route path="/perfil" element={<div className="route-page-overlay"><Perfil /></div>} />
+                <Route path="/ranking" element={<div className="route-page-overlay"><Ranking /></div>} />
             </Routes>
         </>
     );

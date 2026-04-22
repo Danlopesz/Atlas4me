@@ -6,7 +6,7 @@
 
 export { Earth } from "./Earth";
 export { Atmosphere } from "./Atmosphere";
-export { Stars } from "./Stars";
+export { Stars } from "../Stars/Stars";
 export { CountriesLayer } from "./CountriesLayer";
 export { GlobeCamera } from "./GlobeCamera";
 export { GlobeControls } from "./GlobeControls";

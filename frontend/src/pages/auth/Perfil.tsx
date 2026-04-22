@@ -1,7 +1,19 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import Navbar from '../../components/navbar/Navbar';
+import { ProfileGlobe } from '../../components/globe/ProfileGlobe';
 import api from '../../services/api';
+import '../../styles/Perfil.css';
 
+interface ProfileStats {
+    displayName: string;
+    discoveredIsoCodes: string[];
+    totalDiscovered: number;
+    totalGames: number;
+    totalWins: number;
+    totalDefeats: number;
+    lastDiscoveredCountry: string | null;
+}
 
 interface GameHistoryItem {
     gameId: string;
@@ -10,120 +22,151 @@ interface GameHistoryItem {
     points?: number;
 }
 
+const TOTAL_COUNTRIES = 197;
+
+function getMotivation(pct: number): string {
+    if (pct < 10) return 'Sua jornada está começando...';
+    if (pct < 30) return 'Você está explorando o mundo!';
+    if (pct < 60) return 'Metade do mundo já te conhece.';
+    if (pct < 90) return 'Quase um Atlas humano!';
+    return 'Lenda da geografia mundial. 🌍';
+}
+
 function Perfil() {
+    const [stats, setStats] = useState<ProfileStats | null>(null);
     const [history, setHistory] = useState<GameHistoryItem[]>([]);
-    const [userName, setUserName] = useState<string>('');
-    const [loading, setLoading] = useState<boolean>(true);
+    const [progressWidth, setProgressWidth] = useState(0);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const storedName = localStorage.getItem('userName');
-        if (storedName) setUserName(storedName);
-        fetchHistory();
+        const fetchStats = api.get<ProfileStats>('/api/users/profile/stats');
+        const fetchHistory = api.get<GameHistoryItem[]>('/api/games/history');
+
+        Promise.allSettled([fetchStats, fetchHistory]).then(([statsResult, historyResult]) => {
+            if (statsResult.status === 'fulfilled') {
+                const data = statsResult.value.data;
+                setStats(data);
+                const pct = (data.totalDiscovered / TOTAL_COUNTRIES) * 100;
+                setTimeout(() => setProgressWidth(pct), 100);
+            }
+            if (historyResult.status === 'fulfilled') {
+                setHistory(historyResult.value.data);
+            }
+            setLoading(false);
+        });
     }, []);
 
-    const fetchHistory = async () => {
-        try {
-            const response = await api.get('/api/games/history');
-            setHistory(response.data);
-        } catch (error) {
-            console.error("Erro ao buscar histórico", error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // --- CÁLCULOS DAS ESTATÍSTICAS ---
-    const FINISHED_STATUSES = ['ROBOT_WON', 'HUMAN_WON', 'FINISHED_REVEALED'];
-    const totalGames = history.filter(h => FINISHED_STATUSES.includes(h.status)).length;
-    const defeats = history.filter(h => h.status === 'ROBOT_WON').length;
-    const wins = history.filter(h =>
-        h.status === 'HUMAN_WON' || h.status === 'FINISHED_REVEALED'
-    ).length;
+    const pct = stats ? (stats.totalDiscovered / TOTAL_COUNTRIES) * 100 : 0;
 
     return (
         <>
             <Navbar />
             <div className="main-content" style={{ flexDirection: 'column' }}>
 
-                {/* CABEÇALHO DO PERFIL (STATS) */}
-                <div className="glass-card glass-card--profile" style={{ marginBottom: '30px' }}>
-                    <h1 style={{ fontSize: '2rem', color: 'var(--neon-cyan)', textTransform: 'uppercase' }}>{userName}</h1>
+                {/* SEÇÃO 1 — Hero */}
+                <div className="glass-card glass-card--profile profile-hero" style={{ marginBottom: '24px' }}>
+                    <h1 className="profile-display-name">
+                        {stats?.displayName ?? '...'}
+                    </h1>
 
-                    <div style={{ display: 'flex', gap: '40px', marginTop: '20px', flexWrap: 'wrap' }}>
-                        {/* Partidas */}
-                        <div>
-                            <h3 style={{ color: '#ccc', fontSize: '0.9rem', textTransform: 'uppercase' }}>Partidas</h3>
-                            <p style={{ fontSize: '2.5rem', fontWeight: 'bold', color: 'white' }}>{totalGames}</p>
-                        </div>
-
-                        {/* Vitórias */}
-                        <div>
-                            <h3 style={{ color: '#ccc', fontSize: '0.9rem', textTransform: 'uppercase' }}>Vitórias (Você)</h3>
-                            <p style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#2ecc71' }}>{wins}</p>
-                        </div>
-
-                        {/* Derrotas */}
-                        <div>
-                            <h3 style={{ color: '#ccc', fontSize: '0.9rem', textTransform: 'uppercase' }}>Derrotas (Robô)</h3>
-                            <p style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#e74c3c' }}>{defeats}</p>
-                        </div>
+                    <div className="profile-discovered-badge">
+                        {stats?.totalDiscovered ?? 0} / {TOTAL_COUNTRIES} países descobertos
                     </div>
+
+                    <div className="profile-progress-bar">
+                        <div
+                            className="profile-progress-fill"
+                            style={{ width: `${progressWidth}%` }}
+                        />
+                    </div>
+
+                    <p className="profile-motivation">{getMotivation(pct)}</p>
                 </div>
 
-                {/* TABELA DE HISTÓRICO */}
-                <div className="glass-card glass-card--profile" style={{ padding: '20px' }}>
-                    <h2 style={{ color: '#b0b0b0', marginBottom: '20px', textAlign: 'left' }}>HISTÓRICO RECENTE</h2>
+                {/* SEÇÃO 2 — Globo */}
+                <div className="glass-card glass-card--profile profile-globe-section" style={{ marginBottom: '24px' }}>
+                    <div className="profile-globe-wrapper">
+                        <ProfileGlobe isoCodesDiscovered={stats?.discoveredIsoCodes ?? []} />
+                    </div>
+
+                    {stats?.lastDiscoveredCountry && (
+                        <p className="profile-last-country">
+                            Último descoberto: <span>{stats.lastDiscoveredCountry}</span>
+                        </p>
+                    )}
+                </div>
+
+                {/* SEÇÃO 3 — Estatísticas + Histórico */}
+                <div className="glass-card glass-card--profile" style={{ padding: '28px' }}>
+
+                    {/* Grid de stats */}
+                    <div className="profile-stats-grid">
+                        <div className="profile-stat-card">
+                            <span className="profile-stat-number">{stats?.totalGames ?? 0}</span>
+                            <span className="profile-stat-label">Partidas</span>
+                        </div>
+                        <div className="profile-stat-card">
+                            <span className="profile-stat-number" style={{ color: '#2ecc71' }}>
+                                {stats?.totalWins ?? 0}
+                            </span>
+                            <span className="profile-stat-label">Vitórias</span>
+                        </div>
+                        <div className="profile-stat-card">
+                            <span className="profile-stat-number" style={{ color: '#e74c3c' }}>
+                                {stats?.totalDefeats ?? 0}
+                            </span>
+                            <span className="profile-stat-label">Derrotas</span>
+                        </div>
+                    </div>
+
+                    {/* Histórico */}
+                    <h2 className="profile-history-title">Histórico Recente</h2>
 
                     {loading ? (
-                        <p>Carregando histórico...</p>
+                        <p style={{ color: 'rgba(255,255,255,0.4)' }}>Carregando...</p>
                     ) : history.length === 0 ? (
-                        <p>Você ainda não jogou nenhuma partida logado.</p>
+                        <div className="profile-empty-cta">
+                            <p>Nenhuma partida ainda. Que tal começar agora?</p>
+                            <Link to="/jogar">Jogar</Link>
+                        </div>
                     ) : (
                         <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                            {/* CORREÇÃO 1: Adicionado tableLayout: 'fixed' na tag table */}
                             <table style={{
                                 width: '100%',
                                 borderCollapse: 'collapse',
                                 color: 'white',
-                                tableLayout: 'fixed'
+                                tableLayout: 'fixed',
                             }}>
                                 <thead>
                                     <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.2)', textAlign: 'left' }}>
-                                        {/* As larguras aqui agora serão respeitadas */}
-                                        <th style={{ padding: '15px', width: '20%' }}>Data</th>
-                                        <th style={{ padding: '15px', width: '20%' }}>Resultado</th>
-                                        <th style={{ padding: '15px', width: '40%' }}>País Alvo</th>
-                                        <th style={{ padding: '15px', width: '20%', textAlign: 'right' }}>Pontos</th>
+                                        <th style={{ padding: '12px', width: '25%' }}>Data</th>
+                                        <th style={{ padding: '12px', width: '50%' }}>País Alvo</th>
+                                        <th style={{ padding: '12px', width: '25%' }}>Resultado</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {history.map((game) => (
                                         <tr key={game.gameId} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                                            <td style={{ padding: '15px', color: '#ccc' }}>
+                                            <td style={{ padding: '12px', color: '#ccc', fontSize: '0.85rem' }}>
                                                 Recente
                                             </td>
-
-                                            <td style={{ padding: '15px' }}>
-                                                {game.status === 'ROBOT_WON' ?
-                                                    <span style={{ color: '#ff9f43', fontWeight: 'bold' }}>Derrota</span> :
-                                                    <span style={{ color: '#2ecc71', fontWeight: 'bold' }}>Vitória</span>
-                                                }
-                                            </td>
-
-                                            {/* CORREÇÃO 2: Tratamento para nomes de países longos não quebrarem a tabela */}
                                             <td style={{
-                                                padding: '15px',
+                                                padding: '12px',
                                                 textTransform: 'uppercase',
                                                 color: 'var(--neon-cyan)',
                                                 whiteSpace: 'nowrap',
                                                 overflow: 'hidden',
-                                                textOverflow: 'ellipsis'
-                                            }} title={game.targetCountry}> {/* Title mostra o nome completo ao passar o mouse */}
-                                                {game.targetCountry || "?"}
+                                                textOverflow: 'ellipsis',
+                                                fontSize: '0.9rem',
+                                            }} title={game.targetCountry}>
+                                                {game.targetCountry ?? '?'}
                                             </td>
-
-                                            <td style={{ padding: '15px', fontWeight: 'bold', textAlign: 'right' }}>
-                                                {game.points}
+                                            <td style={{ padding: '12px' }}>
+                                                {game.status === 'ROBOT_WON' ? (
+                                                    <span style={{ color: '#ff9f43', fontWeight: 'bold' }}>Derrota</span>
+                                                ) : (
+                                                    <span style={{ color: '#2ecc71', fontWeight: 'bold' }}>Vitória</span>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}
@@ -132,6 +175,7 @@ function Perfil() {
                         </div>
                     )}
                 </div>
+
             </div>
         </>
     );

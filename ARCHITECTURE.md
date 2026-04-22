@@ -640,7 +640,7 @@ export function GameGlobe3D({ validIsoCodes }: GameGlobe3DProps) {
 | Operação | List\<Country\> (naive) | Set\<Long\> + índice invertido |
 |---|---|---|
 | Filtrar 1 resposta | O(n × m) lookups em mapa | O(n) retainAll de HashSet |
-| Com 36 países / 195 países | cresce | mantém milissegundos |
+| Com 36 países / 197 países | cresce | mantém milissegundos |
 | Query ao banco por rodada | 1 por resposta | **0** (só na conversão final) |
 
 ---
@@ -656,7 +656,7 @@ Ao invés de o frontend recalcular quais países são candidatos, o backend devo
 **Alternativa rejeitada:** 20+ campos booleanos em `Country` (`hasBeach`, `speaksSpanish`, etc.)
 
 **Decisão:** Tabela separada `country_features (country_id, question_id, is_true)`.
-- Expandir de 13 para 36 para 195 países = apenas `INSERT INTO country_features`
+- Expandir de 13 para 36 para 197 países = apenas `INSERT INTO country_features`
 - Nenhuma alteração de schema (princípio Open/Closed)
 
 ---

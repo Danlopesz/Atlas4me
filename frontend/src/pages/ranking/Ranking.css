@@ -1,0 +1,130 @@
+/* ─── Header ─────────────────────────────────────────────────────── */
+
+.ranking-header {
+  margin-bottom: 28px;
+}
+
+.ranking-header h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--neon-cyan);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin: 0 0 6px;
+}
+
+.ranking-header p {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.45);
+  margin: 0;
+}
+
+/* ─── Tabela ─────────────────────────────────────────────────────── */
+
+.ranking-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: white;
+}
+
+.ranking-table th {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  padding: 8px 16px;
+  text-align: left;
+  font-weight: 600;
+}
+
+.ranking-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.95rem;
+}
+
+/* ─── Linha do usuário atual ─────────────────────────────────────── */
+
+.ranking-row-current td {
+  background: rgba(0, 229, 255, 0.06);
+}
+
+.ranking-row-current td:first-child {
+  border-left: 3px solid #00e5ff;
+}
+
+/* ─── Células especiais ──────────────────────────────────────────── */
+
+.ranking-medal {
+  font-size: 1.3rem;
+  display: inline-block;
+  min-width: 32px;
+  text-align: center;
+}
+
+.ranking-discovered {
+  color: var(--neon-cyan);
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.ranking-separator td {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.2);
+  padding: 10px;
+  letter-spacing: 6px;
+  font-size: 0.85rem;
+  border-bottom: none;
+}
+
+/* ─── Estado vazio / erro ────────────────────────────────────────── */
+
+.ranking-empty {
+  text-align: center;
+  padding: 40px 0;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.95rem;
+}
+
+.ranking-error {
+  text-align: center;
+  padding: 32px 0;
+  color: rgba(255, 255, 255, 0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.ranking-retry-btn {
+  padding: 8px 24px;
+  background: transparent;
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  color: var(--neon-cyan);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+  transition: background 0.2s;
+}
+
+.ranking-retry-btn:hover {
+  background: rgba(0, 229, 255, 0.08);
+}
+
+/* ─── Mobile ─────────────────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+  .col-last-country {
+    display: none;
+  }
+
+  .ranking-table td,
+  .ranking-table th {
+    padding: 12px 10px;
+  }
+
+  .ranking-header h1 {
+    font-size: 1.6rem;
+  }
+}

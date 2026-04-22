@@ -26,7 +26,7 @@ import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import { Environment } from "@react-three/drei";
 import { Earth } from "./Earth";
 import { Atmosphere } from "./Atmosphere";
-import { Stars } from "./Stars";
+import { Stars } from "../Stars/Stars";
 import { CountriesLayer } from "./CountriesLayer";
 import { GlobeCamera } from "./GlobeCamera";
 import { GlobeControls } from "./GlobeControls";
