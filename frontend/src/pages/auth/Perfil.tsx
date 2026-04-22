@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import Navbar from '../../components/navbar/Navbar';
 import { ProfileGlobe } from '../../components/globe/ProfileGlobe';
 import api from '../../services/api';
-import '../../styles/Perfil.css';
+import '../../pages/auth/Perfil.css';
 
 interface ProfileStats {
     displayName: string;

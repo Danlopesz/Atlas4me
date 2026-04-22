@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import api from "../../services/api";
 import Navbar from "../../components/navbar/Navbar";
 import CountryCombobox from "../../components/combobox/CountryCombobox";
-import './Jogar.css';
+import '../../pages/jogar/Jogar.css';
 import axios from 'axios';
 
 // --- INTERFACES ---

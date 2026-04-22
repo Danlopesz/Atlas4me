@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Navbar from '../../components/navbar/Navbar';
 import api from '../../services/api';
-import '../../styles/Ranking.css';
+import '../../pages/ranking/Ranking.css';
 
 interface RankingEntryResponse {
     rank: number | null;
