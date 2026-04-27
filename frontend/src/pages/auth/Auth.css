@@ -61,6 +61,42 @@
     cursor: pointer;
 }
 
+/* ─── Input padronizado (Tarefa 3.1) ─────────────────────────────── */
+
+.input-field {
+    padding: 14px 16px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    color: white;
+    font-size: 0.95rem;
+    font-family: inherit;
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input-field:focus {
+    border-color: #00e5ff;
+    box-shadow: 0 0 0 3px rgba(0, 229, 255, 0.1);
+    outline: none;
+}
+
+.input-label {
+    color: #aaa;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    display: block;
+}
+
+.auth-error {
+    color: #ff4757;
+    margin: 10px 0;
+    font-size: 0.9rem;
+}
+
 /* RESPONSIVIDADE DO AUTH */
 @media (max-width: 900px) {
     .auth-container {

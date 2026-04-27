@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Navbar from '../../components/navbar/Navbar';
 import api from '../../services/api';
 import '../../pages/ranking/Ranking.css';
+import { PageHeader } from '../../components/page-header/PageHeader';
 
 interface RankingEntryResponse {
     rank: number | null;
@@ -62,12 +63,10 @@ function Ranking() {
             <div className="main-content" style={{ flexDirection: 'column' }}>
                 <div className="glass-card glass-card--profile">
 
-                    <div className="ranking-header">
-                        <h1>Ranking Global</h1>
-                        {data && (
-                            <p>{data.totalActivePlayers} explorador{data.totalActivePlayers !== 1 ? 'es' : ''} ativo{data.totalActivePlayers !== 1 ? 's' : ''}</p>
-                        )}
-                    </div>
+                    <PageHeader
+                        title="RANKING GLOBAL"
+                        subtitle={data ? `${data.totalActivePlayers} explorador${data.totalActivePlayers !== 1 ? 'es' : ''} ativo${data.totalActivePlayers !== 1 ? 's' : ''}` : undefined}
+                    />
 
                     {loading && (
                         <p style={{ color: 'rgba(255,255,255,0.4)' }}>Carregando ranking...</p>

@@ -172,6 +172,22 @@
     background: transparent;
 }
 
+@keyframes pageEnter {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.route-page-overlay>*:not(.navbar) {
+    animation: pageEnter 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
 /* --- RESPONSIVIDADE (MOBILE ULTRA COMPACTO) --- */
 @media (max-width: 768px) {
     .game-overlay {

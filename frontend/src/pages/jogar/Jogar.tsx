@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import api from "../../services/api";
 import Navbar from "../../components/navbar/Navbar";
 import CountryCombobox from "../../components/combobox/CountryCombobox";
+import { FlagStrip } from "../../components/flag-strip/FlagStrip";
+import { useConfetti } from "../../hooks/useConfetti";
 import '../../pages/jogar/Jogar.css';
 import axios from 'axios';
 
@@ -70,6 +72,26 @@ function Jogar({ onIsoUpdate, onIsoReset }: JogarProps) {
     const [message, setMessage] = useState<string>('Clique em Iniciar para desafiar o Atlas!');
     const [countries, setCountries] = useState<Country[]>([]);
     const [selectedCountryId, setSelectedCountryId] = useState<string>('');
+    const [localValidIsoCodes, setLocalValidIsoCodes] = useState<string[]>([]);
+    const [questionCategory, setQuestionCategory] = useState<string | null>(null);
+    const [cardPulse, setCardPulse] = useState(false);
+    const [cardShake, setCardShake] = useState(false);
+
+    const { fire: fireConfetti } = useConfetti();
+
+    const isoToName = useMemo(() => {
+        const map: Record<string, string> = {};
+        countries.forEach(c => { if (c.isoCode) map[c.isoCode] = c.namePt; });
+        return map;
+    }, [countries]);
+
+    const isoToFlagUrl = useMemo(() => {
+        const map: Record<string, string> = {};
+        countries.forEach(c => {
+            if (c.isoCode && c.flagUrl) map[c.isoCode] = c.flagUrl;
+        });
+        return map;
+    }, [countries]);
 
     // Busca lista de países uma vez no mount
     useEffect(() => {
@@ -84,6 +106,11 @@ function Jogar({ onIsoUpdate, onIsoReset }: JogarProps) {
     useEffect(() => {
         return () => { if (onIsoReset) onIsoReset(); };
     }, [onIsoReset]);
+
+    const pulseCard = useCallback(() => {
+        setCardPulse(true);
+        setTimeout(() => setCardPulse(false), 200);
+    }, []);
 
     // --- LÓGICA CENTRAL ---
     const processResponse = useCallback((data: GameResponseData) => {
@@ -101,14 +128,19 @@ function Jogar({ onIsoUpdate, onIsoReset }: JogarProps) {
                 questionId: data.nextQuestion.id,
                 text: data.nextQuestion.text
             });
+            setQuestionCategory(data.nextQuestion.category || null);
             setTargetCountry(null);
             setGameStatus('PLAYING');
             setMessage(data.nextQuestion.text);
-            if (onIsoUpdate) onIsoUpdate(data.nextQuestion.validIsoCodes || []);
+            const isos = data.nextQuestion.validIsoCodes || [];
+            setLocalValidIsoCodes(isos);
+            if (onIsoUpdate) onIsoUpdate(isos);
+            pulseCard();
 
         } else if (data.status === 'WAITING_FOR_REVEAL' || data.status === 'HUMAN_WON') {
             setGameStatus('WAITING_FOR_REVEAL');
             setMessage(data.questionText || 'Desisto! Não sei qual é. Me conte a verdade.');
+            fireConfetti();
 
         } else if (data.status === 'ROBOT_WON') {
             setGameStatus('FINISHED_ROBOT');
@@ -119,7 +151,7 @@ function Jogar({ onIsoUpdate, onIsoReset }: JogarProps) {
             // Se vier undefined, forçamos a ser string vazia para bater com o useState
             setMessage(data.feedback || '');
         }
-    }, [onIsoUpdate]);
+    }, [onIsoUpdate, pulseCard, fireConfetti]);
 
     // --- HANDLERS ---
     const handleStartGame = async () => {
@@ -136,8 +168,7 @@ function Jogar({ onIsoUpdate, onIsoReset }: JogarProps) {
         }
     };
 
-    // Adicionamos : boolean no parâmetro answer
-    const handleAnswer = async (answer: boolean) => {
+    const handleAnswer = useCallback(async (answer: boolean) => {
         if (!question?.id) return;
         try {
             const r = await api.post('/api/games/answer', { gameId, questionId: question.questionId, answer });
@@ -146,7 +177,8 @@ function Jogar({ onIsoUpdate, onIsoReset }: JogarProps) {
             console.error(e);
             alert('Erro ao responder.');
         }
-    };
+    }, [gameId, question, processResponse]);
+
 
     const handleConfirmWin = async () => {
         try {
@@ -158,6 +190,8 @@ function Jogar({ onIsoUpdate, onIsoReset }: JogarProps) {
     };
 
     const handleDenyWin = async () => {
+        setCardShake(true);
+        setTimeout(() => setCardShake(false), 500);
         setMessage('Recalculando probabilidades...');
         try {
             const response = await api.post('/api/games/deny', { gameId });
@@ -191,6 +225,7 @@ function Jogar({ onIsoUpdate, onIsoReset }: JogarProps) {
         setTargetCountry(null);
         setGameId(null);
         setSelectedCountryId('');
+        setLocalValidIsoCodes([]);
         if (onIsoUpdate) onIsoUpdate([]);
         setTimeout(() => setMessage('Clique em Iniciar para desafiar o Atlas!'), 0);
     };
@@ -213,8 +248,15 @@ function Jogar({ onIsoUpdate, onIsoReset }: JogarProps) {
                     <span className="game-header-label">ATLAS INTELLIGENCE</span>
                 </div>
 
+                {/* Flag strip — shows candidate flags when N ≤ 50 */}
+                <FlagStrip
+                    validIsoCodes={localValidIsoCodes}
+                    flagUrls={isoToFlagUrl}
+                    countryNames={isoToName}
+                />
+
                 {/* Card principal do jogo */}
-                <div className="glass-card question-card">
+                <div className={`glass-card question-card${cardPulse ? ' card--pulse' : ''}${cardShake ? ' card--shake' : ''}`}>
 
                     {/* 1. LOBBY */}
                     {gameStatus === 'LOBBY' && (
@@ -237,26 +279,37 @@ function Jogar({ onIsoUpdate, onIsoReset }: JogarProps) {
                                 borderRadius: '50%', margin: '0 auto 20px',
                                 animation: 'spin 1s linear infinite'
                             }} />
-                            <p style={{ color: '#00e5ff' }}>{message}</p>
+                            <p className="loading-message" style={{ color: '#00e5ff' }}>{message}</p>
                             <style>{`@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}`}</style>
                         </div>
                     )}
 
                     {/* 3. JOGANDO */}
-                    {gameStatus === 'PLAYING' && (
-                        <div>
-                            <h2 style={{ color: '#00e5ff', fontSize: '0.8rem', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '14px' }}>
-                                PERGUNTA:
-                            </h2>
-                            <p style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'white', margin: '0 0 24px', lineHeight: '1.5' }}>
-                                {message}
-                            </p>
-                            <div style={{ display: 'flex', gap: '12px' }}>
-                                <button className="btn-game btn-sim" style={{ flex: 1 }} onClick={() => handleAnswer(true)}>SIM</button>
-                                <button className="btn-game btn-nao" style={{ flex: 1 }} onClick={() => handleAnswer(false)}>NÃO</button>
+                    {gameStatus === 'PLAYING' && (() => {
+                        const CATEGORY_ICONS: Record<string, string> = {
+                            BANDEIRA: '🚩', GEOGRAFIA: '🗺️', RELIGIÃO: '⛪',
+                            CULTURA: '🎭', ECONOMIA: '💰', ESPORTE: '⚽', IDIOMA: '🗣️',
+                        };
+                        return (
+                            <div>
+                                <h2 style={{ color: '#00e5ff', fontSize: '0.8rem', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '14px' }}>
+                                    PERGUNTA:
+                                </h2>
+                                <p style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'white', margin: '0 0 24px', lineHeight: '1.5' }}>
+                                    {questionCategory && (
+                                        <span style={{ fontSize: '1.2em', marginRight: '8px' }}>
+                                            {CATEGORY_ICONS[questionCategory] ?? '❓'}
+                                        </span>
+                                    )}
+                                    {message}
+                                </p>
+                                <div style={{ display: 'flex', gap: '12px' }}>
+                                    <button className="btn-game btn-sim" style={{ flex: 1 }} onClick={() => handleAnswer(true)}>SIM</button>
+                                    <button className="btn-game btn-nao" style={{ flex: 1 }} onClick={() => handleAnswer(false)}>NÃO</button>
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        );
+                    })()}
 
                     {/* 4. GUESSING */}
                     {gameStatus === 'GUESSING' && (

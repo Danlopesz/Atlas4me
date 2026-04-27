@@ -3,6 +3,7 @@ import { useState } from "react";
 import api from "../../services/api";
 import Navbar from "../../components/navbar/Navbar";
 import axios from 'axios';
+import { PageHeader } from "../../components/page-header/PageHeader";
 
 
 function Cadastro() {
@@ -44,26 +45,26 @@ function Cadastro() {
             <Navbar />
             <div className="main-content">
                 <div className="glass-card">
-                    <h1>Cadastre-se</h1>
+                    <PageHeader title="CADASTRAR" subtitle="Crie sua conta e dispute o ranking global" />
                     <form onSubmit={handleSubmit}>
                         <div className="input-box">
-                            <label>Primeiro Nome</label>
-                            <input name="firstName" type="text" placeholder="Seu nome"
+                            <label className="input-label">Primeiro Nome</label>
+                            <input className="input-field" name="firstName" type="text" placeholder="Seu nome"
                                 value={formData.firstName} onChange={handleChange} required />
                         </div>
                         <div className="input-box">
-                            <label>Sobrenome</label>
-                            <input name="lastName" type="text" placeholder="Seu sobrenome"
+                            <label className="input-label">Sobrenome</label>
+                            <input className="input-field" name="lastName" type="text" placeholder="Seu sobrenome"
                                 value={formData.lastName} onChange={handleChange} required />
                         </div>
                         <div className="input-box">
-                            <label>E-mail</label>
-                            <input name="email" type="email" placeholder="seu@email.com"
+                            <label className="input-label">E-mail</label>
+                            <input className="input-field" name="email" type="email" placeholder="seu@email.com"
                                 value={formData.email} onChange={handleChange} required />
                         </div>
                         <div className="input-box">
-                            <label>Senha</label>
-                            <input name="password" type="password" placeholder="Crie uma senha"
+                            <label className="input-label">Senha</label>
+                            <input className="input-field" name="password" type="password" placeholder="Crie uma senha"
                                 value={formData.password} onChange={handleChange} required />
                         </div>
 

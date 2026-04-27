@@ -137,4 +137,13 @@ public class InferenceEngine {
     private int getCategoryPriority(Long questionId) {
         return cache.getQuestionPriority(questionId);
     }
+
+    /**
+     * Retorna a Entropia de Shannon do conjunto de candidatos atual.
+     * H(n) = log₂(n) para distribuição uniforme.
+     * Usado para logging e análise empírica nas rodadas.
+     */
+    public double getCurrentEntropy(Set<Long> candidates) {
+        return shannonEntropy(candidates.size());
+    }
 }

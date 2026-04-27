@@ -5,7 +5,7 @@ import Cadastro from "./pages/auth/Cadastro";
 import Home from "./pages/home/Home";
 import Jogar from "./pages/jogar/Jogar";
 import ComoJogar from "./pages/home/ComoJogar";
-import Perfil from './pages/auth/Perfil';
+import Perfil from './pages/perfil/Perfil';
 import Ranking from './pages/ranking/Ranking';
 import { GameGlobe3D } from "./components/globe/GameGlobe3D";
 import './styles/GlobalLayout.css';

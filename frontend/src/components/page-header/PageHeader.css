@@ -1,0 +1,37 @@
+.page-header {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.page-header-icon {
+    font-size: 2rem;
+    margin-bottom: 12px;
+}
+
+.page-header-title {
+    font-size: 2rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #00e5ff;
+    text-shadow: 0 0 20px rgba(0, 229, 255, 0.3);
+    margin: 0;
+}
+
+.page-header-subtitle {
+    font-size: 1rem;
+    color: #ccc;
+    max-width: 500px;
+    margin: 8px auto 0;
+    font-weight: 400;
+}
+
+@media (max-width: 480px) {
+    .page-header-title {
+        font-size: 1.5rem;
+    }
+
+    .page-header-subtitle {
+        font-size: 0.9rem;
+    }
+}

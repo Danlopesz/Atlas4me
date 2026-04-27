@@ -50,34 +50,36 @@ public class GameService {
         // INÍCIO DO JOGO (mantém GameResponse legado para compatibilidade)
         // =========================================================================
 
-    @Transactional
-    public GameResponse startNewGame(String userEmail, String continent) {
-        User user = null;
+        @Transactional
+        public GameResponse startNewGame(String userEmail, String continent) {
+                User user = null;
 
-        if (userEmail != null && !userEmail.equals("guest") && !userEmail.equals("anonymousUser")) {
-            user = getUserOrThrow(userEmail);
-            gameSessionRepository.findByUserAndStatus(user, GameStatus.IN_PROGRESS)
-                    .ifPresent(old -> {
-                        old.setStatus(GameStatus.ABANDONED);
-                        old.setFinishedAt(LocalDateTime.now());
-                        gameSessionRepository.save(old);
-                    });
+                if (userEmail != null && !userEmail.equals("guest") && !userEmail.equals("anonymousUser")) {
+                        user = getUserOrThrow(userEmail);
+                        gameSessionRepository.findByUserAndStatus(user, GameStatus.IN_PROGRESS)
+                                        .ifPresent(old -> {
+                                                old.setStatus(GameStatus.ABANDONED);
+                                                old.setFinishedAt(LocalDateTime.now());
+                                                gameSessionRepository.save(old);
+                                        });
+                }
+
+                GameSession session = createNewSession(user);
+
+                // CORREÇÃO: Usar o método que filtra pelo Cache em vez de findAll()
+                List<Country> allKnownCountries = getRemainingCountries(session);
+
+                if (allKnownCountries.isEmpty()) {
+                        throw new BusinessException(
+                                        "A base de conhecimento está vazia. O Akinator não tem países para adivinhar!");
+                }
+
+                log.info("Iniciando novo jogo com {} paises candidatos.", allKnownCountries.size());
+
+                QuestionResponse firstQuestion = selectNextQuestion(session, allKnownCountries);
+                return buildGameResponse(session, allKnownCountries, "Pense em um país... Eu vou adivinhar!",
+                                firstQuestion);
         }
-
-        GameSession session = createNewSession(user);
-
-        // CORREÇÃO: Usar o método que filtra pelo Cache em vez de findAll()
-        List<Country> allKnownCountries = getRemainingCountries(session);
-
-        if (allKnownCountries.isEmpty()) {
-            throw new BusinessException("A base de conhecimento está vazia. O Akinator não tem países para adivinhar!");
-        }
-
-        log.info("Iniciando novo jogo com {} paises candidatos.", allKnownCountries.size());
-
-        QuestionResponse firstQuestion = selectNextQuestion(session, allKnownCountries);
-        return buildGameResponse(session, allKnownCountries, "Pense em um país... Eu vou adivinhar!", firstQuestion);
-    }
 
         // =========================================================================
         // RESPOSTA (novo GameResponse)
@@ -265,11 +267,13 @@ public class GameService {
                 Set<Long> askedIds = session.getGameAttempts().stream()
                                 .map(a -> a.getQuestion().getId())
                                 .collect(Collectors.toSet());
-                log.info("Registro: {} paises restantes e {} perguntas ja feitas.", candidateIds.size(), askedIds.size());
+                double entropy = inferenceEngine.getCurrentEntropy(candidateIds);
+                log.info("Registro: {} países restantes, {} perguntas já feitas. H(C) = {} bits.",
+                                candidateIds.size(), askedIds.size(), String.format("%.4f", entropy));
                 Long bestId = inferenceEngine.selectBestQuestion(new GameState(candidateIds, askedIds));
                 if (bestId == null) {
-                    log.error("Atlas retornou nulo! Provavelmente ocorreu um empate total ou poda lógica excessiva.");
-                    throw new BusinessException("Sem mais perguntas disponíveis.");
+                        log.error("Atlas retornou nulo! Provavelmente ocorreu um empate total ou poda lógica excessiva.");
+                        throw new BusinessException("Sem mais perguntas disponíveis.");
                 }
                 Question bestQ = questionRepository.findById(bestId)
                                 .orElseThrow(() -> new ResourceNotFoundException("Pergunta não encontrada: " + bestId));
@@ -343,16 +347,16 @@ public class GameService {
                 session.getGameAttempts().add(attempt);
         }
 
-    private GameSession createNewSession(User user) {
-        GameSession session = new GameSession();
-        session.setUser(user);
-        session.setTargetCountry(null);
-        session.setScore(100);
-        session.setAttempts(0);
-        session.setStatus(GameStatus.IN_PROGRESS);
-        session.setStartedAt(LocalDateTime.now());
-        return gameSessionRepository.save(session);
-    }
+        private GameSession createNewSession(User user) {
+                GameSession session = new GameSession();
+                session.setUser(user);
+                session.setTargetCountry(null);
+                session.setScore(100);
+                session.setAttempts(0);
+                session.setStatus(GameStatus.IN_PROGRESS);
+                session.setStartedAt(LocalDateTime.now());
+                return gameSessionRepository.save(session);
+        }
 
         private User getUserOrThrow(String email) {
                 return userRepository.findByEmailAndActiveTrue(email)

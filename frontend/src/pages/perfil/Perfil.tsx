@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import Navbar from '../../components/navbar/Navbar';
 import { ProfileGlobe } from '../../components/globe/ProfileGlobe';
 import api from '../../services/api';
-import '../../pages/auth/Perfil.css';
+import '../../pages/perfil/Perfil.css';
+import { PageHeader } from '../../components/page-header/PageHeader';
 
 interface ProfileStats {
     displayName: string;
@@ -62,6 +63,7 @@ function Perfil() {
         <>
             <Navbar />
             <div className="main-content" style={{ flexDirection: 'column' }}>
+                <PageHeader title="SEU PERFIL" subtitle={stats?.displayName} />
 
                 {/* SEÇÃO 1 — Hero */}
                 <div className="glass-card glass-card--profile profile-hero" style={{ marginBottom: '24px' }}>
@@ -126,8 +128,10 @@ function Perfil() {
                         <p style={{ color: 'rgba(255,255,255,0.4)' }}>Carregando...</p>
                     ) : history.length === 0 ? (
                         <div className="profile-empty-cta">
-                            <p>Nenhuma partida ainda. Que tal começar agora?</p>
-                            <Link to="/jogar">Jogar</Link>
+                            <p>Você ainda não jogou. Que tal começar agora?</p>
+                            <Link to="/jogar" className="btn-primary" style={{ display: 'inline-block', marginTop: '12px' }}>
+                                JOGAR
+                            </Link>
                         </div>
                     ) : (
                         <div style={{ maxHeight: '400px', overflowY: 'auto' }}>

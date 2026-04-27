@@ -1,7 +1,8 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import api from "../../services/api";
-import Navbar from "../../components/navbar/Navbar"; // Importando a Navbar nova
+import Navbar from "../../components/navbar/Navbar";
+import { PageHeader } from "../../components/page-header/PageHeader";
 
 function Login() {
     const [email, setEmail] = useState("");
@@ -33,11 +34,12 @@ function Login() {
             <Navbar />
             <div className="main-content">
                 <div className="glass-card">
-                    <h1>Login</h1>
+                    <PageHeader title="ENTRAR" subtitle="Bem-vindo de volta ao Atlas" />
                     <form onSubmit={handleLogin}>
                         <div className="input-box">
-                            <label htmlFor="login">Email</label>
+                            <label className="input-label" htmlFor="login">Email</label>
                             <input
+                                className="input-field"
                                 type="text"
                                 placeholder="Digite seu email"
                                 id="login"
@@ -47,8 +49,9 @@ function Login() {
                             />
                         </div>
                         <div className="input-box">
-                            <label htmlFor="senha">Senha</label>
+                            <label className="input-label" htmlFor="senha">Senha</label>
                             <input
+                                className="input-field"
                                 type="password"
                                 placeholder="Digite sua senha"
                                 id="senha"
@@ -58,7 +61,7 @@ function Login() {
                             />
                         </div>
 
-                        {erro && <p style={{ color: '#ff4757', margin: '10px 0' }}>{erro}</p>}
+                        {erro && <p className="auth-error">{erro}</p>}
 
                         <button type="submit">Entrar</button>
 

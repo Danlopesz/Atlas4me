@@ -1,36 +1,43 @@
 import { Link } from 'react-router-dom';
 import Navbar from '../../components/navbar/Navbar';
+import { PageHeader } from '../../components/page-header/PageHeader';
 
 const steps = [
     {
         n: 1,
         title: 'Pense em um País',
         text: 'Qualquer um dos 197 países do mundo. Não revele — o segredo é seu!',
+        tooltip: undefined,
     },
     {
         n: 2,
         title: 'Inicie a Partida',
         text: 'O Atlas vai te fazer perguntas estratégicas. Cada resposta elimina uma parte dos candidatos.',
+        tooltip: undefined,
     },
     {
         n: 3,
         title: 'Observe o Globo 🌍',
         text: 'A cada pergunta, os países destacados no globo são aqueles para os quais a resposta é SIM. Se o país que você pensou está destacado, responda SIM. Se não está, responda NÃO. O globo é seu apoio visual — use-o a seu favor.',
+        tooltip: 'Não entendeu? Olhe o globo enquanto joga — ele responde visualmente junto com você.',
     },
     {
         n: 4,
         title: 'Responda com Honestidade',
         text: 'O Atlas é determinístico: ele compara suas respostas com atributos verificados de cada país. Respostas honestas garantem que o jogo funcione como esperado.',
+        tooltip: undefined,
     },
     {
         n: 5,
         title: 'Deixe o Atlas Tentar',
         text: 'Quando restar apenas um candidato, o Atlas vai arriscar seu palpite. Se acertar, confirme. Se errar (raro!), você pode revelar o país real e ver onde o Atlas se perdeu.',
+        tooltip: undefined,
     },
     {
         n: 6,
         title: 'Explore o Mundo',
         text: 'Cada partida completa adiciona um país ao seu mapa pessoal. O objetivo? Colorir os 197 países do globo no seu perfil. Quantos você já descobriu?',
+        tooltip: undefined,
     },
 ];
 
@@ -40,12 +47,10 @@ function ComoJogar() {
             <Navbar />
             <div className="main-content">
                 <div className="glass-card glass-card--wide" style={{ textAlign: 'left' }}>
-                    <h1 style={{ textAlign: 'center', color: 'var(--neon-cyan)', textTransform: 'uppercase', letterSpacing: '2px' }}>
-                        Como Jogar
-                    </h1>
+                    <PageHeader title="COMO JOGAR" subtitle="Entenda o motor de entropia do Atlas" />
 
                     <ol style={{ listStyle: 'none', padding: 0, marginTop: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                        {steps.map(({ n, title, text }) => (
+                        {steps.map(({ n, title, text, tooltip }) => (
                             <li key={n} style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
                                 <span style={{
                                     color: '#00e5ff',
@@ -57,7 +62,7 @@ function ComoJogar() {
                                     {n}.
                                 </span>
                                 <div>
-                                    <strong style={{ color: 'white', display: 'block', marginBottom: '4px' }}>
+                                    <strong style={{ color: 'white', display: 'block', marginBottom: '4px' }} title={tooltip}>
                                         {title}
                                     </strong>
                                     <span style={{ color: '#ccc', lineHeight: '1.6', fontSize: '0.95rem' }}>
