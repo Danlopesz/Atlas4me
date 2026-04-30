@@ -23,6 +23,7 @@ A grande vitrine do projeto é o componente **`GameGlobe3D`** — um globo 3D in
 
 > A experiência do usuário é a de um jogo estilo Akinator de Geografia. O mecanismo por trás é inspirado em **árvores de decisão** e **teoria da informação**.
 
+> 📄 **Trabalho de Conclusão de Curso** — PUC Minas · Sistemas de Informação · 2026/1
 ---
 
 ## 🧠 Como Funciona o Sistema
@@ -329,7 +330,7 @@ LOG_LEVEL=INFO
 
 - [x] Motor de inferência por Entropia de Shannon (100% determinístico em RAM)
 - [x] **197 países do mundo inteiro**, 85 perguntas estratégicas em PT e EN
-- [x] **Frontend 100% TypeScript 5** (Tipagem Estrita)
+- [x] **Frontend 100% TypeScript 6** (Tipagem Estrita)
 - [x] **Globo 3D High-End** com React Three Fiber, shaders customizados e texturas 4K
 - [x] `validIsoCodes` retornado pelo backend a cada pergunta
 - [x] Autenticação JWT + modo visitante
@@ -378,7 +379,7 @@ Este projeto está sob a licença **MIT**. Veja [LICENSE](LICENSE) para detalhes
 ## 👨‍💻 Autor
 
 **Daniel Lopes** — Desenvolvimento Full Stack
-
+**Orientadora:** Profa. Dra. Magali Rezende Gouvêa Meireles (PUC Minas)
 ---
 
 *Última atualização: Abril 2026*
