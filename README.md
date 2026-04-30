@@ -379,7 +379,6 @@ Este projeto está sob a licença **MIT**. Veja [LICENSE](LICENSE) para detalhes
 ## 👨‍💻 Autor
 
 **Daniel Lopes** — Desenvolvimento Full Stack
-**Orientadora:** Profa. Dra. Magali Rezende Gouvêa Meireles (PUC Minas)
 ---
 
 *Última atualização: Abril 2026*
