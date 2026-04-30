@@ -164,7 +164,7 @@ Atlas4Me/
 ### 1️⃣ Clone o Repositório
 
 ```bash
-git clone https://github.com/Danlopesz/Atlas4me-React.git
+git clone https://github.com/Danlopesz/Atlas4me.git
 cd Atlas4me-React
 ```
 
@@ -329,7 +329,7 @@ LOG_LEVEL=INFO
 
 - [x] Motor de inferência por Entropia de Shannon (100% determinístico em RAM)
 - [x] **197 países do mundo inteiro**, 85 perguntas estratégicas em PT e EN
-- [x] **Frontend 100% TypeScript 6** (Tipagem Estrita)
+- [x] **Frontend 100% TypeScript 5** (Tipagem Estrita)
 - [x] **Globo 3D High-End** com React Three Fiber, shaders customizados e texturas 4K
 - [x] `validIsoCodes` retornado pelo backend a cada pergunta
 - [x] Autenticação JWT + modo visitante
