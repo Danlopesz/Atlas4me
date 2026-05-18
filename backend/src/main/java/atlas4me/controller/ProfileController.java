@@ -1,17 +1,19 @@
 package atlas4me.controller;
 
-import atlas4me.dto.response.ProfileStatsResponse;
-import atlas4me.service.ProfileService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import atlas4me.dto.response.ProfileStatsResponse;
+import atlas4me.service.ProfileService;
+
 /**
- * Controller para estatísticas do perfil do usuário.
- * Todos os endpoints requerem autenticação JWT.
+ * Endpoints de perfil do usuário autenticado.
+ * Todos os endpoints requerem autenticação JWT válida.
  */
 @RestController
 @RequestMapping("/api/users/profile")
@@ -22,21 +24,19 @@ public class ProfileController {
 
     /**
      * Retorna as estatísticas completas do perfil do usuário autenticado.
-     * Inclui: países descobertos, ISO codes (para o globo), contagens de partidas,
-     * etc.
+     * Inclui países descobertos, ISO codes para o globo e contagens de partidas.
      *
-     * @param authentication JWT Authentication injetado automaticamente pelo Spring
-     *                       Security
-     * @return ProfileStatsDTO com todas as métricas do perfil
+     * @param authentication contexto de segurança injetado pelo Spring Security.
+     * @return {@link ProfileStatsResponse} com todas as métricas do perfil,
+     *         ou HTTP 401 se o usuário não estiver autenticado.
      */
     @GetMapping("/stats")
     public ResponseEntity<ProfileStatsResponse> getProfileStats(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
-            return ResponseEntity.status(401).build();
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        String userEmail = authentication.getName();
-        ProfileStatsResponse stats = profileService.getProfileStats(userEmail);
+        ProfileStatsResponse stats = profileService.getProfileStats(authentication.getName());
         return ResponseEntity.ok(stats);
     }
 }

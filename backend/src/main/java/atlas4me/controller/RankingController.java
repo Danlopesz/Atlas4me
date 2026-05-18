@@ -1,7 +1,5 @@
 package atlas4me.controller;
 
-import atlas4me.dto.response.RankingResponse;
-import atlas4me.service.RankingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -9,10 +7,13 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import atlas4me.dto.response.RankingResponse;
+import atlas4me.service.RankingService;
+
 /**
- * Controller público do ranking global.
- * Anônimos veem o top 10 sem currentUserEntry.
- * Autenticados veem top 10 + sua posição individual.
+ * Endpoint público do ranking global de países descobertos.
+ * Anônimos recebem o top 10 sem posição individual.
+ * Autenticados recebem o top 10 acrescido de sua posição no ranking.
  */
 @RestController
 @RequestMapping("/api/ranking")
@@ -22,18 +23,19 @@ public class RankingController {
     private final RankingService rankingService;
 
     /**
-     * GET /api/ranking — Ranking global de países descobertos.
-     * Público: não requer autenticação.
-     * Se autenticado, inclui a posição do usuário no ranking.
+     * Retorna o ranking global de países descobertos pelos jogadores.
+     *
+     * @param authentication contexto de segurança injetado pelo Spring Security;
+     *                       pode ser {@code null} para requisições anônimas.
+     * @return {@link RankingResponse} com o top 10 e, se autenticado,
+     *         a posição individual do usuário.
      */
     @GetMapping
     public ResponseEntity<RankingResponse> getRanking(Authentication authentication) {
-        String userEmail = null;
-        if (authentication != null && authentication.isAuthenticated()) {
-            userEmail = authentication.getName();
-        }
+        String userEmail = (authentication != null && authentication.isAuthenticated())
+                ? authentication.getName()
+                : null;
 
-        RankingResponse ranking = rankingService.getRanking(userEmail);
-        return ResponseEntity.ok(ranking);
+        return ResponseEntity.ok(rankingService.getRanking(userEmail));
     }
 }

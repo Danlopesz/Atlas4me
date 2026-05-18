@@ -5,11 +5,15 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Entidade que representa um país na base de conhecimento do jogo.
+ * Mapeada para a tabela {@code countries}.
+ */
 @Entity
 @Table(name = "countries")
-@Data // Cria automaticamente os Getters, Setters, toString, etc.
-@NoArgsConstructor // Cria construtor vazio (obrigatório pro JPA)
-@AllArgsConstructor // Cria construtor com todos os campos
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class Country {
 
     @Id
@@ -23,12 +27,11 @@ public class Country {
     private String namePt;
 
     @Column(name = "iso_code", nullable = false, length = 3)
-    private String isoCode; // Ex: "BRA", "ARG"
+    private String isoCode;
 
     @Column(name = "flag_url")
     private String flagUrl;
 
-    // ... outros campos
     @Column(name = "latitude")
     private Double latitude;
 

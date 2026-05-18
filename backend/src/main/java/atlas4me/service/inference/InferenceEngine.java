@@ -1,17 +1,17 @@
 package atlas4me.service.inference;
 
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-
 import java.util.HashSet;
 import java.util.Set;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 /**
  * Motor de inferência puro (stateless): seleciona a próxima pergunta
  * com maior Ganho de Informação baseado na Entropia de Shannon.
  *
- * Não acessa banco de dados — opera exclusivamente sobre o KnowledgeBaseCache.
- * Todos os métodos são funções puras: dado o mesmo GameState, sempre retornam
+ * Não acessa banco de dados — opera exclusivamente sobre o {@link KnowledgeBaseCache}.
+ * Todos os métodos são funções puras: dado o mesmo {@link GameState}, sempre retornam
  * o mesmo resultado (sem efeitos colaterais).
  *
  * Fórmula:
@@ -27,36 +27,32 @@ public class InferenceEngine {
 
     /**
      * Seleciona a próxima pergunta com maior Ganho de Informação.
-     * Em caso de empate, utiliza a prioridade da categoria (Geografia > Economia).
+     * Em empate de IG, vence a categoria prioritária (GEOGRAFIA > BANDEIRA).
+     * Em empate total, sorteia aleatoriamente para variar as partidas.
      *
-     * @param state Estado imutável da rodada atual (candidatos + perguntas já
-     *              feitas).
-     * @return ID da melhor pergunta, ou {@code null} se não houver mais o que
-     *         perguntar
-     *         (candidatos ≤ 1 ou todas as perguntas já foram feitas).
+     * @param state estado imutável da rodada (candidatos + perguntas já feitas).
+     * @return ID da melhor pergunta, ou {@code null} se candidatos ≤ 1
+     *         ou todas as perguntas já foram realizadas.
      */
     public Long selectBestQuestion(GameState state) {
         Set<Long> candidates = state.currentCandidates();
         int total = candidates.size();
 
         if (total <= 1) {
-            return null; // Condição de parada: pronto para palpite.
+            return null; // Condição de parada: pronto para palpite. 
         }
 
         Long bestQuestionId = null;
         double maxIG = -1.0;
         int bestPriority = -1;
-
         double currentEntropy = shannonEntropy(total);
 
         for (Long questionId : cache.getAllQuestionIds()) {
-
             // Ignora perguntas já feitas nesta sessão
             if (state.askedQuestions().contains(questionId)) {
                 continue;
             }
 
-            // Interseção: candidatos que responderiam SIM
             // Obrigatório criar cópia — retainAll modifica a coleção in-place
             Set<Long> yesGroup = new HashSet<>(candidates);
             yesGroup.retainAll(cache.getTrueCountries(questionId));
@@ -81,9 +77,7 @@ public class InferenceEngine {
                 maxIG = ig;
                 bestPriority = priority;
                 bestQuestionId = questionId;
-            }
-            // Se houver empate exato em IG e Prioridade, sorteamos para variar a partida
-            else if (ig == maxIG && priority == bestPriority) {
+            } else if (ig == maxIG && priority == bestPriority) {
                 if (Math.random() > 0.5) {
                     bestQuestionId = questionId;
                 }
@@ -96,11 +90,10 @@ public class InferenceEngine {
     /**
      * Filtra os IDs de países candidatos compatíveis com uma resposta recebida.
      *
-     * @param candidates Conjunto atual de candidatos.
+     * @param candidates conjunto atual de candidatos.
      * @param questionId ID da pergunta respondida.
-     * @param answer     Resposta do usuário (true = SIM, false = NÃO).
-     * @return Novo conjunto — subconjunto de {@code candidates} compatível com a
-     *         resposta.
+     * @param answer     resposta do usuário ({@code true} = SIM, {@code false} = NÃO).
+     * @return novo conjunto — subconjunto de {@code candidates} compatível com a resposta.
      */
     public Set<Long> filterCandidates(Set<Long> candidates, Long questionId, boolean answer) {
         Set<Long> compatible = answer
@@ -112,6 +105,18 @@ public class InferenceEngine {
         return result;
     }
 
+    /**
+     * Retorna a entropia de Shannon do conjunto de candidatos atual.
+     * H(n) = log₂(n) para distribuição uniforme.
+     * Utilizado para logging e análise empírica das rodadas.
+     *
+     * @param candidates conjunto de IDs dos candidatos atuais.
+     * @return entropia em bits.
+     */
+    public double getCurrentEntropy(Set<Long> candidates) {
+        return shannonEntropy(candidates.size());
+    }
+
     // -------------------------------------------------------------------------
     // Helpers privados
     // -------------------------------------------------------------------------
@@ -119,31 +124,24 @@ public class InferenceEngine {
     /**
      * Entropia de Shannon para distribuição uniforme de {@code n} elementos.
      * H(n) = log₂(n). H(0) = H(1) = 0.
+     *
+     * @param n número de elementos.
+     * @return entropia em bits.
      */
     private double shannonEntropy(int n) {
-        if (n <= 1)
-            return 0.0;
+        if (n <= 1) return 0.0;
         return Math.log(n) / Math.log(2);
     }
 
     /**
-     * Desempate por categoria quando duas perguntas têm o mesmo Ganho de
-     * Informação.
+     * Retorna a prioridade de desempate da pergunta baseada em sua categoria.
      * Consulta o valor pré-calculado no cache — sem acesso ao banco de dados.
+     * Ordem: GEOGRAFIA (90) > DEMOGRAFIA (80) > POLÍTICA (70) > ... > BANDEIRA (10)
      *
-     * Ordem: GEOGRAFIA (50) > CULTURA (40) > BANDEIRA (30) > POPULACAO (20) >
-     * ECONOMIA (10)
+     * @param questionId ID da pergunta.
+     * @return valor numérico de prioridade (maior = mais prioritário).
      */
     private int getCategoryPriority(Long questionId) {
         return cache.getQuestionPriority(questionId);
-    }
-
-    /**
-     * Retorna a Entropia de Shannon do conjunto de candidatos atual.
-     * H(n) = log₂(n) para distribuição uniforme.
-     * Usado para logging e análise empírica nas rodadas.
-     */
-    public double getCurrentEntropy(Set<Long> candidates) {
-        return shannonEntropy(candidates.size());
     }
 }

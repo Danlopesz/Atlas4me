@@ -1,5 +1,9 @@
 package atlas4me.entity;
 
+import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.List;
+
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -8,10 +12,11 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import java.time.LocalDateTime;
-import java.util.Collection;
-import java.util.List;
-
+/**
+ * Entidade de usuário da plataforma. Mapeada para a tabela {@code users}.
+ * Implementa {@link UserDetails} para integração com o pipeline de autenticação do Spring Security,
+ * utilizando o e-mail como identificador de usuário ({@code username}).
+ */
 @Entity
 @Table(name = "users")
 @Data
@@ -68,7 +73,6 @@ public class User implements UserDetails {
         updatedAt = LocalDateTime.now();
     }
 
-    // UserDetails Implementation
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));

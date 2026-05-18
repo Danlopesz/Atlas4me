@@ -27,339 +27,380 @@ import java.util.stream.Collectors;
  * - Persistência (GameSession, GameAttempt)
  * - Filtragem de candidatos via KnowledgeBaseCache (100% em RAM)
  * - Delegação ao InferenceEngine para seleção de perguntas
- * - Construção dos DTOs de resposta (GameResponse e GameResponse legado)
+ * - Construção dos DTOs de resposta (GameResponse)
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class GameService {
 
-        // --- Repositórios ---
-        private final GameSessionRepository gameSessionRepository;
-        private final GameAttemptRepository gameAttemptRepository;
-        private final UserRepository userRepository;
-        private final QuestionRepository questionRepository;
-        private final CountryRepository countryRepository;
-        private final CountryFeatureRepository countryFeatureRepository;
+    private static final int INITIAL_SCORE = 100;
+    private static final int QUESTION_PENALTY = 2;
+    private static final int WRONG_GUESS_PENALTY = 10;
+    private static final int CORRECT_GUESS_BONUS = 20;
+    private static final String ANSWER_YES = "SIM";
+    private static final String ANSWER_NO = "NÃO";
 
-        // --- Motor de inferência ---
-        private final KnowledgeBaseCache knowledgeBaseCache;
-        private final InferenceEngine inferenceEngine;
+    private final GameSessionRepository gameSessionRepository;
+    private final GameAttemptRepository gameAttemptRepository;
+    private final UserRepository userRepository;
+    private final QuestionRepository questionRepository;
+    private final CountryRepository countryRepository;
+    private final CountryFeatureRepository countryFeatureRepository;
 
-        // =========================================================================
-        // INÍCIO DO JOGO (mantém GameResponse legado para compatibilidade)
-        // =========================================================================
+    private final KnowledgeBaseCache knowledgeBaseCache;
+    private final InferenceEngine inferenceEngine;
 
-        @Transactional
-        public GameResponse startNewGame(String userEmail, String continent) {
-                User user = null;
+    // =========================================================================
+    // API PÚBLICA
+    // =========================================================================
 
-                if (userEmail != null && !userEmail.equals("guest") && !userEmail.equals("anonymousUser")) {
-                        user = getUserOrThrow(userEmail);
-                        gameSessionRepository.findByUserAndStatus(user, GameStatus.IN_PROGRESS)
-                                        .ifPresent(old -> {
-                                                old.setStatus(GameStatus.ABANDONED);
-                                                old.setFinishedAt(LocalDateTime.now());
-                                                gameSessionRepository.save(old);
-                                        });
-                }
+    /**
+     * Inicia uma nova sessão de jogo, abandonando qualquer sessão ativa anterior.
+     *
+     * @param userEmail e-mail do usuário autenticado, ou "guest"/"anonymousUser" para visitantes.
+     * @param continent continente para filtrar países (reservado para uso futuro).
+     * @return {@link GameResponse} com a primeira pergunta e o estado inicial do jogo.
+     * @throws BusinessException se a base de conhecimento estiver vazia.
+     */
+    @Transactional
+    public GameResponse startNewGame(String userEmail, String continent) {
+        User user = resolveAuthenticatedUser(userEmail);
 
-                GameSession session = createNewSession(user);
-
-                // CORREÇÃO: Usar o método que filtra pelo Cache em vez de findAll()
-                List<Country> allKnownCountries = getRemainingCountries(session);
-
-                if (allKnownCountries.isEmpty()) {
-                        throw new BusinessException(
-                                        "A base de conhecimento está vazia. O Akinator não tem países para adivinhar!");
-                }
-
-                log.info("Iniciando novo jogo com {} paises candidatos.", allKnownCountries.size());
-
-                QuestionResponse firstQuestion = selectNextQuestion(session, allKnownCountries);
-                return buildGameResponse(session, allKnownCountries, "Pense em um país... Eu vou adivinhar!",
-                                firstQuestion);
+        if (user != null) {
+            abandonActiveSession(user);
         }
 
-        // =========================================================================
-        // RESPOSTA (novo GameResponse)
-        // =========================================================================
+        GameSession session = createNewSession(user);
+        List<Country> allKnownCountries = getRemainingCountries(session);
 
-        @Transactional
-        public GameResponse submitAnswer(String userEmail, GameAnswerRequest request) {
-                GameSession session = resolveSession(request.getGameId(), GameStatus.IN_PROGRESS);
-
-                processAttempt(session, request);
-
-                List<Country> remainingCountries = getRemainingCountries(session);
-
-                if (remainingCountries.isEmpty()) {
-                        session.finish(GameStatus.HUMAN_WON);
-                        gameSessionRepository.save(session);
-                        return buildGameResponse(session, remainingCountries,
-                                        "Ops! Não sobrou nenhum país. Você me enganou!",
-                                        null);
-                }
-
-                if (remainingCountries.size() == 1) {
-                        session.setTargetCountry(remainingCountries.get(0));
-                        session.finish(GameStatus.GUESSING);
-                        gameSessionRepository.save(session);
-                        return buildGameResponse(session, remainingCountries,
-                                        "Acho que já sei! É o " + remainingCountries.get(0).getNamePt() + "?", null);
-                }
-
-                session.setScore(Math.max(0, session.getScore() - 2));
-                QuestionResponse nextQuestion = selectNextQuestion(session, remainingCountries);
-                gameSessionRepository.save(session);
-                return buildGameResponse(session, remainingCountries, "Hmm... Próxima pergunta!", nextQuestion);
+        if (allKnownCountries.isEmpty()) {
+            throw new BusinessException("A base de conhecimento está vazia. O Akinator não tem países para adivinhar!");
         }
 
-        // =========================================================================
-        // FEEDBACK DE PALPITE — endpoint unificado /guess-feedback
-        // =========================================================================
+        log.info("Iniciando novo jogo com {} países candidatos.", allKnownCountries.size());
 
-        @Transactional
-        public GameResponse processGuessFeedback(String userEmail, GuessFeedbackRequest request) {
-                GameSession session = resolveSession(request.gameId(), GameStatus.GUESSING);
+        QuestionResponse firstQuestion = selectNextQuestion(session, allKnownCountries);
+        return buildGameResponse(session, allKnownCountries, "Pense em um país... Eu vou adivinhar!", firstQuestion);
+    }
 
-                if (request.correct()) {
-                        // Robô acertou
-                        session.finish(GameStatus.ROBOT_WON);
-                        session.setScore(session.getScore() + 20);
-                        gameSessionRepository.save(session);
-                        return buildGameResponse(session, List.of(session.getTargetCountry()),
-                                        "Eu sabia! Sou um gênio da geografia! 🗺️", null);
-                }
+    /**
+     * Processa a resposta do usuário a uma pergunta e avança o estado da inferência.
+     *
+     * @param userEmail e-mail do usuário autenticado.
+     * @param request   dados da resposta, incluindo ID do jogo, ID da pergunta e valor booleano.
+     * @return {@link GameResponse} com a próxima pergunta ou o palpite final do robô.
+     */
+    @Transactional
+    public GameResponse submitAnswer(String userEmail, GameAnswerRequest request) {
+        GameSession session = resolveSession(request.getGameId(), GameStatus.IN_PROGRESS);
 
-                // Robô errou: descarta candidato e retoma inferência
-                session.addRejectedCountry(session.getTargetCountry());
-                session.setTargetCountry(null);
-                session.setScore(Math.max(0, session.getScore() - 10));
+        processAttempt(session, request);
 
-                List<Country> remaining = getRemainingCountries(session);
+        List<Country> remainingCountries = getRemainingCountries(session);
 
-                if (remaining.isEmpty()) {
-                        session.finish(GameStatus.WAITING_FOR_REVEAL);
-                        gameSessionRepository.save(session);
-                        return buildGameResponse(session, remaining,
-                                        "Ok, você me pegou! Qual país você pensou?", null);
-                }
-
-                session.setStatus(GameStatus.IN_PROGRESS);
-                QuestionResponse nextQuestion = selectNextQuestion(session, remaining);
-                gameSessionRepository.save(session);
-                return buildGameResponse(session, remaining, "Entendi, não é esse. Vamos continuar!", nextQuestion);
+        if (remainingCountries.isEmpty()) {
+            session.finish(GameStatus.HUMAN_WON);
+            gameSessionRepository.save(session);
+            return buildGameResponse(session, remainingCountries, "Ops! Não sobrou nenhum país. Você me enganou!", null);
         }
 
-        // =========================================================================
-        // HISTÓRICO (mantém GameResponse legado)
-        // =========================================================================
-
-        public List<GameResponse> getUserGameHistory(String userEmail) {
-                if (userEmail == null || userEmail.equals("guest") || userEmail.equals("anonymousUser")) {
-                        return new ArrayList<>();
-                }
-                User user = getUserOrThrow(userEmail);
-                return gameSessionRepository.findHistoryByUser(user).stream()
-                                .map(game -> GameResponse.builder()
-                                                .gameId(game.getId())
-                                                .status(game.getStatus().name())
-                                                .score(game.getScore())
-                                                .attempts(game.getAttempts())
-                                                .won(game.getWon())
-                                                .startedAt(game.getStartedAt())
-                                                .finishedAt(game.getFinishedAt())
-                                                .targetCountry(game.getTargetCountry() != null
-                                                                ? game.getTargetCountry().getNamePt()
-                                                                : null)
-                                                .feedback("Histórico")
-                                                .questionText("Histórico")
-                                                .build())
-                                .collect(Collectors.toList());
+        if (remainingCountries.size() == 1) {
+            session.setTargetCountry(remainingCountries.get(0));
+            session.finish(GameStatus.GUESSING);
+            gameSessionRepository.save(session);
+            return buildGameResponse(session, remainingCountries,
+                    "Acho que já sei! É o " + remainingCountries.get(0).getNamePt() + "?", null);
         }
 
-        // =========================================================================
-        // REVEAL (mantém GameResponse legado)
-        // =========================================================================
+        session.setScore(Math.max(0, session.getScore() - QUESTION_PENALTY));
+        QuestionResponse nextQuestion = selectNextQuestion(session, remainingCountries);
+        gameSessionRepository.save(session);
+        return buildGameResponse(session, remainingCountries, "Hmm... Próxima pergunta!", nextQuestion);
+    }
 
-        @Transactional
-        public GameResponse revealAnswer(String userEmail, Long realCountryId, Long gameId) {
-                GameSession session = resolveSession(gameId, GameStatus.WAITING_FOR_REVEAL);
+    /**
+     * Processa o feedback do usuário sobre o palpite do robô.
+     * Se correto, encerra com vitória do robô. Se errado, descarta o candidato e retoma a inferência.
+     *
+     * @param userEmail e-mail do usuário autenticado.
+     * @param request   feedback indicando se o palpite foi correto.
+     * @return {@link GameResponse} com o resultado ou a próxima pergunta.
+     */
+    @Transactional
+    public GameResponse processGuessFeedback(String userEmail, GuessFeedbackRequest request) {
+        GameSession session = resolveSession(request.gameId(), GameStatus.GUESSING);
 
-                Country realCountry = countryRepository.findById(realCountryId)
-                                .orElseThrow(() -> new ResourceNotFoundException("País desconhecido."));
-
-                List<String> mistakes = new ArrayList<>();
-                for (GameAttempt attempt : session.getGameAttempts()) {
-                        Question q = attempt.getQuestion();
-                        boolean userAnswer = attempt.getUserAnswer();
-                        boolean realFact = countryFeatureRepository
-                                        .findByCountryAndQuestion(realCountry, q)
-                                        .map(CountryFeature::getIsTrue)
-                                        .orElse(false);
-
-                        attempt.setIsCorrect(userAnswer == realFact);
-                        if (userAnswer != realFact) {
-                                String truth = realFact ? "SIM" : "NÃO";
-                                String youSaid = userAnswer ? "SIM" : "NÃO";
-                                mistakes.add("Na pergunta '" + q.getQuestionPt() + "', você respondeu " + youSaid
-                                                + ", mas para " + realCountry.getNamePt() + " é " + truth + ".");
-                        }
-                }
-
-                session.setTargetCountry(realCountry);
-                session.setStatus(GameStatus.FINISHED_REVEALED);
-                session.setFinishedAt(LocalDateTime.now());
-                gameSessionRepository.save(session);
-
-                String finalMessage = mistakes.isEmpty()
-                                ? "Uau! Você jogou perfeitamente e eu não tinha esse país no meu radar."
-                                : "Ahá! Descobri por que eu errei:\n" + String.join("\n", mistakes);
-
-                return GameResponse.builder()
-                                .gameId(session.getId())
-                                .status("REPORT")
-                                .targetCountry(realCountry.getNamePt())
-                                .feedback(finalMessage)
-                                .questionText(finalMessage)
-                                .build();
+        if (request.correct()) {
+            session.finish(GameStatus.ROBOT_WON);
+            session.setScore(session.getScore() + CORRECT_GUESS_BONUS);
+            gameSessionRepository.save(session);
+            return buildGameResponse(session, List.of(session.getTargetCountry()),
+                    "Eu sabia! Sou um gênio da geografia! 🗺️", null);
         }
 
-        // =========================================================================
-        // FILTRAGEM OTIMIZADA — 100% em RAM via KnowledgeBaseCache
-        // =========================================================================
+        session.addRejectedCountry(session.getTargetCountry());
+        session.setTargetCountry(null);
+        session.setScore(Math.max(0, session.getScore() - WRONG_GUESS_PENALTY));
 
-        private List<Country> getRemainingCountries(GameSession session) {
-                // 1. Universo inicial de IDs do cache (sem query ao banco)
-                Set<Long> candidateIds = new HashSet<>(knowledgeBaseCache.getCountryQuestionMatrix().keySet());
+        List<Country> remainingCountries = getRemainingCountries(session);
 
-                // 2. Interseção progressiva por resposta — O(n) por tentativa
-                for (GameAttempt attempt : session.getGameAttempts()) {
-                        Long qId = attempt.getQuestion().getId();
-                        boolean userAnswer = attempt.getUserAnswer();
-                        Set<Long> compatible = userAnswer
-                                        ? knowledgeBaseCache.getTrueCountries(qId)
-                                        : knowledgeBaseCache.getFalseCountries(qId);
-                        candidateIds.retainAll(compatible);
-                }
-
-                // 3. Remove países já descartados por palpites errados
-                if (!session.getRejectedCountries().isEmpty()) {
-                        Set<Long> rejectedIds = session.getRejectedCountries().stream()
-                                        .map(Country::getId)
-                                        .collect(Collectors.toSet());
-                        candidateIds.removeAll(rejectedIds);
-                }
-
-                // 4. Única ida ao banco: WHERE id IN (...) usando os IDs restantes
-                return countryRepository.findAllById(candidateIds);
+        if (remainingCountries.isEmpty()) {
+            session.finish(GameStatus.WAITING_FOR_REVEAL);
+            gameSessionRepository.save(session);
+            return buildGameResponse(session, remainingCountries, "Ok, você me pegou! Qual país você pensou?", null);
         }
 
-        // =========================================================================
-        // SELEÇÃO DE PRÓXIMA PERGUNTA UNIFICADA
-        // =========================================================================
+        session.setStatus(GameStatus.IN_PROGRESS);
+        QuestionResponse nextQuestion = selectNextQuestion(session, remainingCountries);
+        gameSessionRepository.save(session);
+        return buildGameResponse(session, remainingCountries, "Entendi, não é esse. Vamos continuar!", nextQuestion);
+    }
 
-        private QuestionResponse selectNextQuestion(GameSession session, List<Country> remainingCountries) {
-                Set<Long> candidateIds = remainingCountries.stream()
-                                .map(Country::getId)
-                                .collect(Collectors.toSet());
-                Set<Long> askedIds = session.getGameAttempts().stream()
-                                .map(a -> a.getQuestion().getId())
-                                .collect(Collectors.toSet());
-                double entropy = inferenceEngine.getCurrentEntropy(candidateIds);
-                log.info("Registro: {} países restantes, {} perguntas já feitas. H(C) = {} bits.",
-                                candidateIds.size(), askedIds.size(), String.format("%.4f", entropy));
-                Long bestId = inferenceEngine.selectBestQuestion(new GameState(candidateIds, askedIds));
-                if (bestId == null) {
-                        log.error("Atlas retornou nulo! Provavelmente ocorreu um empate total ou poda lógica excessiva.");
-                        throw new BusinessException("Sem mais perguntas disponíveis.");
-                }
-                Question bestQ = questionRepository.findById(bestId)
-                                .orElseThrow(() -> new ResourceNotFoundException("Pergunta não encontrada: " + bestId));
+    /**
+     * Retorna o histórico de sessões encerradas do usuário autenticado.
+     *
+     * @param userEmail e-mail do usuário autenticado.
+     * @return lista de {@link GameResponse} representando partidas anteriores, ou lista vazia para visitantes.
+     */
+    public List<GameResponse> getUserGameHistory(String userEmail) {
+        if (isGuestUser(userEmail)) {
+            return new ArrayList<>();
+        }
+        User user = getUserOrThrow(userEmail);
+        return gameSessionRepository.findHistoryByUser(user).stream()
+                .map(this::mapSessionToHistoryResponse)
+                .collect(Collectors.toList());
+    }
 
-                // validIsoCodes: ISO Codes dos candidatos restantes que responderiam SIM
-                Set<Long> trueIds = knowledgeBaseCache.getTrueCountries(bestId);
-                List<String> validIsoCodes = remainingCountries.stream()
-                                .filter(c -> trueIds.contains(c.getId()))
-                                .map(Country::getIsoCode)
-                                .collect(Collectors.toList());
+    /**
+     * Revela o país real pensado pelo usuário e gera um relatório de discrepâncias de inferência.
+     *
+     * @param userEmail     e-mail do usuário autenticado.
+     * @param realCountryId ID do país revelado pelo usuário.
+     * @param gameId        ID da sessão de jogo.
+     * @return {@link GameResponse} com status REPORT e as discrepâncias encontradas.
+     * @throws ResourceNotFoundException se o país informado não existir na base.
+     */
+    @Transactional
+    public GameResponse revealAnswer(String userEmail, Long realCountryId, Long gameId) {
+        GameSession session = resolveSession(gameId, GameStatus.WAITING_FOR_REVEAL);
 
-                return new QuestionResponse(bestQ.getId(), bestQ.getQuestionPt(), bestQ.getCategory(),
-                                validIsoCodes);
+        Country realCountry = countryRepository.findById(realCountryId)
+                .orElseThrow(() -> new ResourceNotFoundException("País desconhecido."));
+
+        List<String> mistakes = collectMistakes(session, realCountry);
+
+        session.setTargetCountry(realCountry);
+        session.setStatus(GameStatus.FINISHED_REVEALED);
+        session.setFinishedAt(LocalDateTime.now());
+        gameSessionRepository.save(session);
+
+        String finalMessage = mistakes.isEmpty()
+                ? "Uau! Você jogou perfeitamente e eu não tinha esse país no meu radar."
+                : "Ahá! Descobri por que eu errei:\n" + String.join("\n", mistakes);
+
+        return GameResponse.builder()
+                .gameId(session.getId())
+                .status("REPORT")
+                .targetCountry(realCountry.getNamePt())
+                .feedback(finalMessage)
+                .questionText(finalMessage)
+                .build();
+    }
+
+    // =========================================================================
+    // INFERÊNCIA E FILTRAGEM
+    // =========================================================================
+
+    private List<Country> getRemainingCountries(GameSession session) {
+        Set<Long> candidateIds = new HashSet<>(knowledgeBaseCache.getCountryQuestionMatrix().keySet());
+
+        for (GameAttempt attempt : session.getGameAttempts()) {
+            Long questionId = attempt.getQuestion().getId();
+            Set<Long> compatibleIds = attempt.getUserAnswer()
+                    ? knowledgeBaseCache.getTrueCountries(questionId)
+                    : knowledgeBaseCache.getFalseCountries(questionId);
+            candidateIds.retainAll(compatibleIds);
         }
 
-        // =========================================================================
-        // BUILDER UNIFICADO DE RESPOSTA
-        // =========================================================================
-
-        private GameResponse buildGameResponse(GameSession session, List<Country> remaining,
-                        String feedback, QuestionResponse nextQ) {
-                String robotGuess = session.getTargetCountry() != null
-                                ? session.getTargetCountry().getNamePt()
-                                : null;
-
-                List<String> remainingIsos = remaining != null
-                                ? remaining.stream().map(Country::getIsoCode).collect(Collectors.toList())
-                                : new ArrayList<>();
-
-                return GameResponse.builder()
-                                .gameId(session.getId())
-                                .status(session.getStatus().name())
-                                .score(session.getScore())
-                                .attempts(session.getAttempts())
-                                .won(session.getWon())
-                                .startedAt(session.getStartedAt())
-                                .finishedAt(session.getFinishedAt())
-                                .targetCountry(robotGuess)
-                                .remainingCountries(remainingIsos)
-                                .nextQuestion(nextQ)
-                                .feedback(feedback)
-                                .questionText(feedback) // retrocompatibilidade
-                                .build();
+        if (!session.getRejectedCountries().isEmpty()) {
+            Set<Long> rejectedIds = session.getRejectedCountries().stream()
+                    .map(Country::getId)
+                    .collect(Collectors.toSet());
+            candidateIds.removeAll(rejectedIds);
         }
 
-        // =========================================================================
-        // HELPERS
-        // =========================================================================
+        return countryRepository.findAllById(candidateIds);
+    }
 
-        private GameSession resolveSession(Long gameId, GameStatus expectedStatus) {
-                GameSession session = gameSessionRepository.findById(gameId)
-                                .orElseThrow(() -> new BusinessException("Jogo não encontrado com ID: " + gameId));
-                if (session.getStatus() != expectedStatus) {
-                        throw new BusinessException(
-                                        "Sessão em estado inválido. Esperado: " + expectedStatus
-                                                        + ", atual: " + session.getStatus());
-                }
-                return session;
+    private QuestionResponse selectNextQuestion(GameSession session, List<Country> remainingCountries) {
+        Set<Long> candidateIds = remainingCountries.stream()
+                .map(Country::getId)
+                .collect(Collectors.toSet());
+        Set<Long> askedIds = session.getGameAttempts().stream()
+                .map(attempt -> attempt.getQuestion().getId())
+                .collect(Collectors.toSet());
+
+        double entropy = inferenceEngine.getCurrentEntropy(candidateIds);
+        Long bestQuestionId = inferenceEngine.selectBestQuestion(new GameState(candidateIds, askedIds));
+
+        if (bestQuestionId == null) {
+            log.error("InferenceEngine retornou nulo. Possível empate total ou poda lógica excessiva.");
+            throw new BusinessException("Sem mais perguntas disponíveis.");
         }
 
-        private void processAttempt(GameSession session, GameAnswerRequest request) {
-                Question question = questionRepository.findById(request.getQuestionId())
-                                .orElseThrow(() -> new ResourceNotFoundException("Pergunta inválida"));
-                GameAttempt attempt = new GameAttempt();
-                attempt.setGameSession(session);
-                attempt.setQuestion(question);
-                attempt.setUserAnswer(request.getAnswer());
-                attempt.setAttemptedAt(LocalDateTime.now());
-                gameAttemptRepository.save(attempt);
-                session.setAttempts(session.getAttempts() + 1);
-                session.getGameAttempts().add(attempt);
-        }
+        Question bestQuestion = questionRepository.findById(bestQuestionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Pergunta não encontrada: " + bestQuestionId));
 
-        private GameSession createNewSession(User user) {
-                GameSession session = new GameSession();
-                session.setUser(user);
-                session.setTargetCountry(null);
-                session.setScore(100);
-                session.setAttempts(0);
-                session.setStatus(GameStatus.IN_PROGRESS);
-                session.setStartedAt(LocalDateTime.now());
-                return gameSessionRepository.save(session);
-        }
+        log.info("Registro: {} países restantes, {} perguntas já feitas. H(C) = {} bits. Pergunta: '{}'",
+                candidateIds.size(), askedIds.size(), String.format("%.4f", entropy),
+                bestQuestion.getQuestionPt());
 
-        private User getUserOrThrow(String email) {
-                return userRepository.findByEmailAndActiveTrue(email)
-                                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado"));
+        Set<Long> trueIds = knowledgeBaseCache.getTrueCountries(bestQuestionId);
+        List<String> validIsoCodes = remainingCountries.stream()
+                .filter(country -> trueIds.contains(country.getId()))
+                .map(Country::getIsoCode)
+                .collect(Collectors.toList());
+
+        return new QuestionResponse(bestQuestion.getId(), bestQuestion.getQuestionPt(),
+                bestQuestion.getCategory(), validIsoCodes);
+    }
+
+    // =========================================================================
+    // BUILDERS E MAPEADORES
+    // =========================================================================
+
+    private GameResponse buildGameResponse(GameSession session, List<Country> remaining,
+            String feedback, QuestionResponse nextQuestion) {
+        String robotGuess = session.getTargetCountry() != null
+                ? session.getTargetCountry().getNamePt()
+                : null;
+
+        List<String> remainingIsoCodes = remaining != null
+                ? remaining.stream().map(Country::getIsoCode).collect(Collectors.toList())
+                : new ArrayList<>();
+
+        return GameResponse.builder()
+                .gameId(session.getId())
+                .status(session.getStatus().name())
+                .score(session.getScore())
+                .attempts(session.getAttempts())
+                .won(session.getWon())
+                .startedAt(session.getStartedAt())
+                .finishedAt(session.getFinishedAt())
+                .targetCountry(robotGuess)
+                .remainingCountries(remainingIsoCodes)
+                .nextQuestion(nextQuestion)
+                .feedback(feedback)
+                .questionText(feedback)
+                .build();
+    }
+
+    private GameResponse mapSessionToHistoryResponse(GameSession session) {
+        return GameResponse.builder()
+                .gameId(session.getId())
+                .status(session.getStatus().name())
+                .score(session.getScore())
+                .attempts(session.getAttempts())
+                .won(session.getWon())
+                .startedAt(session.getStartedAt())
+                .finishedAt(session.getFinishedAt())
+                .targetCountry(session.getTargetCountry() != null ? session.getTargetCountry().getNamePt() : null)
+                .feedback("Histórico")
+                .questionText("Histórico")
+                .build();
+    }
+
+    // =========================================================================
+    // HELPERS
+    // =========================================================================
+
+    private List<String> collectMistakes(GameSession session, Country realCountry) {
+        List<String> mistakes = new ArrayList<>();
+        for (GameAttempt attempt : session.getGameAttempts()) {
+            Question question = attempt.getQuestion();
+            boolean userAnswer = attempt.getUserAnswer();
+            boolean expectedAnswer = countryFeatureRepository
+                    .findByCountryAndQuestion(realCountry, question)
+                    .map(CountryFeature::getIsTrue)
+                    .orElse(false);
+
+            attempt.setIsCorrect(userAnswer == expectedAnswer);
+
+            if (userAnswer != expectedAnswer) {
+                mistakes.add(buildMistakeMessage(question, userAnswer, expectedAnswer, realCountry));
+            }
         }
+        return mistakes;
+    }
+
+    private String buildMistakeMessage(Question question, boolean userAnswer,
+            boolean expectedAnswer, Country country) {
+        return "Na pergunta '" + question.getQuestionPt() + "', você respondeu " + toAnswerLabel(userAnswer)
+                + ", mas para " + country.getNamePt() + " é " + toAnswerLabel(expectedAnswer) + ".";
+    }
+
+    private void abandonActiveSession(User user) {
+        gameSessionRepository.findByUserAndStatus(user, GameStatus.IN_PROGRESS)
+                .ifPresent(existingSession -> {
+                    existingSession.setStatus(GameStatus.ABANDONED);
+                    existingSession.setFinishedAt(LocalDateTime.now());
+                    gameSessionRepository.save(existingSession);
+                });
+    }
+
+    private GameSession resolveSession(Long gameId, GameStatus expectedStatus) {
+        GameSession session = gameSessionRepository.findById(gameId)
+                .orElseThrow(() -> new BusinessException("Jogo não encontrado com ID: " + gameId));
+        if (session.getStatus() != expectedStatus) {
+            throw new BusinessException(
+                    "Sessão em estado inválido. Esperado: " + expectedStatus + ", atual: " + session.getStatus());
+        }
+        return session;
+    }
+
+    private void processAttempt(GameSession session, GameAnswerRequest request) {
+        Question question = questionRepository.findById(request.getQuestionId())
+                .orElseThrow(() -> new ResourceNotFoundException("Pergunta inválida"));
+        GameAttempt attempt = new GameAttempt();
+        attempt.setGameSession(session);
+        attempt.setQuestion(question);
+        attempt.setUserAnswer(request.getAnswer());
+        attempt.setAttemptedAt(LocalDateTime.now());
+        gameAttemptRepository.save(attempt);
+        session.setAttempts(session.getAttempts() + 1);
+        session.getGameAttempts().add(attempt);
+    }
+
+    private GameSession createNewSession(User user) {
+        GameSession session = new GameSession();
+        session.setUser(user);
+        session.setTargetCountry(null);
+        session.setScore(INITIAL_SCORE);
+        session.setAttempts(0);
+        session.setStatus(GameStatus.IN_PROGRESS);
+        session.setStartedAt(LocalDateTime.now());
+        return gameSessionRepository.save(session);
+    }
+
+    private User resolveAuthenticatedUser(String userEmail) {
+        if (isGuestUser(userEmail)) {
+            return null;
+        }
+        return getUserOrThrow(userEmail);
+    }
+
+    private User getUserOrThrow(String email) {
+        return userRepository.findByEmailAndActiveTrue(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado"));
+    }
+
+    private boolean isGuestUser(String userEmail) {
+        return userEmail == null || userEmail.equals("guest") || userEmail.equals("anonymousUser");
+    }
+
+    private String toAnswerLabel(boolean answer) {
+        return answer ? ANSWER_YES : ANSWER_NO;
+    }
 }

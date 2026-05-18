@@ -1,16 +1,25 @@
 package atlas4me.entity;
 
-import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+/**
+ * Entidade que representa uma sessão de jogo completa — do início até o encerramento.
+ * Mapeada para a tabela {@code game_sessions}.
+ *
+ * Utiliza Optimistic Locking via {@code @Version} para rejeitar requisições
+ * simultâneas que tentem modificar a mesma sessão, evitando condições de corrida
+ * causadas por cliques duplos ou abas duplicadas.
+ */
 @Entity
 @Table(name = "game_sessions")
 @Data
@@ -25,7 +34,7 @@ public class GameSession {
     /**
      * Controle de Concorrência Otimista (Optimistic Locking).
      * Se dois requests tentarem modificar a mesma sessão simultaneamente,
-     * o segundo lançará ObjectOptimisticLockingFailureException → HTTP 409.
+     * o segundo lançará {@code ObjectOptimisticLockingFailureException} → HTTP 409.
      */
     @Version
     private Long version;
@@ -74,17 +83,31 @@ public class GameSession {
         }
     }
 
-    /** Retorna true se o HUMANO ganhou — mantido para compatibilidade com GameResponse legado. */
+    /**
+     * Indica se o humano ganhou esta sessão.
+     * Mantido para compatibilidade com {@link atlas4me.dto.response.GameResponse}.
+     *
+     * @return {@code true} se o status for {@link GameStatus#HUMAN_WON}.
+     */
     public Boolean getWon() {
         return this.status == GameStatus.HUMAN_WON;
     }
 
-    /** Retorna true se o jogo foi finalizado (qualquer status diferente de IN_PROGRESS). */
+    /**
+     * Indica se a sessão foi encerrada (qualquer status diferente de {@link GameStatus#IN_PROGRESS}).
+     *
+     * @return {@code true} se o jogo não estiver mais em andamento.
+     */
     public Boolean isFinished() {
         return this.status != GameStatus.IN_PROGRESS;
     }
 
-    /** Finaliza a sessão com o status dado e registra o timestamp. */
+    /**
+     * Encerra a sessão com o status informado e registra o timestamp de finalização.
+     *
+     * @param finalStatus status de encerramento; não pode ser {@link GameStatus#IN_PROGRESS}.
+     * @throws IllegalArgumentException se {@code finalStatus} for {@link GameStatus#IN_PROGRESS}.
+     */
     public void finish(GameStatus finalStatus) {
         if (finalStatus == GameStatus.IN_PROGRESS) {
             throw new IllegalArgumentException("Cannot finish game with IN_PROGRESS status");
@@ -93,6 +116,11 @@ public class GameSession {
         this.finishedAt = LocalDateTime.now();
     }
 
+    /**
+     * Adiciona um país à lista de candidatos descartados por palpite incorreto.
+     *
+     * @param country país a ser descartado do conjunto de candidatos.
+     */
     public void addRejectedCountry(Country country) {
         this.rejectedCountries.add(country);
     }

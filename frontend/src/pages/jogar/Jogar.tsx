@@ -4,6 +4,7 @@ import api from "../../services/api";
 import Navbar from "../../components/navbar/Navbar";
 import CountryCombobox from "../../components/combobox/CountryCombobox";
 import { FlagStrip } from "../../components/flag-strip/FlagStrip";
+import { ZoomTutorialPopup, ZOOM_TIP_STORAGE_KEY } from "../../components/ZoomTutorialPopup";
 import { useConfetti } from "../../hooks/useConfetti";
 import '../../pages/jogar/Jogar.css';
 import axios from 'axios';
@@ -76,6 +77,10 @@ function Jogar({ onIsoUpdate, onIsoReset }: JogarProps) {
     const [questionCategory, setQuestionCategory] = useState<string | null>(null);
     const [cardPulse, setCardPulse] = useState(false);
     const [cardShake, setCardShake] = useState(false);
+    const [questionNumber, setQuestionNumber] = useState(0);
+    const [showZoomTip, setShowZoomTip] = useState<boolean>(
+        () => !localStorage.getItem(ZOOM_TIP_STORAGE_KEY)
+    );
 
     const { fire: fireConfetti } = useConfetti();
 
@@ -135,6 +140,7 @@ function Jogar({ onIsoUpdate, onIsoReset }: JogarProps) {
             const isos = data.nextQuestion.validIsoCodes || [];
             setLocalValidIsoCodes(isos);
             if (onIsoUpdate) onIsoUpdate(isos);
+            setQuestionNumber(prev => prev + 1);
             pulseCard();
 
         } else if (data.status === 'WAITING_FOR_REVEAL' || data.status === 'HUMAN_WON') {
@@ -157,6 +163,8 @@ function Jogar({ onIsoUpdate, onIsoReset }: JogarProps) {
     const handleStartGame = async () => {
         setGameStatus('LOADING');
         setMessage('Estabelecendo conexão via satélite...');
+        setQuestionNumber(0);
+        setShowZoomTip(!localStorage.getItem(ZOOM_TIP_STORAGE_KEY));
         if (onIsoUpdate) onIsoUpdate([]);
         try {
             const r = await api.post('/api/games/start');
@@ -170,6 +178,7 @@ function Jogar({ onIsoUpdate, onIsoReset }: JogarProps) {
 
     const handleAnswer = useCallback(async (answer: boolean) => {
         if (!question?.id) return;
+        setShowZoomTip(false);
         try {
             const r = await api.post('/api/games/answer', { gameId, questionId: question.questionId, answer });
             processResponse(r.data);
@@ -226,6 +235,8 @@ function Jogar({ onIsoUpdate, onIsoReset }: JogarProps) {
         setGameId(null);
         setSelectedCountryId('');
         setLocalValidIsoCodes([]);
+        setQuestionNumber(0);
+        setShowZoomTip(!localStorage.getItem(ZOOM_TIP_STORAGE_KEY));
         if (onIsoUpdate) onIsoUpdate([]);
         setTimeout(() => setMessage('Clique em Iniciar para desafiar o Atlas!'), 0);
     };
@@ -237,6 +248,11 @@ function Jogar({ onIsoUpdate, onIsoReset }: JogarProps) {
         <>
             {/* Navbar global, sempre no topo — pointer-events: auto via CSS */}
             <Navbar />
+
+            {/* Tutorial da primeira pergunta — visível apenas uma vez por partida */}
+            {showZoomTip && questionNumber === 1 && gameStatus === 'PLAYING' && (
+                <ZoomTutorialPopup onClose={() => setShowZoomTip(false)} />
+            )}
 
             {/* Card flutuante de perguntas (glassmorphism, canto esquerdo) */}
             <div className="overlay-panel game-overlay is-visible">

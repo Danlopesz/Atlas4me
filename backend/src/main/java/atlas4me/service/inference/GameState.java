@@ -3,11 +3,12 @@ package atlas4me.service.inference;
 import java.util.Set;
 
 /**
- * Representa o estado imutável da rodada atual.
+ * Estado imutável de uma rodada de inferência.
+ *
+ * @param currentCandidates conjunto de IDs dos países ainda candidatos na sessão atual.
+ * @param askedQuestions    conjunto de IDs das perguntas já realizadas nesta sessão.
  */
 public record GameState(
         Set<Long> currentCandidates,
         Set<Long> askedQuestions
-) {
-    // Records no Java 21 já geram automaticamente construtores, getters, equals, hashCode e toString.
-}
+) {}

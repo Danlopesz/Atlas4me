@@ -1,11 +1,15 @@
 package atlas4me.entity;
 
-import jakarta.persistence.*;
-import lombok.Data;
 import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.*;
+import lombok.Data;
 
+/**
+ * Entidade que representa uma tentativa (resposta a uma pergunta) dentro de uma sessão de jogo.
+ * Mapeada para a tabela {@code game_attempts}.
+ */
 @Entity
 @Table(name = "game_attempts")
 @Data
@@ -20,7 +24,6 @@ public class GameAttempt {
     @JsonIgnore
     private GameSession gameSession;
 
-    // Trocamos String por Objeto Question para saber o ID da pergunta
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "question_id", nullable = false)
     private Question question;
@@ -33,7 +36,7 @@ public class GameAttempt {
 
     @Column(name = "attempted_at", nullable = false)
     private LocalDateTime attemptedAt;
-    
+
     @PrePersist
     protected void onCreate() {
         attemptedAt = LocalDateTime.now();

@@ -19,4 +19,6 @@ public class CountryResponse {
     private String subContinent;
     private String capital;
     private String flagUrl;
+    private Double latitude;
+    private Double longitude;
 }

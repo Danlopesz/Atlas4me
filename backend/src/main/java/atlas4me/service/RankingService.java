@@ -1,76 +1,63 @@
 package atlas4me.service;
 
-import atlas4me.dto.response.RankingEntryResponse;
-import atlas4me.dto.response.RankingResponse;
-import atlas4me.entity.User;
-import atlas4me.repository.GameSessionRepository;
-import atlas4me.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import atlas4me.dto.response.RankingEntryResponse;
+import atlas4me.dto.response.RankingResponse;
+import atlas4me.entity.User;
+import atlas4me.repository.GameSessionRepository;
+import atlas4me.repository.UserRepository;
+
 /**
  * Serviço responsável por montar o ranking global de descobertas.
- * <p>
- * Ranking é ordenado por:
+ *
+ * Critérios de ordenação:
  * 1. Número de países únicos descobertos (DESC)
- * 2. Data da última descoberta (ASC — quem descobriu antes fica à frente no
- * empate)
+ * 2. Data da última descoberta (ASC — quem descobriu antes fica à frente no empate)
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class RankingService {
 
-    private final GameSessionRepository gameSessionRepository;
-    private final UserRepository userRepository;
-
     private static final int TOP_LIMIT = 10;
     private static final int FETCH_LIMIT = 100;
 
+    private final GameSessionRepository gameSessionRepository;
+    private final UserRepository userRepository;
+
     /**
-     * Monta o RankingResponse completo.
+     * Monta o ranking global com top 10 e, se autenticado, a posição individual do usuário.
      *
-     * @param userEmail email do usuário autenticado (null se anônimo)
-     * @return RankingResponse com top 10, posição do usuário e total de jogadores
+     * @param userEmail e-mail do usuário autenticado, ou {@code null} para anônimos.
+     * @return {@link RankingResponse} com top 10, posição individual e total de jogadores ativos.
      */
     @Transactional(readOnly = true)
     public RankingResponse getRanking(String userEmail) {
+        List<RankingEntryResponse> allEntries = loadRankedEntries();
 
-        // 1. Busca os primeiros 100 do ranking
-        List<Object[]> rawData = gameSessionRepository.findRankingData(PageRequest.of(0, FETCH_LIMIT));
-
-        // 2. Mapeia para DTOs com rank sequencial
-        List<RankingEntryResponse> allEntries = new ArrayList<>();
-        for (int i = 0; i < rawData.size(); i++) {
-            Object[] row = rawData.get(i);
-            allEntries.add(mapToEntry(row, i + 1));
-        }
-
-        // 3. Top 10
         List<RankingEntryResponse> topPlayers = allEntries.size() > TOP_LIMIT
                 ? allEntries.subList(0, TOP_LIMIT)
                 : allEntries;
 
-        // 4. Total de jogadores ativos
         Long totalActivePlayers = gameSessionRepository.countActivePlayers();
 
-        // 5. Posição do usuário autenticado
-        RankingEntryResponse currentUserEntry = null;
-        if (userEmail != null && !userEmail.equals("guest") && !userEmail.equals("anonymousUser")) {
-            currentUserEntry = findCurrentUserEntry(userEmail, allEntries);
-        }
+        RankingEntryResponse currentUserEntry = isAuthenticatedUser(userEmail)
+                ? findCurrentUserEntry(userEmail, allEntries)
+                : null;
 
-        log.info("Ranking gerado: {} entradas carregadas, {} jogadores ativos, top 10 de {}",
-                allEntries.size(), totalActivePlayers, topPlayers.size());
+        log.info("Ranking gerado: {} entradas carregadas, {} jogadores ativos, top {} de {}",
+                allEntries.size(), totalActivePlayers, TOP_LIMIT, topPlayers.size());
 
         return RankingResponse.builder()
                 .topPlayers(topPlayers)
@@ -80,8 +67,26 @@ public class RankingService {
     }
 
     /**
-     * Procura o usuário autenticado na lista dos 100 primeiros.
-     * Se não encontrado (rank > 100 ou sem partidas): busca contagem individual.
+     * Busca os primeiros {@code FETCH_LIMIT} do ranking e converte para DTOs com rank sequencial.
+     *
+     * @return lista de {@link RankingEntryResponse} ordenada por posição.
+     */
+    private List<RankingEntryResponse> loadRankedEntries() {
+        List<Object[]> queryResults = gameSessionRepository.findRankingData(PageRequest.of(0, FETCH_LIMIT));
+        List<RankingEntryResponse> entries = new ArrayList<>();
+        for (int i = 0; i < queryResults.size(); i++) {
+            entries.add(mapToEntry(queryResults.get(i), i + 1));
+        }
+        return entries;
+    }
+
+    /**
+     * Procura o usuário nos primeiros {@code FETCH_LIMIT} do ranking.
+     * Se não encontrado, busca contagem individual e retorna entrada sem rank definido.
+     *
+     * @param userEmail  e-mail do usuário a localizar.
+     * @param allEntries lista dos primeiros {@code FETCH_LIMIT} entradas do ranking.
+     * @return {@link RankingEntryResponse} do usuário, ou {@code null} se inativo.
      */
     private RankingEntryResponse findCurrentUserEntry(String userEmail, List<RankingEntryResponse> allEntries) {
         Optional<User> userOpt = userRepository.findByEmailAndActiveTrue(userEmail);
@@ -91,51 +96,49 @@ public class RankingService {
 
         User user = userOpt.get();
 
-        // Procura nos 100 primeiros
         for (RankingEntryResponse entry : allEntries) {
             if (entry.userId().equals(user.getId())) {
                 return entry;
             }
         }
 
-        // Não está nos 100 primeiros: busca dados individuais
         Long discoveredCount = gameSessionRepository.countDiscoveredCountriesByUser(user);
         if (discoveredCount == null || discoveredCount == 0) {
-            // Usuário nunca jogou uma partida legítima
-            String displayName = resolveDisplayName(user);
             return RankingEntryResponse.builder()
                     .rank(null)
                     .userId(user.getId())
-                    .displayName(displayName)
+                    .displayName(resolveDisplayName(user))
                     .discoveredCountries(0L)
                     .lastDiscoveryFormatted(null)
                     .build();
         }
 
-        // Tem partidas mas está fora do top 100
+        // Usuário tem partidas legítimas mas está fora do top FETCH_LIMIT
         LocalDateTime lastDiscovery = gameSessionRepository.findLastDiscoveryDate(user);
-        String displayName = resolveDisplayName(user);
-
         return RankingEntryResponse.builder()
-                .rank(null) // rank desconhecido (fora do top 100)
+                .rank(null)
                 .userId(user.getId())
-                .displayName(displayName)
+                .displayName(resolveDisplayName(user))
                 .discoveredCountries(discoveredCount)
                 .lastDiscoveryFormatted(formatRelativeDate(lastDiscovery))
                 .build();
     }
 
     /**
-     * Mapeia um Object[] da query de ranking para RankingEntryDTO.
-     * Object[] = { userId (Long), firstName (String), email (String),
+     * Mapeia uma linha de resultado da query JPQL para um {@link RankingEntryResponse}.
+     * Estrutura da linha: { userId (Long), firstName (String), email (String),
      * discoveredCount (Long), lastDiscovery (LocalDateTime) }
+     *
+     * @param rankingRow linha de resultado da query de ranking.
+     * @param rank       posição sequencial no ranking (1-based).
+     * @return {@link RankingEntryResponse} montado com rank, nome de exibição e descobertas.
      */
-    private RankingEntryResponse mapToEntry(Object[] row, int rank) {
-        Long userId = (Long) row[0];
-        String firstName = (String) row[1];
-        String email = (String) row[2];
-        Long discoveredCount = (Long) row[3];
-        LocalDateTime lastDiscovery = row[4] != null ? (LocalDateTime) row[4] : null;
+    private RankingEntryResponse mapToEntry(Object[] rankingRow, int rank) {
+        Long userId = (Long) rankingRow[0];
+        String firstName = (String) rankingRow[1];
+        String email = (String) rankingRow[2];
+        Long discoveredCount = (Long) rankingRow[3];
+        LocalDateTime lastDiscovery = (LocalDateTime) rankingRow[4];
 
         String displayName = (firstName != null && !firstName.isBlank())
                 ? firstName
@@ -152,6 +155,10 @@ public class RankingService {
 
     /**
      * Formata uma data em formato relativo legível em português.
+     *
+     * @param dateTime data/hora a ser formatada; aceita {@code null}.
+     * @return string relativa como "há 2 dias", "ontem", "agora mesmo",
+     *         ou {@code null} se a data for nula.
      */
     private String formatRelativeDate(LocalDateTime dateTime) {
         if (dateTime == null) {
@@ -163,18 +170,12 @@ public class RankingService {
         long hours = duration.toHours();
         long days = duration.toDays();
 
-        if (minutes < 1)
-            return "agora mesmo";
-        if (minutes < 60)
-            return "há " + minutes + " min";
-        if (hours < 24)
-            return "há " + hours + (hours == 1 ? " hora" : " horas");
-        if (days == 0)
-            return "hoje";
-        if (days == 1)
-            return "ontem";
-        if (days < 7)
-            return "há " + days + " dias";
+        if (minutes < 1)  return "agora mesmo";
+        if (minutes < 60) return "há " + minutes + " min";
+        if (hours < 24)   return "há " + hours + (hours == 1 ? " hora" : " horas");
+        if (days == 0)    return "hoje";
+        if (days == 1)    return "ontem";
+        if (days < 7)     return "há " + days + " dias";
         if (days < 30) {
             long weeks = days / 7;
             return "há " + weeks + (weeks == 1 ? " semana" : " semanas");
@@ -191,5 +192,9 @@ public class RankingService {
         return (user.getFirstName() != null && !user.getFirstName().isBlank())
                 ? user.getFirstName()
                 : user.getEmail().split("@")[0];
+    }
+
+    private boolean isAuthenticatedUser(String userEmail) {
+        return userEmail != null && !userEmail.equals("guest") && !userEmail.equals("anonymousUser");
     }
 }

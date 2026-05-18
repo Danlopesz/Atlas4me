@@ -1,20 +1,22 @@
 package atlas4me.service.inference;
 
-import atlas4me.entity.CountryFeature;
-import atlas4me.repository.CountryFeatureRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-import org.springframework.context.event.EventListener;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
 import java.util.*;
 
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import atlas4me.entity.CountryFeature;
+import atlas4me.repository.CountryFeatureRepository;
+
 /**
- * Carrega a tabela country_features (País × Pergunta → Booleano) inteira
+ * Carrega a tabela {@code country_features} (País × Pergunta → Booleano) inteira
  * em memória uma única vez na inicialização da aplicação.
  *
- * Expõe índices invertidos otimizados para o InferenceEngine e mapas
+ * Expõe índices invertidos otimizados para o {@link InferenceEngine} e mapas
  * de prioridade de categoria para desempate inteligente.
  */
 @Slf4j
@@ -24,25 +26,28 @@ public class KnowledgeBaseCache {
 
     private final CountryFeatureRepository countryFeatureRepository;
 
-    // Índice invertido por pergunta → Set de países que respondem SIM
+    // Índice invertido por pergunta → países que respondem SIM
     private final Map<Long, Set<Long>> questionToTrueCountries = new HashMap<>();
 
-    // Índice invertido por pergunta → Set de países que respondem NÃO
+    // Índice invertido por pergunta → países que respondem NÃO
     private final Map<Long, Set<Long>> questionToFalseCountries = new HashMap<>();
 
-    // Mapa completo: país → pergunta → booleano (compatível com GameService
-    // existente)
+    // Matriz completa: país → pergunta → booleano
     private final Map<Long, Map<Long, Boolean>> countryQuestionMatrix = new HashMap<>();
 
-    // Mapa de prioridade das perguntas baseado na categoria (usado para desempate)
+    // Prioridade numérica de cada pergunta, pré-calculada na carga (evita recálculo por partida)
     private final Map<Long, Integer> questionPriorities = new HashMap<>();
 
     // Conjunto de todas as perguntas indexadas
     private final Set<Long> allQuestionIds = new HashSet<>();
 
-    // Índice otimizado para a UI
+    // Índice de ISO codes por pergunta → países que respondem SIM (utilizado pelo frontend)
     private final Map<Long, List<String>> questionToTrueIsoCodes = new HashMap<>();
 
+    /**
+     * Carrega todas as features do banco em memória ao iniciar a aplicação.
+     * Constrói os índices invertidos e a matriz completa em uma única passagem sobre os dados.
+     */
     @EventListener(ApplicationReadyEvent.class)
     @Transactional(readOnly = true)
     public void initCache() {
@@ -57,30 +62,17 @@ public class KnowledgeBaseCache {
             String isoCode = feature.getCountry().getIsoCode();
 
             allQuestionIds.add(questionId);
-
-            // Calcula e armazena a prioridade da pergunta (putIfAbsent evita recálculo)
+            // putIfAbsent evita recalcular a prioridade para a mesma pergunta em múltiplas features
             questionPriorities.putIfAbsent(questionId, calculateCategoryPriority(category));
 
-            // Índice invertido (usado pelo InferenceEngine)
             if (isTrue) {
-                questionToTrueCountries
-                        .computeIfAbsent(questionId, k -> new HashSet<>())
-                        .add(countryId);
-
-                // Popula o índice de ISO codes para o frontend
-                questionToTrueIsoCodes
-                        .computeIfAbsent(questionId, k -> new ArrayList<>())
-                        .add(isoCode);
+                questionToTrueCountries.computeIfAbsent(questionId, k -> new HashSet<>()).add(countryId);
+                questionToTrueIsoCodes.computeIfAbsent(questionId, k -> new ArrayList<>()).add(isoCode);
             } else {
-                questionToFalseCountries
-                        .computeIfAbsent(questionId, k -> new HashSet<>())
-                        .add(countryId);
+                questionToFalseCountries.computeIfAbsent(questionId, k -> new HashSet<>()).add(countryId);
             }
 
-            // Matriz completa (usado pelo GameService para filtrar e auditar)
-            countryQuestionMatrix
-                    .computeIfAbsent(countryId, k -> new HashMap<>())
-                    .put(questionId, isTrue);
+            countryQuestionMatrix.computeIfAbsent(countryId, k -> new HashMap<>()).put(questionId, isTrue);
         }
 
         log.info("Cérebro carregado! {} perguntas, {} features indexadas na RAM.",
@@ -88,64 +80,90 @@ public class KnowledgeBaseCache {
     }
 
     /**
-     * Define o peso numérico da categoria (maior = mais prioritário).
-     * Utiliza switch expression do Java 21.
+     * Define o peso numérico da categoria para desempate de perguntas com IG igual.
+     * Maior valor = maior prioridade na seleção.
+     *
+     * @param category nome da categoria em português (case-insensitive).
+     * @return valor numérico de prioridade; 0 para categorias desconhecidas.
      */
     private int calculateCategoryPriority(String category) {
-        if (category == null)
-            return 0;
+        if (category == null) return 0;
 
         return switch (category.toUpperCase()) {
-            case "GEOGRAFIA" -> 90;
-            case "DEMOGRAFIA" -> 80;
+            case "GEOGRAFIA"            -> 90;
+            case "DEMOGRAFIA"           -> 80;
             case "POLITICA", "POLÍTICA" -> 70;
-            case "ECONOMIA" -> 60;
-            case "LINGUAGEM" -> 50;
+            case "ECONOMIA"             -> 60;
+            case "LINGUAGEM"            -> 50;
             case "RELIGIAO", "RELIGIÃO" -> 40;
-            case "CULTURA" -> 30;
+            case "CULTURA"              -> 30;
             case "HISTORIA", "HISTÓRIA" -> 20;
-            case "BANDEIRA" -> 10;
-            default -> 0;
+            case "BANDEIRA"             -> 10;
+            default                     -> 0;
         };
     }
 
-    // --- API de Cache para a UI ---
+    // -------------------------------------------------------------------------
+    // API pública
+    // -------------------------------------------------------------------------
 
     /**
-     * Retorna a lista de ISO Codes dos países que respondem SIM à pergunta em tempo
-     * O(1).
+     * IDs dos países que respondem SIM à pergunta, em O(1).
+     *
+     * @param questionId ID da pergunta.
+     * @return conjunto de IDs; conjunto vazio se a pergunta não estiver indexada.
+     */
+    public Set<Long> getTrueCountries(Long questionId) {
+        return questionToTrueCountries.getOrDefault(questionId, Collections.emptySet());
+    }
+
+    /**
+     * IDs dos países que respondem NÃO à pergunta, em O(1).
+     *
+     * @param questionId ID da pergunta.
+     * @return conjunto de IDs; conjunto vazio se a pergunta não estiver indexada.
+     */
+    public Set<Long> getFalseCountries(Long questionId) {
+        return questionToFalseCountries.getOrDefault(questionId, Collections.emptySet());
+    }
+
+    /**
+     * Prioridade de desempate da pergunta baseada em sua categoria.
+     *
+     * @param questionId ID da pergunta.
+     * @return valor numérico de prioridade; 0 se não indexada.
+     */
+    public int getQuestionPriority(Long questionId) {
+        return questionPriorities.getOrDefault(questionId, 0);
+    }
+
+    /**
+     * Conjunto imutável com todos os IDs de perguntas indexados no cache.
+     *
+     * @return conjunto somente-leitura de IDs de perguntas.
+     */
+    public Set<Long> getAllQuestionIds() {
+        return Collections.unmodifiableSet(allQuestionIds);
+    }
+
+    /**
+     * ISO Codes dos países que respondem SIM à pergunta, em O(1).
+     * Utilizado pelo frontend para colorir o globo interativo.
+     *
+     * @param questionId ID da pergunta.
+     * @return lista de ISO codes; lista vazia se a pergunta não estiver indexada.
      */
     public List<String> getIsoCodesForTrueAnswers(Long questionId) {
         return questionToTrueIsoCodes.getOrDefault(questionId, Collections.emptyList());
     }
 
-    // --- API para o InferenceEngine ---
-
-    /** IDs dos países que respondem SIM à pergunta. */
-    public Set<Long> getTrueCountries(Long questionId) {
-        return questionToTrueCountries.getOrDefault(questionId, Collections.emptySet());
-    }
-
-    /** IDs dos países que respondem NÃO à pergunta. */
-    public Set<Long> getFalseCountries(Long questionId) {
-        return questionToFalseCountries.getOrDefault(questionId, Collections.emptySet());
-    }
-
-    /** Retorna a prioridade da pergunta baseada em sua categoria. */
-    public int getQuestionPriority(Long questionId) {
-        return questionPriorities.getOrDefault(questionId, 0);
-    }
-
-    /** Conjunto imutável com todos os IDs de perguntas indexados. */
-    public Set<Long> getAllQuestionIds() {
-        return Collections.unmodifiableSet(allQuestionIds);
-    }
-
-    // --- API para o GameService (compatibilidade com lógica existente) ---
-
     /**
      * Resposta booleana de um país para uma pergunta específica.
-     * Retorna false se a combinação não estiver no banco.
+     *
+     * @param countryId  ID do país.
+     * @param questionId ID da pergunta.
+     * @return {@code true} se o país responde SIM; {@code false} se NÃO
+     *         ou se a combinação não estiver indexada.
      */
     public boolean getAnswer(Long countryId, Long questionId) {
         return countryQuestionMatrix
@@ -155,7 +173,10 @@ public class KnowledgeBaseCache {
 
     /**
      * Mapa completo country → question → boolean.
-     * Exposto para o GameService manter compatibilidade com getRemainingCountries.
+     * Exposto para o {@link atlas4me.service.GameService} manter compatibilidade
+     * com {@code getRemainingCountries}.
+     *
+     * @return mapa somente-leitura da matriz de features.
      */
     public Map<Long, Map<Long, Boolean>> getCountryQuestionMatrix() {
         return Collections.unmodifiableMap(countryQuestionMatrix);
